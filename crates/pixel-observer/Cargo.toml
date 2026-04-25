@@ -1,0 +1,14 @@
+[package]
+name = "orchyn-pixel-observer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-model-client = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde.workspace = true
+serde_json.workspace = true
+image.workspace = true
+anyhow.workspace = true
+tracing.workspace = true

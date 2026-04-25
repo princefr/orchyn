@@ -1,0 +1,21 @@
+[package]
+name = "orchyn-api-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-storage = { path = "../storage" }
+axum = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+async-graphql = { version = "7.0", features = ["chrono", "uuid"] }
+async-graphql-axum = "7.0"
+uuid.workspace = true
+chrono.workspace = true
+oauth2 = "4.4"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tower-http = { workspace = true }
+tracing.workspace = true
+async-stripe = { version = "0.33", features = ["runtime-tokio-hyper", "webhook-events"] }
+posthog-rs = "0.5"

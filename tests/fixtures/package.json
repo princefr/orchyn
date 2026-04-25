@@ -1,0 +1,7 @@
+{
+  "name": "orchyn-test-fixtures",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

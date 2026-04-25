@@ -1,0 +1,9 @@
+[package]
+name = "orchyn-scheduler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-actor-engine = { path = "../actor-engine" }
+tokio = { workspace = true, features = ["full"] }

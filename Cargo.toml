@@ -1,0 +1,73 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+    "bin/*",
+    "crates/tests",
+    "crates/fixer-agent",
+    "tests/integration",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Orchyn Team"]
+repository = "https://github.com/orchyn/orchyn"
+
+[workspace.dependencies]
+# Core
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+axum = "0.8"
+reqwest = { version = "0.12", features = ["stream", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.22"
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres"] }
+aws-sdk-s3 = "1.131.0"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tree-sitter = "0.22"
+tree-sitter-typescript = "0.21"
+tree-sitter-javascript = "0.21"
+tree-sitter-dart = "0.0.4"
+git2 = "0.19"
+rayon = "1.10"
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+hyper = { version = "1", features = ["full"] }
+image = "0.25"
+bytes = "1"
+futures = "0.3"
+
+# Internal
+orchyn-core = { path = "crates/core" }
+orchyn-storage = { path = "crates/storage" }
+orchyn-model-client = { path = "crates/model-client" }
+orchyn-codebase-indexer = { path = "crates/codebase-indexer" }
+orchyn-navigator-agent = { path = "crates/navigator-agent" }
+orchyn-spec-engine = { path = "crates/spec-engine" }
+orchyn-runtime-tracer = { path = "crates/runtime-tracer" }
+orchyn-actor-engine = { path = "crates/actor-engine" }
+orchyn-pixel-observer = { path = "crates/pixel-observer" }
+orchyn-action-planner = { path = "crates/action-planner" }
+orchyn-action-executor = { path = "crates/action-executor" }
+orchyn-gap-detector = { path = "crates/gap-detector" }
+orchyn-pattern-library = { path = "crates/pattern-library" }
+orchyn-report-generator = { path = "crates/report-generator" }
+orchyn-scheduler = { path = "crates/scheduler" }
+orchyn-api-server = { path = "crates/api-server" }
+orchyn-platform-web = { path = "crates/platform-web" }
+orchyn-fixer-agent = { path = "crates/fixer-agent" }
+
+[profile.dev.package]
+candle-core = { opt-level = 3 }
+candle-nn = { opt-level = 3 }
+candle-transformers = { opt-level = 3 }
+gemm = { opt-level = 3 }
+faer = { opt-level = 3 }
+matrixmultiply = { opt-level = 3 }

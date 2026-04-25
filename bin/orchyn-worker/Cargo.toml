@@ -1,0 +1,10 @@
+[package]
+name = "orchyn-worker"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-scheduler = { path = "../../crates/scheduler" }
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

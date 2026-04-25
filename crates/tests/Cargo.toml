@@ -1,0 +1,15 @@
+[package]
+name = "orchyn-tests"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-actor-engine = { path = "../actor-engine" }
+orchyn-platform-web = { path = "../platform-web" }
+orchyn-storage = { path = "../storage" }
+orchyn-model-client = { workspace = true }
+orchyn-pixel-observer = { workspace = true }
+orchyn-action-planner = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+uuid = { workspace = true }

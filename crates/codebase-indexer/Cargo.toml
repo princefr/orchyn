@@ -1,0 +1,17 @@
+[package]
+name = "orchyn-codebase-indexer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+tree-sitter.workspace = true
+tree-sitter-typescript.workspace = true
+tree-sitter-javascript.workspace = true
+tree-sitter-dart.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ignore = "0.4"
+rayon.workspace = true
+tracing.workspace = true
+anyhow.workspace = true

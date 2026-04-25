@@ -1,0 +1,26 @@
+[package]
+name = "orchyn-cli"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-model-client = { workspace = true }
+orchyn-codebase-indexer = { workspace = true }
+orchyn-navigator-agent = { workspace = true }
+orchyn-fixer-agent = { workspace = true }
+orchyn-pixel-observer = { workspace = true }
+orchyn-storage = { path = "../../crates/storage" }
+orchyn-action-executor = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+tempfile = "3.10"
+git2 = { workspace = true }
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+ratatui = "0.28"
+crossterm = "0.28"
+serde_json.workspace = true
+colored = "3.1.1"

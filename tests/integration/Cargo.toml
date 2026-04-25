@@ -1,0 +1,24 @@
+[package]
+name = "orchyn-integration-tests"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-actor-engine = { path = "../../crates/actor-engine" }
+orchyn-codebase-indexer = { path = "../../crates/codebase-indexer" }
+orchyn-platform-web = { path = "../../crates/platform-web" }
+orchyn-action-executor = { path = "../../crates/action-executor" }
+orchyn-model-client = { workspace = true }
+orchyn-pixel-observer = { workspace = true }
+orchyn-action-planner = { workspace = true }
+orchyn-fixer-agent = { path = "../../crates/fixer-agent" }
+orchyn-navigator-agent = { path = "../../crates/navigator-agent" }
+tokio = { workspace = true, features = ["full"] }
+uuid = { workspace = true }
+chrono = { workspace = true }
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+reqwest = { workspace = true }
+serde_json = { workspace = true }

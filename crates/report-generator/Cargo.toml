@@ -1,0 +1,10 @@
+[package]
+name = "orchyn-report-generator"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-gap-detector = { path = "../gap-detector" }
+serde.workspace = true
+serde_json.workspace = true

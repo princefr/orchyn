@@ -1,0 +1,12 @@
+[package]
+name = "orchyn-gap-detector"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-spec-engine = { path = "../spec-engine" }
+orchyn-actor-engine = { path = "../actor-engine" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
