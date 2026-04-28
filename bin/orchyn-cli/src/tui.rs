@@ -10,7 +10,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use orchyn_core::{DiagnosticEvent, EvidenceBundle, LogLevel, TodoStatus};
+use orchyn_core::{DiagnosticEvent, EvidenceBundle, LogLevel};
 use orchyn_fixer_agent::AgentEvent;
 use ratatui::{
     backend::CrosstermBackend,
@@ -231,7 +231,7 @@ fn draw_header(f: &mut Frame, area: Rect, state: &UiState) {
     };
     let sha = state.initial_sha.as_deref().unwrap_or("<no-git>");
     let title = format!(
-        " ORCHYN  ·  Gemma 4 ({})  ·  {}  ·  HEAD@{} ",
+        " ORCHYN  ·  Qwen 3.5 9B ({})  ·  {}  ·  HEAD@{} ",
         state.model_id,
         progress,
         &sha[..sha.len().min(8)]
@@ -296,126 +296,53 @@ fn render_evidence_lines(b: &EvidenceBundle) -> Vec<Line<'static>> {
         ]));
     }
 
-    // Visual
-    if let Some(v) = &b.visual {
-        let label = v
-            .description
-            .clone()
-            .or_else(|| v.screenshot_path.as_ref().map(|p| p.display().to_string()))
-            .unwrap_or_else(|| "(captured)".to_string());
+    if let Some(reality) = &b.reality {
+        // Visual
         lines.push(Line::from(vec![
             Span::styled("visual  ", Style::default().fg(Color::Blue)),
-            Span::raw(truncate(&label, 60)),
+            Span::raw(truncate(&reality.screenshot_path.display().to_string(), 60)),
         ]));
-    }
 
-    // Static analysis
-    let errs = b
-        .static_analysis
-        .iter()
-        .filter(|f| matches!(f.level, LogLevel::Error))
-        .count();
-    let warns = b
-        .static_analysis
-        .iter()
-        .filter(|f| matches!(f.level, LogLevel::Warning))
-        .count();
-    lines.push(Line::from(vec![
-        Span::styled("static  ", Style::default().fg(Color::Blue)),
-        Span::styled(format!("{} err", errs), color_for_count(errs)),
-        Span::raw("  "),
-        Span::styled(format!("{} warn", warns), Style::default().fg(Color::Yellow)),
-    ]));
-
-    // Tests
-    let passed = b.tests.iter().filter(|t| t.passed == Some(true)).count();
-    let failed = b.tests.iter().filter(|t| t.passed == Some(false)).count();
-    lines.push(Line::from(vec![
-        Span::styled("tests   ", Style::default().fg(Color::Blue)),
-        Span::styled(format!("{} pass", passed), Style::default().fg(Color::Green)),
-        Span::raw("  "),
-        Span::styled(format!("{} fail", failed), color_for_count(failed)),
-    ]));
-
-    // Console errors
-    let console_errs = b
-        .console
-        .iter()
-        .filter(|e| {
-            matches!(
-                e,
-                DiagnosticEvent::Console {
-                    level: LogLevel::Error,
-                    ..
-                } | DiagnosticEvent::NetworkError { .. }
-            )
-        })
-        .count();
-    lines.push(Line::from(vec![
-        Span::styled("console ", Style::default().fg(Color::Blue)),
-        Span::styled(format!("{} err", console_errs), color_for_count(console_errs)),
-    ]));
-
-    // Runtime
-    let panics = b.runtime.iter().filter(|r| r.stream == "panic").count();
-    if panics > 0 {
+        // DOM
         lines.push(Line::from(vec![
-            Span::styled("runtime ", Style::default().fg(Color::Blue)),
-            Span::styled(format!("{} panic", panics), Style::default().fg(Color::Red)),
+            Span::styled("dom     ", Style::default().fg(Color::Blue)),
+            Span::raw(format!("{} elements", reality.dom_elements.len())),
+        ]));
+
+        // Diagnostics
+        let console_errs = reality.diagnostics.iter().filter(|d| matches!(d, DiagnosticEvent::Console { level: LogLevel::Error, .. })).count();
+        lines.push(Line::from(vec![
+            Span::styled("console ", Style::default().fg(Color::Blue)),
+            Span::styled(format!("{} err", console_errs), color_for_count(console_errs)),
+        ]));
+
+        // Network
+        let net_count = reality.network_events.len();
+        lines.push(Line::from(vec![
+            Span::styled("network ", Style::default().fg(Color::Blue)),
+            Span::raw(format!("{} events", net_count)),
         ]));
     }
 
-    // Todos
-    if !b.todos.is_empty() {
+    // Findings & Gaps
+    if !b.claims_found.is_empty() {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "todos",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        )));
-        for t in b.todos.iter().take(8) {
-            let (mark, color) = match t.status {
-                TodoStatus::Pending => ("[ ]", Color::Gray),
-                TodoStatus::InProgress => ("[~]", Color::Yellow),
-                TodoStatus::Completed => ("[x]", Color::Green),
-            };
+        lines.push(Line::from(Span::styled("claims", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
+        for c in b.claims_found.iter().take(5) {
             lines.push(Line::from(vec![
-                Span::styled(mark, Style::default().fg(color)),
-                Span::raw(" "),
-                Span::raw(truncate(&t.description, 50)),
+                Span::styled("✓ ", Style::default().fg(Color::Green)),
+                Span::raw(truncate(&c.to_string(), 50)),
             ]));
         }
     }
 
-    // Latest 3 errors
-    let recent: Vec<_> = b
-        .static_analysis
-        .iter()
-        .rev()
-        .filter(|f| matches!(f.level, LogLevel::Error))
-        .take(3)
-        .collect();
-    if !recent.is_empty() {
+    if !b.gaps_detected.is_empty() {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "latest errors",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        )));
-        for f in recent {
-            let loc = match (&f.file, f.line) {
-                (Some(p), Some(l)) => format!("{}:{}", p.display(), l),
-                _ => "<no-loc>".to_string(),
-            };
+        lines.push(Line::from(Span::styled("gaps", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
+        for g in b.gaps_detected.iter().take(5) {
             lines.push(Line::from(vec![
-                Span::styled(loc, Style::default().fg(Color::Cyan)),
-                Span::raw(" "),
-                Span::styled(
-                    truncate(&f.message, 60),
-                    Style::default().fg(Color::Red),
-                ),
+                Span::styled("! ", Style::default().fg(Color::Red)),
+                Span::raw(truncate(&g.to_string(), 50)),
             ]));
         }
     }

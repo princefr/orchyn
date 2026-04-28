@@ -3,13 +3,16 @@ mod tui;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use clap::Parser;
+use colored::*;
 use git2::Repository;
 use orchyn_codebase_indexer::Indexer;
 use orchyn_core::RealityContext;
 use orchyn_fixer_agent::FixerAgent;
-use orchyn_model_client::QwenClient;
+use orchyn_harness::{Artifact, HarnessEvent, OrchynHarness, Phase, Verdict};
+use orchyn_model_client::{ModelClient, QwenClient};
 use orchyn_pixel_observer::UiState;
 use orchyn_storage::Storage;
+use similar::{ChangeTag, TextDiff};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -20,7 +23,12 @@ use tracing::{info, warn, Level};
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Local path or Git repository URL to analyze.
+    #[arg(default_value = ".")]
     source: String,
+
+    /// Optional debugging goal handed to the fixer harness.
+    #[arg(long, short)]
+    goal: Option<String>,
 
     /// Local directory to store artifacts.
     #[arg(long, default_value = "./orchyn_artifacts")]
@@ -30,13 +38,17 @@ struct Args {
     #[arg(long)]
     tui: bool,
 
-    /// Cap the fixer loop. 0 = skip the fixer entirely (just index).
+    /// Launch the autonomous testing and fixing harness.
+    #[arg(long)]
+    harness: bool,
+
+    /// Cap the fixer loop.
     #[arg(long, default_value_t = 30)]
     max_steps: usize,
 
-    /// Optional debugging goal handed to the fixer harness.
-    #[arg(long)]
-    goal: Option<String>,
+    /// Auto-approve all tool calls (non-interactive mode).
+    #[arg(long, short = 'y')]
+    yes: bool,
 }
 
 #[tokio::main]
@@ -47,7 +59,7 @@ async fn main() -> Result<()> {
         tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     }
 
-    info!("Orchyn — local codebase intelligence starting...");
+    info!("Orchyn (Ollama Edition) — starting...");
 
     let database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
@@ -71,26 +83,36 @@ async fn main() -> Result<()> {
         PathBuf::from(&args.source).canonicalize()?
     };
 
-    let model = QwenClient::new(None);
+    // Use llama.cpp with Qwen 3.5 0.8B
+    let model: Arc<dyn ModelClient> = Arc::new(QwenClient::new(None));
     let model_id = model.model_id().to_string();
-    info!("Loaded model client: {}", model_id);
+    info!("Loaded local model via llama.cpp: {}", model_id);
+
+    if args.harness {
+        let config = orchyn_harness::HarnessConfig {
+            target_url: "http://localhost:3000".to_string(),
+            max_fix_iterations: args.max_steps,
+        };
+        // For now, use a mock LLM that succeeds, or we can use RealLlm if we want real E2E
+        // Let's use RealLlm to satisfy the "every branch should fire" requirement
+        let llm = orchyn_harness::RealLlm { client: model.clone() };
+        let mut harness = orchyn_harness::OrchynHarness::new(config, llm);
+        let events = harness.subscribe();
+        
+        return run_harness_plain(harness, events).await;
+    }
 
     info!("Indexing codebase at {}...", target_path.display());
     let indexer = Indexer::new(&target_path);
     let app_map = indexer.index()?;
     
-    if args.max_steps == 0 {
-        info!("max_steps=0 — index-only run, skipping fixer harness.");
-        return Ok(());
-    }
-
     let mut agent = FixerAgent::new(model, target_path.clone());
     agent.set_max_steps(args.max_steps);
 
-    if let Some(goal) = &args.goal {
-        if let Ok(mut bundle) = agent.evidence().lock() {
-            bundle.goal = Some(goal.clone());
-        }
+    let goal = args.goal.clone().unwrap_or_else(|| "Find and fix any bugs in this project.".to_string());
+    
+    if let Ok(mut bundle) = agent.evidence().lock() {
+        bundle.goal = Some(goal.clone());
     }
 
     let initial_sha = agent.initial_sha().map(|s| s.to_string());
@@ -100,6 +122,7 @@ async fn main() -> Result<()> {
         screenshot_path: PathBuf::new(),
         dom_elements: Vec::new(),
         diagnostics: Vec::new(),
+        network_events: Vec::new(),
         timestamp: Utc::now(),
     };
     let visual_state = UiState {
@@ -108,13 +131,11 @@ async fn main() -> Result<()> {
         keyboard_visible: false,
     };
 
-    // Prepare initial context for the agent
     let file_list: Vec<String> = app_map.files.iter().map(|f| f.path.to_string_lossy().to_string()).collect();
     let initial_context = format!(
-        "PROJECT STRUCTURE:\nFiles in project: {:?}\n\n\
-        GOAL: Explore the codebase, run tests, observe the UI, and ensure everything works correctly. \
-        DO NOT finish until you have used 'run_command' or 'observe_ui' to verify reality.",
-        file_list
+        "GOAL: {}\n\nPROJECT STRUCTURE:\nFiles: {:?}\n\n\
+        You are in an autonomous loop. Use 'observe_ui' and 'run_command' to verify all fixes.",
+        goal, file_list
     );
 
     if args.tui {
@@ -195,4 +216,74 @@ async fn run_plain(
         }
         Err(e) => Err(e.into()),
     }
+}
+
+async fn run_harness_plain<L: orchyn_harness::LlmClient + Send + 'static>(
+    mut harness: OrchynHarness<L>,
+    mut events: broadcast::Receiver<HarnessEvent>,
+) -> Result<()> {
+    let printer = tokio::spawn(async move {
+        loop {
+            match events.recv().await {
+                Ok(HarnessEvent::PhaseStart(phase)) => {
+                    println!("\n{}", format!("── phase {:?} ──", phase).bold().yellow());
+                }
+                Ok(HarnessEvent::PhaseEnd(evidence)) => {
+                    if evidence.verdict == Verdict::Pass {
+                        println!("  {} Phase passed", "✓".green().bold());
+                    } else {
+                        println!("  {} Phase failed: {:?}", "✗".red().bold(), evidence.verdict);
+                    }
+                }
+                Ok(HarnessEvent::PatchApplied(patch)) => {
+                    println!(
+                        "\n{} {}",
+                        "→ Applied patch to".bold().magenta(),
+                        patch.file_path.display().to_string().magenta()
+                    );
+                    let diff =
+                        TextDiff::from_lines(&patch.original_content, &patch.suggested_content);
+                    for change in diff.iter_all_changes() {
+                        let (sign, color) = match change.tag() {
+                            ChangeTag::Delete => ("-", Color::Red),
+                            ChangeTag::Insert => ("+", Color::Green),
+                            ChangeTag::Equal => (" ", Color::White),
+                        };
+                        print!("{}", format!("{}{}", sign, change).color(color));
+                    }
+                }
+                Ok(HarnessEvent::Failure(failure)) => {
+                    println!("  {} Failure: {}", "✗".red().bold(), failure.message.red());
+                }
+                Ok(HarnessEvent::Diagnostic(diag)) => {
+                    use orchyn_core::DiagnosticEvent::*;
+                    match diag {
+                        Console { level, message, .. } => {
+                            let level_str = format!("{:?}", level).to_uppercase();
+                            let color = match level {
+                                orchyn_core::LogLevel::Error => Color::Red,
+                                orchyn_core::LogLevel::Warn => Color::Yellow,
+                                _ => Color::Cyan,
+                            };
+                            println!("  {} [{}] {}", "web-console".dimmed(), level_str.color(color), message);
+                        }
+                        Anomaly { kind, details } => {
+                            println!("  {} {}: {}", "anomaly".red().bold(), kind, details);
+                        }
+                    }
+                }
+                Ok(HarnessEvent::Network(net)) => {
+                    println!("  {} {} {} -> {}", "network".dimmed(), net.method.bold(), net.url, net.status);
+                }
+                Ok(HarnessEvent::Notice(msg)) => {
+                    println!("{} {}", "•".magenta(), msg);
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    let _ = harness.run_all().await?;
+    let _ = printer.await;
+    Ok(())
 }

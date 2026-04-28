@@ -5,64 +5,173 @@ members = [
     "bin/*",
     "crates/tests",
     "crates/fixer-agent",
+    "crates/orchyn-harness",
+    "crates/artifact-storage",
     "tests/integration",
 ]
 
 [workspace.package]
 version = "0.1.0"
+rust-version = "1.85.0"
 edition = "2024"
 authors = ["Orchyn Team"]
+description = "Orchyn: Local-first autonomous testing and debugging harness"
+homepage = "https://github.com/orchyn/orchyn"
 repository = "https://github.com/orchyn/orchyn"
+license = "MIT"
+readme = "README.md"
+keywords = ["llm", "inference", "machine-learning", "ai", "transformers"]
+categories = ["science", "api-bindings", "text-processing"]
 
 [workspace.dependencies]
 # Core
-tokio = { version = "1", features = ["full"] }
-tokio-util = "0.7"
-axum = "0.8"
-reqwest = { version = "0.12", features = ["stream", "json"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-thiserror = "1"
-anyhow = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-opentelemetry = "0.22"
-sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres"] }
-aws-sdk-s3 = "1.131.0"
-uuid = { version = "1", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-tree-sitter = "0.22"
-tree-sitter-typescript = "0.21"
-tree-sitter-javascript = "0.21"
-tree-sitter-dart = "0.0.4"
-git2 = "0.19"
-rayon = "1.10"
-tower-http = { version = "0.6", features = ["cors", "fs"] }
-hyper = { version = "1", features = ["full"] }
-image = "0.25"
-bytes = "1"
-futures = "0.3"
-
-# Internal
 orchyn-core = { path = "crates/core" }
-orchyn-storage = { path = "crates/storage" }
 orchyn-model-client = { path = "crates/model-client" }
 orchyn-codebase-indexer = { path = "crates/codebase-indexer" }
-orchyn-navigator-agent = { path = "crates/navigator-agent" }
-orchyn-spec-engine = { path = "crates/spec-engine" }
-orchyn-runtime-tracer = { path = "crates/runtime-tracer" }
-orchyn-actor-engine = { path = "crates/actor-engine" }
+orchyn-platform-web = { path = "crates/platform-web" }
+orchyn-action-executor = { path = "crates/action-executor" }
 orchyn-pixel-observer = { path = "crates/pixel-observer" }
 orchyn-action-planner = { path = "crates/action-planner" }
-orchyn-action-executor = { path = "crates/action-executor" }
-orchyn-gap-detector = { path = "crates/gap-detector" }
-orchyn-pattern-library = { path = "crates/pattern-library" }
-orchyn-report-generator = { path = "crates/report-generator" }
-orchyn-scheduler = { path = "crates/scheduler" }
-orchyn-api-server = { path = "crates/api-server" }
-orchyn-platform-web = { path = "crates/platform-web" }
+orchyn-actor-engine = { path = "crates/actor-engine" }
 orchyn-fixer-agent = { path = "crates/fixer-agent" }
+orchyn-navigator-agent = { path = "crates/navigator-agent" }
+orchyn-pattern-library = { path = "crates/pattern-library" }
+orchyn-runtime-tracer = { path = "crates/runtime-tracer" }
+orchyn-report-generator = { path = "crates/report-generator" }
+orchyn-gap-detector = { path = "crates/gap-detector" }
+orchyn-spec-engine = { path = "crates/spec-engine" }
+orchyn-storage = { path = "crates/storage" }
+orchyn-api-server = { path = "crates/api-server" }
+orchyn-scheduler = { path = "crates/scheduler" }
+
+# Common & Inherited
+cc = "1.2.61"
+accelerate-src = "0.3"
+intel-mkl-src = "0.8"
+candle-core = "0.10"
+candle-nn = "0.10"
+candle-transformers = "0.10"
+candle-flash-attn = "0.10"
+candle-flash-attn-v3 = "0.10"
+candle-metal-kernels = "0.10"
+rand = "0.8"
+rand_distr = "0.4"
+base64 = "0.22"
+rayon = "1.10"
+url = "2.5"
+utoipa = "5.0"
+walkdir = "2.5"
+data-url = "0.3"
+float8 = "0.7"
+toml = "0.9"
+cli-table = "0.4"
+dirs = "6.0"
+tokio-tungstenite = "0.28"
+tqdm = "0.8"
+minijinja = "2.0"
+minijinja-contrib = "2.0"
+regex-automata = "0.4"
+rustc-hash = "2.1"
+vob = "3.0"
+cfgrammar = "0.14"
+lrtable = "0.14"
+galil-seiferas = "0.1"
+radix_trie = "0.3"
+bytemuck = "1.19"
+tokio-rayon = "2.1"
+rand_isaac = "0.4"
+indicatif = "0.17"
+strum = "0.26"
+derive_more = { version = "2.1", features = ["full"] }
+akin = "0.4"
+variantly = "0.4"
+derive-new = "0.6"
+sysinfo = "0.32"
+csv = "1.4"
+bytemuck_derive = "1.7"
+schemars = "1.0"
+serde-saphyr = "0.0"
+serde_plain = "1.0"
+as-any = "0.3"
+llguidance = "1.0"
+toktrie_hf_tokenizers = "1.0"
+toktrie = "1.0"
+serde-big-array = "0.5"
+interprocess = "2.2"
+urlencoding = "2.1"
+scraper = "0.20"
+html2text = "0.12"
+ordered-float = "5.0"
+hashbrown = "0.15"
+parking_lot = "0.12"
+ahash = "0.8"
+num-traits = "0.2"
+libc = "0.2"
+bm25 = "2.0"
+symphonia = "0.5"
+lazy_static = "1.5"
+paste = "1.0"
+byteorder = "1.5"
+yoke = { version = "0.7", features = ["derive"] }
+memmap2 = "0.9"
+pyo3 = "0.23"
+pyo3-build-config = "0.23"
+ctrlc = "3.4"
+directories = "6.0"
+rustyline = "15.0"
+utoipa-swagger-ui = "9.0"
+futures-util = "0.3"
+axum_static = "1.0"
+include_dir = "0.7"
+http = "1.1"
+hyper = "1.4"
+rust-mcp-sdk = "0.8"
+rust-mcp-schema = "0.9"
+openai-harmony = "0.0"
+cudaforge = "0.1"
+rubato = "0.16"
+rustfft = "6.4"
+hound = "3.5"
+apodize = "1.0"
+statrs = "0.18"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.49", features = ["full"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+once_cell = "1.20"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+tokio-stream = "0.1"
+axum = "0.8"
+async-graphql = "7.0"
+async-graphql-axum = "7.0"
+tower-http = { version = "0.6", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+image = "0.25"
+tokenizers = "0.21"
+hf-hub = "0.4"
+half = "2.4"
+safetensors = "0.5"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+colored = "2.1"
+clap = { version = "4.5", features = ["derive"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid", "json"] }
+regex = "1.11"
+ignore = "0.4"
+posthog-rs = "0.5"
+itertools = "0.13"
+git2 = "0.19"
+tempfile = "3.10"
+indexmap = { version = "2.2", features = ["serde"] }
+either = { version = "1.15", features = ["serde"] }
+# async-trait removed - using native async traits
+objc = "0.2"
+objc2-metal = "0.3"
+objc2-foundation = "0.3"
+dispatch2 = "0.3"
 
 [profile.dev.package]
 candle-core = { opt-level = 3 }

@@ -14,6 +14,7 @@ orchyn-pixel-observer = { workspace = true }
 orchyn-action-planner = { workspace = true }
 orchyn-fixer-agent = { path = "../../crates/fixer-agent" }
 orchyn-navigator-agent = { path = "../../crates/navigator-agent" }
+orchyn-harness = { path = "../../crates/orchyn-harness" }
 tokio = { workspace = true, features = ["full"] }
 uuid = { workspace = true }
 chrono = { workspace = true }
@@ -22,3 +23,5 @@ tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 reqwest = { workspace = true }
 serde_json = { workspace = true }
+colored = "2.1"
+similar = { version = "2.4", features = ["inline"] }

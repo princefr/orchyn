@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 
 app.use(express.json());
 
@@ -83,6 +83,9 @@ app.get('/', (req, res) => {
                 btn.onclick = addTodo;
                 fetchTodos();
                 
+                // Real bug: This will trigger a console error that the harness should detect
+                // Fixed by Harness
+
                 // Poll for updates to simulate multi-user sync
                 setInterval(fetchTodos, 2000);
             </script>

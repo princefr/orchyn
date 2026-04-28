@@ -1,0 +1,27 @@
+[package]
+name = "orchyn-harness"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+orchyn-core = { path = "../core" }
+orchyn-model-client = { path = "../model-client" }
+orchyn-runtime-tracer = { path = "../runtime-tracer" }
+orchyn-pixel-observer = { path = "../pixel-observer" }
+orchyn-actor-engine = { path = "../actor-engine" }
+orchyn-platform-web = { path = "../platform-web" }
+orchyn-action-executor = { path = "../action-executor" }
+orchyn-storage = { path = "../storage" }
+
+tokio = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# async-trait removed - using native async traits
+bytes = { version = "1.0", features = ["serde"] }
+chrono = { workspace = true }
+uuid = { workspace = true }
+path-clean = "1.0"

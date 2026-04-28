@@ -1,8 +1,8 @@
-use crate::{Language, Symbol, SymbolKind};
+use crate::types::{Language, Symbol, SymbolKind};
 use anyhow::{Context, Result};
 use orchyn_core::SourceRef;
 use std::path::Path;
-use tree_sitter::{Parser, Query, QueryCursor};
+use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 
 pub struct SymbolParser {
     ts_parser: Parser,
@@ -12,8 +12,8 @@ impl SymbolParser {
     pub fn new(language: Language) -> Result<Self> {
         let mut ts_parser = Parser::new();
         let ts_lang = match language {
-            Language::TypeScript => tree_sitter_typescript::language_typescript(),
-            Language::JavaScript => tree_sitter_javascript::language(),
+            Language::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
+            Language::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
             _ => return Err(anyhow::anyhow!("Unsupported language for parsing")),
         };
         ts_parser.set_language(&ts_lang)?;
@@ -33,10 +33,12 @@ impl SymbolParser {
 
         let query = Query::new(&self.ts_parser.language().unwrap(), query_str)?;
         let mut cursor = QueryCursor::new();
-        let matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
-
+        
         let mut symbols = Vec::new();
-        for m in matches {
+        let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+        
+        // tree-sitter 0.25+ matches.next() returns &QueryMatch
+        while let Some(m) = matches.next() {
             for cap in m.captures {
                 let name = cap.node.utf8_text(source.as_bytes())?.to_string();
                 let start = cap.node.start_position();
@@ -53,8 +55,8 @@ impl SymbolParser {
                     kind,
                     range: SourceRef {
                         file: path.to_path_buf(),
-                        line_start: start.row as u32,
-                        line_end: end.row as u32,
+                        line_start: start.row as usize,
+                        line_end: end.row as usize,
                     },
                 });
             }

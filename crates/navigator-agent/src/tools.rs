@@ -4,15 +4,12 @@ use regex::Regex;
 use serde_json::Value;
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
-
-pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 pub trait NavigatorTool: Send + Sync {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
     fn parameters(&self) -> Value;
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>>;
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_;
 }
 
 pub struct ListFilesTool {
@@ -40,19 +37,20 @@ impl NavigatorTool for ListFilesTool {
             }
         })
     }
-    fn call<'a>(&'a self, _args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, _args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        let root = self.root.clone();
+        async move {
             let mut files = Vec::new();
-            let walker = WalkBuilder::new(&self.root).build();
+            let walker = WalkBuilder::new(&root).build();
             for entry in walker.flatten() {
                 if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                    if let Ok(path) = entry.path().strip_prefix(&self.root) {
+                    if let Ok(path) = entry.path().strip_prefix(&root) {
                         files.push(path.to_string_lossy().to_string());
                     }
                 }
             }
             Ok(Value::Array(files.into_iter().map(Value::String).collect()))
-        })
+        }
     }
 }
 
@@ -76,8 +74,8 @@ impl NavigatorTool for ReadFileTool {
             "required": ["path"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        async move {
             let path_str = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let start = args.get("line_start").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
             let end = args
@@ -99,7 +97,7 @@ impl NavigatorTool for ReadFileTool {
                 .join("\n");
 
             Ok(Value::String(subset))
-        })
+        }
     }
 }
 
@@ -129,12 +127,13 @@ impl NavigatorTool for GrepTool {
             "required": ["pattern"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        let root = self.root.clone();
+        async move {
             let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or("");
             let re = Regex::new(pattern).map_err(|e| OrchynError::Internal(e.to_string()))?;
             let mut matches = Vec::new();
-            let walker = WalkBuilder::new(&self.root).build();
+            let walker = WalkBuilder::new(&root).build();
             for entry in walker.flatten() {
                 if let Ok(content) = std::fs::read_to_string(entry.path()) {
                     if re.is_match(&content) {
@@ -145,6 +144,6 @@ impl NavigatorTool for GrepTool {
             Ok(Value::Array(
                 matches.into_iter().map(Value::String).collect(),
             ))
-        })
+        }
     }
 }

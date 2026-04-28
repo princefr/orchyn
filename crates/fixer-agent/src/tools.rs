@@ -2,19 +2,18 @@ use orchyn_core::{OrchynError, Result};
 use serde_json::Value;
 use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use tokio::process::Command;
 use ignore::WalkBuilder;
 use regex::Regex;
-use orchyn_model_client::QwenClient;
-
-pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+use orchyn_model_client::ModelClient;
+use std::sync::Arc;
+use chrono::Utc;
 
 pub trait FixerTool: Send + Sync {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
     fn parameters(&self) -> Value;
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>>;
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_;
 }
 
 pub struct ListFilesTool {
@@ -38,9 +37,9 @@ impl FixerTool for ListFilesTool {
             }
         })
     }
-    fn call<'a>(&'a self, _args: Value) -> BoxFuture<'a, Result<Value>> {
+    fn call(&self, _args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
         let cwd = self.cwd.clone();
-        Box::pin(async move {
+        async move {
             let mut files = Vec::new();
             let walker = WalkBuilder::new(&cwd).build();
             for entry in walker.flatten() {
@@ -51,7 +50,7 @@ impl FixerTool for ListFilesTool {
                 }
             }
             Ok(Value::Array(files.into_iter().map(Value::String).collect()))
-        })
+        }
     }
 }
 
@@ -77,9 +76,9 @@ impl FixerTool for GrepTool {
             "required": ["pattern"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
         let cwd = self.cwd.clone();
-        Box::pin(async move {
+        async move {
             let pattern = args.get("pattern").and_then(|v| v.as_str()).unwrap_or("");
             let re = Regex::new(pattern).map_err(|e| OrchynError::Internal(e.to_string()))?;
             
@@ -97,7 +96,7 @@ impl FixerTool for GrepTool {
                 }
             }
             Ok(Value::Array(matches.into_iter().map(Value::String).collect()))
-        })
+        }
     }
 }
 
@@ -105,24 +104,32 @@ pub struct ReadFileTool;
 
 impl FixerTool for ReadFileTool {
     fn name(&self) -> &str { "read_file" }
-    fn description(&self) -> &str { "Read file content" }
+    fn description(&self) -> &str { "Read file content (range-bounded to max 200 lines)." }
     fn parameters(&self) -> Value {
         serde_json::json!({
             "type": "object",
             "properties": {
-                "path": { "type": "string" }
+                "path": { "type": "string" },
+                "line_start": { "type": "integer" },
+                "line_end": { "type": "integer" }
             },
             "required": ["path"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        async move {
             let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            let start = args.get("line_start").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+            let end = args.get("line_end").and_then(|v| v.as_u64()).unwrap_or(200) as usize;
+            
             let content = tokio::fs::read_to_string(path)
                 .await
                 .map_err(|e| OrchynError::Internal(e.to_string()))?;
-            Ok(Value::String(content))
-        })
+            
+            let lines: Vec<&str> = content.lines().collect();
+            let subset: Vec<&str> = lines.into_iter().skip(start - 1).take(end - start + 1).collect();
+            Ok(Value::String(subset.join("\n")))
+        }
     }
 }
 
@@ -141,15 +148,15 @@ impl FixerTool for WriteFileTool {
             "required": ["path", "content"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        async move {
             let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
             tokio::fs::write(path, content)
                 .await
                 .map_err(|e| OrchynError::Internal(e.to_string()))?;
             Ok(Value::String("File written".to_string()))
-        })
+        }
     }
 }
 
@@ -169,8 +176,8 @@ impl FixerTool for ReplaceTextTool {
             "required": ["path", "old_text", "new_text"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        Box::pin(async move {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
+        async move {
             let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
             let old_text = args.get("old_text").and_then(|v| v.as_str()).unwrap_or("");
             let new_text = args.get("new_text").and_then(|v| v.as_str()).unwrap_or("");
@@ -188,7 +195,7 @@ impl FixerTool for ReplaceTextTool {
                 .await
                 .map_err(|e| OrchynError::Internal(e.to_string()))?;
             Ok(Value::String("Text replaced".to_string()))
-        })
+        }
     }
 }
 
@@ -204,7 +211,7 @@ impl RunCommandTool {
 
 impl FixerTool for RunCommandTool {
     fn name(&self) -> &str { "run_command" }
-    fn description(&self) -> &str { "Run a shell command (e.g., npm run build, cargo check). Always run this to verify fixes." }
+    fn description(&self) -> &str { "Run a shell command (e.g., npm test, cargo check). Always run this to verify fixes." }
     fn parameters(&self) -> Value {
         serde_json::json!({
             "type": "object",
@@ -214,9 +221,9 @@ impl FixerTool for RunCommandTool {
             "required": ["command"]
         })
     }
-    fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
+    fn call(&self, args: Value) -> impl Future<Output = Result<Value>> + Send + '_ {
         let cwd = self.cwd.clone();
-        Box::pin(async move {
+        async move {
             let command = args.get("command").and_then(|v| v.as_str()).unwrap_or("");
             let output = Command::new("sh")
                 .arg("-c")
@@ -234,47 +241,55 @@ impl FixerTool for RunCommandTool {
                 output.status, stdout, stderr
             );
             Ok(Value::String(result))
-        })
+        }
     }
 }
 
-pub struct ObserveTool {
-    model: QwenClient,
+pub struct ObserveTool<M: ModelClient> {
+    observer: orchyn_pixel_observer::PixelObserver<M>,
 }
 
-impl ObserveTool {
-    pub fn new(model: QwenClient) -> Self {
-        Self { model }
+impl<M: ModelClient> ObserveTool<M> {
+    pub fn new(model: Arc<M>) -> Self {
+        Self { 
+            observer: orchyn_pixel_observer::PixelObserver::new(model)
+        }
     }
 }
 
-impl FixerTool for ObserveTool {
+impl<M: ModelClient> FixerTool for ObserveTool<M> {
     fn name(&self) -> &str { "observe_ui" }
-    fn description(&self) -> &str { "Open a URL in a headless browser, take a screenshot, and use Vision AI to describe it." }
+    fn description(&self) -> &str { 
+        "Open a URL, capture UNIFIED stream of Vision + DOM + Console + Network. \
+        The best way to rapidly find issues." 
+    }
     fn parameters(&self) -> Value {
         serde_json::json!({
             "type": "object",
             "properties": {
-                "url": { "type": "string", "description": "URL to probe (e.g. http://localhost:3000)" },
-                "prompt": { "type": "string", "description": "What to look for in the UI" }
+                "url": { "type": "string" },
+                "prompt": { "type": "string", "description": "What to look for in the vision/pixels" }
             },
             "required": ["url", "prompt"]
         })
     }
     fn call<'a>(&'a self, args: Value) -> BoxFuture<'a, Result<Value>> {
-        let model = self.model.clone();
+        let observer = self.observer.clone();
         Box::pin(async move {
             let url = args.get("url").and_then(|v| v.as_str()).unwrap_or("");
-            let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("What is on the screen?");
+            // In a real app, we'd navigate to the URL first.
+            // For now, let's assume we are already there or the observer handles it.
             
             use orchyn_platform_web::WebAdapter;
             use orchyn_action_executor::PlatformAdapter;
             
             let mut adapter = WebAdapter::new(url).await?;
             let screenshot: Vec<u8> = adapter.screenshot().await?;
+            let dom = adapter.get_elements().await?;
             
-            let analysis = model.observe(&screenshot, prompt).await?;
-            Ok(analysis)
+            let vision_state = observer.observe_hybrid(&screenshot, &dom).await?;
+            
+            Ok(serde_json::to_value(vision_state).unwrap_or(Value::Null))
         })
     }
 }

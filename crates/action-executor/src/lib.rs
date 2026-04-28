@@ -1,9 +1,6 @@
 use orchyn_core::Result;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
-
-pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Action {
@@ -21,10 +18,11 @@ pub struct DeviceInfo {
 }
 
 pub trait PlatformAdapter: Send + Sync {
-    fn screenshot(&mut self) -> BoxFuture<'_, Result<Vec<u8>>>;
-    fn execute(&mut self, action: &Action) -> BoxFuture<'_, Result<()>>;
-    fn reset(&mut self) -> BoxFuture<'_, Result<()>>;
-    fn diagnostics(&mut self) -> BoxFuture<'_, Result<Vec<orchyn_core::DiagnosticEvent>>>;
-    fn get_elements(&mut self) -> BoxFuture<'_, Result<Vec<serde_json::Value>>>;
+    fn screenshot(&mut self) -> impl Future<Output = Result<Vec<u8>>> + Send + '_;
+    fn execute(&mut self, action: &Action) -> impl Future<Output = Result<()>> + Send + '_;
+    fn reset(&mut self) -> impl Future<Output = Result<()>> + Send + '_;
+    fn diagnostics(&mut self) -> impl Future<Output = Result<Vec<orchyn_core::DiagnosticEvent>>> + Send + '_;
+    fn network_events(&mut self) -> impl Future<Output = Result<Vec<orchyn_core::NetworkEvent>>> + Send + '_;
+    fn get_elements(&mut self) -> impl Future<Output = Result<Vec<serde_json::Value>>> + Send + '_;
     fn device_info(&self) -> DeviceInfo;
 }

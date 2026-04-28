@@ -10,3 +10,5 @@ orchyn-actor-engine = { path = "../actor-engine" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+uuid = { workspace = true }
+tracing.workspace = true

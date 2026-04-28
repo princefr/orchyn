@@ -8,19 +8,18 @@ orchyn-core = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 futures.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["json", "stream"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = "0.1"
 image.workspace = true
 once_cell = "1.20"
 anyhow.workspace = true
 tracing.workspace = true
+# async-trait removed - using native async traits
+indexmap = "2.2"
+base64 = "0.22"
 
-# Local Inference (CPU Optimized)
-candle-core = { version = "0.8.4", features = ["mkl"] }
-candle-transformers = { version = "0.8.4" }
-candle-nn = { version = "0.8.4" }
-tokenizers = "0.21.0"
+# llama.cpp bindings (Latest stable for Qwen 3.5 support)
+llama-cpp-2 = "0.1.145"
 hf-hub = "0.4.0"
-half = { version = "2.4", features = ["num-traits", "use-intrinsics", "rand_distr"] }
-safetensors = "0.5.2"
+tokenizers = "0.21.0"

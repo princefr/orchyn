@@ -5,7 +5,7 @@ use tracing::info;
 
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
-    // Single Unified Model (Qwen 3.5 9B for GPU)
+    // Single Unified Model (Qwen 3.5 0.8B for fast, unified text+vision)
     pub repo: String,
     pub filename: String,
     pub tokenizer_repo: String,
@@ -14,10 +14,11 @@ pub struct ModelConfig {
 impl Default for ModelConfig {
     fn default() -> Self {
         Self {
-            // Using Qwen 3.5 9B Q4_K_M for native multimodal + reasoning on GPU
-            repo: "bartowski/Qwen3.5-9B-Instruct-GGUF".to_string(),
-            filename: "Qwen3.5-9B-Instruct-Q4_K_M.gguf".to_string(),
-            tokenizer_repo: "Qwen/Qwen3.5-9B-Instruct".to_string(),
+            // Using bartowski's GGUF of the official Qwen 3.5 0.8B
+            // The official repo only has Safetensors, which requires a different loader.
+            repo: "bartowski/Qwen_Qwen3.5-0.8B-GGUF".to_string(),
+            filename: "Qwen_Qwen3.5-0.8B-Q4_K_M.gguf".to_string(),
+            tokenizer_repo: "Qwen/Qwen3.5-0.8B".to_string(),
         }
     }
 }
@@ -34,7 +35,7 @@ impl ModelManager {
     pub async fn download_models(&self) -> Result<LocalModelPaths> {
         let api = Api::new()?;
         
-        info!("Syncing unified Qwen 3.5 9B model: {}", self.config.repo);
+        info!("Syncing unified Qwen 3.5 0.8B model: {}", self.config.repo);
         let repo = api.repo(Repo::with_revision(
             self.config.repo.clone(),
             RepoType::Model,
@@ -42,6 +43,7 @@ impl ModelManager {
         ));
         let weights = repo.get(&self.config.filename).await?;
 
+        // Tokenizer is always from the official repo
         let t_repo = api.repo(Repo::with_revision(
             self.config.tokenizer_repo.clone(),
             RepoType::Model,

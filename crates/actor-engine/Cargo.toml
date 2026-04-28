@@ -14,4 +14,5 @@ serde_json.workspace = true
 chrono.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
+uuid = { version = "1.10", features = ["v4", "serde"] }
 anyhow.workspace = true

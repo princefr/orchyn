@@ -49,9 +49,12 @@ async fn main() {
             .expect("Invalid redirect URL"),
     );
 
+    let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "orchyn-secret-key-12345".to_string());
+
     let auth_state = Arc::new(AuthState {
         client,
         storage: storage.clone(),
+        jwt_secret,
     });
 
     let schema = build_schema(storage.clone(), analytics.clone());
