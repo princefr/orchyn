@@ -7,8 +7,10 @@ edition.workspace = true
 orchyn-core = { workspace = true }
 orchyn-spec-engine = { path = "../spec-engine" }
 orchyn-actor-engine = { path = "../actor-engine" }
+orchyn-model-client = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 uuid = { workspace = true }
 tracing.workspace = true
+futures = "0.3"

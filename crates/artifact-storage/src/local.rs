@@ -1,35 +1,30 @@
-use std::future::Future;
+use crate::error::Result;
+use crate::traits::{ArtifactKind, ArtifactMetadata, ArtifactStorage};
 use std::path::PathBuf;
-use std::fs;
 use uuid::Uuid;
 use chrono::Utc;
-use crate::traits::*;
-use crate::error::*;
-use crate::ArtifactKind;
+use tokio::fs;
+use futures::future::{BoxFuture, FutureExt};
 
+#[derive(Debug)]
 pub struct LocalArtifactStorage {
     root: PathBuf,
 }
 
 impl LocalArtifactStorage {
-    pub fn new(root: PathBuf) -> Result<Self, ArtifactError> {
+    pub fn new(root: PathBuf) -> Result<Self> {
         if !root.exists() {
-            fs::create_dir_all(&root).map_err(|e| ArtifactError::Io(e))?;
+            std::fs::create_dir_all(&root)?;
         }
         Ok(Self { root })
     }
-    
-    fn get_artifact_path(&self, artifact_id: Uuid, kind: &ArtifactKind) -> PathBuf {
-        let extension = match kind {
-            ArtifactKind::Screenshot => "png",
-            ArtifactKind::Video => "mp4",
-            ArtifactKind::DomSnapshot => "html",
-            ArtifactKind::ConsoleLog => "txt",
-            ArtifactKind::NetworkLog => "txt",
-            ArtifactKind::Patch => "patch",
-            ArtifactKind::TestResult => "json",
-        };
-        self.root.join(format!("{}.{}", artifact_id, extension))
+
+    fn get_path(&self, id: Uuid) -> PathBuf {
+        self.root.join(format!("{}.artifact", id))
+    }
+
+    fn get_meta_path(&self, id: Uuid) -> PathBuf {
+        self.root.join(format!("{}.meta", id))
     }
 }
 
@@ -38,86 +33,61 @@ impl ArtifactStorage for LocalArtifactStorage {
         &self,
         run_id: Uuid,
         kind: ArtifactKind,
-        data: &[u8],
-        content_type: &str,
-    ) -> impl Future<Output = Result<ArtifactMetadata, ArtifactError>> + Send + '_ {
-        let root = self.root.clone();
-        let data = data.to_vec();
-        let content_type = content_type.to_string();
+        data: Vec<u8>,
+        content_type: String,
+    ) -> BoxFuture<'_, Result<ArtifactMetadata>> {
+        let id = Uuid::new_v4();
+        let metadata = ArtifactMetadata {
+            id,
+            run_id,
+            kind,
+            created_at: Utc::now(),
+            size_bytes: data.len() as u64,
+            content_type: content_type.to_string(),
+        };
+
+        let path = self.get_path(id);
+        let meta_path = self.get_meta_path(id);
+
         async move {
-            let id = Uuid::new_v4();
-            let extension = match kind {
-                ArtifactKind::Screenshot => "png",
-                ArtifactKind::Video => "mp4",
-                ArtifactKind::DomSnapshot => "html",
-                ArtifactKind::ConsoleLog => "txt",
-                ArtifactKind::NetworkLog => "txt",
-                ArtifactKind::Patch => "patch",
-                ArtifactKind::TestResult => "json",
-            };
-            let path = root.join(format!("{}.{}", id, extension));
-            
-            fs::write(&path, &data).map_err(|e| ArtifactError::Io(e))?;
-            
-            let metadata = ArtifactMetadata {
-                id,
-                run_id,
-                kind,
-                created_at: Utc::now(),
-                size_bytes: data.len() as u64,
-                content_type,
-            };
-            
+            fs::write(path, data).await?;
+            let meta_json = serde_json::to_string(&metadata)?;
+            fs::write(meta_path, meta_json).await?;
             Ok(metadata)
-        }
+        }.boxed()
     }
 
-    fn get(&self, artifact_id: Uuid) -> impl Future<Output = Result<Vec<u8>, ArtifactError>> + Send + '_ {
-        let root = self.root.clone();
+    fn get(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<Vec<u8>>> {
+        let path = self.get_path(artifact_id);
         async move {
-            let extensions = ["png", "mp4", "html", "txt", "patch", "json"];
-            
-            for ext in &extensions {
-                let path = root.join(format!("{}.{}", artifact_id, ext));
-                if path.exists() {
-                    return fs::read(&path).map_err(|e| ArtifactError::Io(e));
-                }
-            }
-            
-            Err(ArtifactError::NotFound(format!("Artifact {} not found", artifact_id)))
-        }
+            let data = fs::read(path).await?;
+            Ok(data)
+        }.boxed()
     }
 
-    fn get_metadata(&self, artifact_id: Uuid) -> impl Future<Output = Result<ArtifactMetadata, ArtifactError>> + Send + '_ {
+    fn get_metadata(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<ArtifactMetadata>> {
+        let meta_path = self.get_meta_path(artifact_id);
         async move {
-            // In a real implementation, we'd store metadata separately
-            // For now, we'll return an error since we don't have metadata storage
-            Err(ArtifactError::NotFound(format!("Metadata for artifact {} not found", artifact_id)))
-        }
+            let meta_json = fs::read_to_string(meta_path).await?;
+            let metadata: ArtifactMetadata = serde_json::from_str(&meta_json)?;
+            Ok(metadata)
+        }.boxed()
     }
 
-    fn list_for_run(&self, _run_id: Uuid) -> impl Future<Output = Result<Vec<ArtifactMetadata>, ArtifactError>> + Send + '_ {
+    fn list_for_run(&self, _run_id: Uuid) -> BoxFuture<'_, Result<Vec<ArtifactMetadata>>> {
         async move {
-            // In a real implementation, we'd query stored metadata
-            // For now, return empty vec
+            // Placeholder: This would normally scan the directory or use a DB
             Ok(vec![])
-        }
+        }.boxed()
     }
 
-    fn delete(&self, artifact_id: Uuid) -> impl Future<Output = Result<(), ArtifactError>> + Send + '_ {
-        let root = self.root.clone();
+    fn delete(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<()>> {
+        let path = self.get_path(artifact_id);
+        let meta_path = self.get_meta_path(artifact_id);
         async move {
-            let extensions = ["png", "mp4", "html", "txt", "patch", "json"];
-            
-            for ext in &extensions {
-                let path = root.join(format!("{}.{}", artifact_id, ext));
-                if path.exists() {
-                    fs::remove_file(&path).map_err(|e| ArtifactError::Io(e))?;
-                    return Ok(());
-                }
-            }
-            
-            Err(ArtifactError::NotFound(format!("Artifact {} not found", artifact_id)))
-        }
+            let _ = fs::remove_file(path).await;
+            let _ = fs::remove_file(meta_path).await;
+            Ok(())
+        }.boxed()
     }
 }

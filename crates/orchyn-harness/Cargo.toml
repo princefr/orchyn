@@ -6,12 +6,15 @@ edition = "2024"
 [dependencies]
 orchyn-core = { path = "../core" }
 orchyn-model-client = { path = "../model-client" }
+orchyn-artifact-storage = { path = "../artifact-storage" }
 orchyn-runtime-tracer = { path = "../runtime-tracer" }
 orchyn-pixel-observer = { path = "../pixel-observer" }
 orchyn-actor-engine = { path = "../actor-engine" }
 orchyn-platform-web = { path = "../platform-web" }
 orchyn-action-executor = { path = "../action-executor" }
 orchyn-storage = { path = "../storage" }
+orchyn-codebase-indexer = { path = "../codebase-indexer" }
+orchyn-fixer-agent = { path = "../fixer-agent" }
 
 tokio = { workspace = true }
 futures = { workspace = true }
@@ -25,3 +28,6 @@ bytes = { version = "1.0", features = ["serde"] }
 chrono = { workspace = true }
 uuid = { workspace = true }
 path-clean = "1.0"
+
+[dev-dependencies]
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }

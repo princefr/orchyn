@@ -1,22 +1,22 @@
-use async_trait::async_trait;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum ArtifactError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
-    #[error("S3 error: {0}")]
-    S3(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
-    #[error("Not found: {0}")]
-    NotFound(String),
-    
-    #[error("Invalid input: {0}")]
-    InvalidInput(String),
+
+    #[error("Artifact not found: {0}")]
+    NotFound(Uuid),
+
+    #[error("Internal storage error: {0}")]
+    Internal(String),
+
+    #[error("Invalid metadata: {0}")]
+    InvalidMetadata(String),
 }
 
 pub type Result<T> = std::result::Result<T, ArtifactError>;

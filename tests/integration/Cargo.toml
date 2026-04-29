@@ -15,6 +15,9 @@ orchyn-action-planner = { workspace = true }
 orchyn-fixer-agent = { path = "../../crates/fixer-agent" }
 orchyn-navigator-agent = { path = "../../crates/navigator-agent" }
 orchyn-harness = { path = "../../crates/orchyn-harness" }
+orchyn-storage = { path = "../../crates/storage" }
+orchyn-artifact-storage = { path = "../../crates/artifact-storage" }
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
 tokio = { workspace = true, features = ["full"] }
 uuid = { workspace = true }
 chrono = { workspace = true }

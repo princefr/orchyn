@@ -1,7 +1,7 @@
 // Modules
-pub mod types;
 pub mod engine;
+pub mod types;
 
 // Re-exports for convenience
-pub use types::*;
 pub use engine::SpecEngine;
+pub use types::*;

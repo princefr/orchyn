@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  orchyn-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://orchyn:orchyn_pass@db:5432/orchyn
+      - JWT_SECRET=orchyn-super-secret-key-prod
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-placeholder}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-placeholder}
+      - FRONTEND_URL=http://localhost:5173
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  orchyn-worker:
+    build: .
+    command: ["orchyn-worker"]
+    environment:
+      - DATABASE_URL=postgres://orchyn:orchyn_pass@db:5432/orchyn
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: orchyn
+      POSTGRES_PASSWORD: orchyn_pass
+      POSTGRES_DB: orchyn
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/0001_init.sql:/docker-entrypoint-initdb.d/0001_init.sql
+
+volumes:
+  pgdata:

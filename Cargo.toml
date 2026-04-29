@@ -27,6 +27,7 @@ categories = ["science", "api-bindings", "text-processing"]
 # Core
 orchyn-core = { path = "crates/core" }
 orchyn-model-client = { path = "crates/model-client" }
+orchyn-artifact-storage = { path = "crates/artifact-storage" }
 orchyn-codebase-indexer = { path = "crates/codebase-indexer" }
 orchyn-platform-web = { path = "crates/platform-web" }
 orchyn-action-executor = { path = "crates/action-executor" }
@@ -34,6 +35,7 @@ orchyn-pixel-observer = { path = "crates/pixel-observer" }
 orchyn-action-planner = { path = "crates/action-planner" }
 orchyn-actor-engine = { path = "crates/actor-engine" }
 orchyn-fixer-agent = { path = "crates/fixer-agent" }
+orchyn-harness = { path = "crates/orchyn-harness" }
 orchyn-navigator-agent = { path = "crates/navigator-agent" }
 orchyn-pattern-library = { path = "crates/pattern-library" }
 orchyn-runtime-tracer = { path = "crates/runtime-tracer" }
@@ -48,12 +50,6 @@ orchyn-scheduler = { path = "crates/scheduler" }
 cc = "1.2.61"
 accelerate-src = "0.3"
 intel-mkl-src = "0.8"
-candle-core = "0.10"
-candle-nn = "0.10"
-candle-transformers = "0.10"
-candle-flash-attn = "0.10"
-candle-flash-attn-v3 = "0.10"
-candle-metal-kernels = "0.10"
 rand = "0.8"
 rand_distr = "0.4"
 base64 = "0.22"
@@ -151,10 +147,8 @@ async-graphql-axum = "7.0"
 tower-http = { version = "0.6", features = ["full"] }
 reqwest = { version = "0.12", features = ["json", "stream"] }
 image = "0.25"
-tokenizers = "0.21"
 hf-hub = "0.4"
 half = "2.4"
-safetensors = "0.5"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 colored = "2.1"
 clap = { version = "4.5", features = ["derive"] }
@@ -173,10 +167,17 @@ objc2-metal = "0.3"
 objc2-foundation = "0.3"
 dispatch2 = "0.3"
 
+[profile.dev]
+debug = 1
+split-debuginfo = "unpacked"
+incremental = true
+
 [profile.dev.package]
-candle-core = { opt-level = 3 }
-candle-nn = { opt-level = 3 }
-candle-transformers = { opt-level = 3 }
 gemm = { opt-level = 3 }
 faer = { opt-level = 3 }
 matrixmultiply = { opt-level = 3 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 16
+debug = 0

@@ -1,26 +1,30 @@
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 pub enum OrchynError {
+    #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Model error: {0}")]
     Model(String),
+
+    #[error("Storage error: {0}")]
     Storage(String),
+
+    #[error("Platform error: {0}")]
     Platform(String),
+
+    #[error("Auth error: {0}")]
+    Auth(String),
+
+    #[error("Validation error: {0}")]
+    Validation(String),
 }
 
-impl From<&str> for OrchynError {
-    fn from(s: &str) -> Self {
-        OrchynError::Internal(s.to_string())
+pub type Result<T> = std::result::Result<T, OrchynError>;
+
+impl From<anyhow::Error> for OrchynError {
+    fn from(e: anyhow::Error) -> Self {
+        OrchynError::Internal(e.to_string())
     }
 }
-
-impl std::fmt::Display for OrchynError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OrchynError::Internal(e) => write!(f, "Internal error: {}", e),
-            OrchynError::Model(e) => write!(f, "Model error: {}", e),
-            OrchynError::Storage(e) => write!(f, "Storage error: {}", e),
-            OrchynError::Platform(e) => write!(f, "Platform error: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for OrchynError {}

@@ -1,12 +1,14 @@
 use futures::Stream;
+use futures::future::BoxFuture;
+use orchyn_core::Result as OrchynResult;
 use serde::{Deserialize, Serialize};
-use orchyn_core::{OrchynError, Result as OrchynResult};
-use std::future::Future;
+use std::fmt::Debug;
 
-pub trait ModelClient: Send + Sync {
-    fn complete(&self, req: CompletionRequest) -> impl Future<Output = OrchynResult<CompletionStream>> + Send;
-    fn tool_call(&self, req: ToolCallRequest) -> impl Future<Output = OrchynResult<ToolCallResult>> + Send;
-    fn observe(&self, image: &[u8], prompt: &str) -> impl Future<Output = OrchynResult<serde_json::Value>> + Send;
+pub trait ModelClient: Send + Sync + Debug {
+    fn complete(&self, req: CompletionRequest) -> BoxFuture<'_, OrchynResult<CompletionStream>>;
+    fn tool_call(&self, req: ToolCallRequest) -> BoxFuture<'_, OrchynResult<ToolCallResult>>;
+    fn observe(&self, image: &[u8], prompt: &str)
+    -> BoxFuture<'_, OrchynResult<serde_json::Value>>;
     fn model_id(&self) -> &str;
 }
 

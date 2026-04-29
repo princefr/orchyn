@@ -1,14 +1,15 @@
 // --- Re-exports ---
-pub use errors::*;
 pub use config::*;
-pub use types::*;
+pub use errors::*;
 pub use traits::*;
+pub use types::*;
 
 // --- Modules ---
-pub mod errors;
 pub mod config;
-pub mod types;
-pub mod traits;
+pub mod errors;
+pub mod mock;
 pub mod storage_impl;
+pub mod traits;
+pub mod types; // Mock for testing
 
 pub use storage_impl::Storage;

@@ -8,6 +8,7 @@ orchyn-api-server = { path = "../../crates/api-server" }
 orchyn-storage = { path = "../../crates/storage" }
 tokio = { workspace = true, features = ["full"] }
 axum.workspace = true
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
 oauth2 = "4.4"
 anyhow.workspace = true
 tracing.workspace = true

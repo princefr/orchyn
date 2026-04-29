@@ -1,7 +1,22 @@
 pub mod middleware;
-mod oauth;
+pub mod oauth;
 
-pub use middleware::{AuthMiddleware, AuthUser, AuthError, JwtAuth, RequireAuth};
+use serde::{Deserialize, Serialize};
 
-// Re-export for backward compatibility
-pub use oauth::*;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OAuthState {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_url: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct JwtAuth {
+    pub secret: String,
+}
+
+impl JwtAuth {
+    pub fn new(secret: String) -> Self {
+        Self { secret }
+    }
+}

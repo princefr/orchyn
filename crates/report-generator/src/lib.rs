@@ -1,15 +1,42 @@
 use orchyn_gap_detector::Gap;
+use orchyn_model_client::{ModelClient, CompletionRequest};
+use std::sync::Arc;
+use futures::StreamExt;
 
-pub struct ReportGenerator;
+const SYSTEM_PROMPT: &str = include_str!("../../../prompts/gap_reporter.md");
 
-impl ReportGenerator {
-    pub fn generate_markdown(gaps: &[Gap]) -> String {
-        let mut report = String::from("# Orchyn Run Report\n\n");
+pub struct ReportGenerator<M: ModelClient> {
+    model: Arc<M>,
+}
+
+impl<M: ModelClient> ReportGenerator<M> {
+    pub fn new(model: Arc<M>) -> Self {
+        Self { model }
+    }
+
+    pub async fn generate_report(&self, gaps: &[Gap]) -> anyhow::Result<String> {
+        let mut reports = Vec::new();
+
         for gap in gaps {
-            report.push_str(&format!("## {:?} Gap: {:?}\n", gap.severity, gap.kind));
-            report.push_str(&format!("Expected: {}\n", gap.expected));
-            report.push_str(&format!("Observed: {}\n\n", gap.observed));
+            let prompt = format!(
+                "{}\n\nGAP DATA:\n{:?}\n\nGenerate the markdown report segment for this gap:",
+                SYSTEM_PROMPT, gap
+            );
+
+            let req = CompletionRequest {
+                prompt,
+                max_tokens: Some(1024),
+                temperature: Some(0.0),
+            };
+
+            let mut stream = self.model.complete(req).await.map_err(|e| anyhow::anyhow!(e))?;
+            let mut response = String::new();
+            while let Some(chunk) = stream.next().await {
+                response.push_str(&chunk.map_err(|e| anyhow::anyhow!(e))?);
+            }
+            reports.push(response);
         }
-        report
+
+        Ok(reports.join("\n\n---\n\n"))
     }
 }

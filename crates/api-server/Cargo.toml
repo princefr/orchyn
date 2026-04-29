@@ -16,6 +16,8 @@ oauth2 = "4.4"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tower-http = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+jsonwebtoken = "9.3"
 tracing.workspace = true
 async-stripe = { version = "0.33", features = ["runtime-tokio-hyper", "webhook-events"] }
 posthog-rs = "0.5"

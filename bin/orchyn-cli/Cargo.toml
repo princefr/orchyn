@@ -9,12 +9,14 @@ orchyn-model-client = { workspace = true }
 orchyn-codebase-indexer = { workspace = true }
 orchyn-navigator-agent = { workspace = true }
 orchyn-fixer-agent = { workspace = true }
-orchyn-harness = { path = "../../crates/orchyn-harness" }
+orchyn-harness = { workspace = true }
+orchyn-artifact-storage = { workspace = true }
 orchyn-pixel-observer = { workspace = true }
 orchyn-storage = { path = "../../crates/storage" }
 orchyn-action-executor = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
 clap = { version = "4.5", features = ["derive"] }
 tempfile = "3.10"
 git2 = { workspace = true }

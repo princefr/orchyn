@@ -33,10 +33,10 @@ impl SymbolParser {
 
         let query = Query::new(&self.ts_parser.language().unwrap(), query_str)?;
         let mut cursor = QueryCursor::new();
-        
+
         let mut symbols = Vec::new();
         let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
-        
+
         // tree-sitter 0.25+ matches.next() returns &QueryMatch
         while let Some(m) = matches.next() {
             for cap in m.captures {

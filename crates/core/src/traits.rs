@@ -1,6 +1,7 @@
 use crate::errors::OrchynError;
 use crate::types::*;
-use std::future::Future;
+
+use futures::future::BoxFuture;
 
 pub trait StorageProvider: Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
@@ -21,14 +22,16 @@ pub struct DeviceInfo {
     pub screen_height: u32,
 }
 
-pub trait PlatformAdapter: Send + Sync {
+use std::fmt::Debug;
+
+pub trait PlatformAdapter: Send + Sync + Debug {
     fn device_info(&self) -> DeviceInfo;
-    fn screenshot(&mut self) -> impl Future<Output = Result<Vec<u8>>> + Send + '_;
-    fn execute(&mut self, action: &Action) -> impl Future<Output = Result<()>> + Send + '_;
-    fn diagnostics(&mut self) -> impl Future<Output = Result<Vec<DiagnosticEvent>>> + Send + '_;
-    fn network_events(&mut self) -> impl Future<Output = Result<Vec<NetworkEvent>>> + Send + '_;
-    fn get_elements(&mut self) -> impl Future<Output = Result<Vec<serde_json::Value>>> + Send + '_;
+    fn screenshot(&mut self) -> BoxFuture<'_, Result<Vec<u8>>>;
+    fn execute(&mut self, action: &Action) -> BoxFuture<'_, Result<()>>;
+    fn reset(&mut self) -> BoxFuture<'_, Result<()>>;
+    fn diagnostics(&mut self) -> BoxFuture<'_, Result<Vec<DiagnosticEvent>>>;
+    fn network_events(&mut self) -> BoxFuture<'_, Result<Vec<NetworkEvent>>>;
+    fn get_elements(&mut self) -> BoxFuture<'_, Result<Vec<serde_json::Value>>>;
 }
 
 pub type Result<T> = std::result::Result<T, OrchynError>;
-

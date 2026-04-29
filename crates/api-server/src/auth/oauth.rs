@@ -1,27 +1,22 @@
+use crate::auth::JwtAuth;
 use axum::{
+    Json,
     extract::{Query, State},
     response::{IntoResponse, Redirect},
-    Json,
 };
-use oauth2::{AuthorizationCode, Scope, basic::BasicClient, reqwest::async_http_client};
+use jsonwebtoken::{EncodingKey, Header, encode};
+use oauth2::{
+    AuthorizationCode, Scope, TokenResponse, basic::BasicClient, reqwest::async_http_client,
+};
 use orchyn_storage::Storage;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use tracing::info;
-use jsonwebtoken::{encode, Header, EncodingKey};
-use crate::auth::middleware::JwtAuth;
 
 #[derive(Deserialize)]
 pub struct AuthRequest {
     pub code: String,
     pub state: String,
-}
-
-#[derive(Serialize)]
-struct TokenResponse {
-    access_token: String,
-    token_type: String,
-    expires_in: i64,
 }
 
 #[derive(Deserialize)]
@@ -65,7 +60,7 @@ pub async fn google_callback(
             let client = reqwest::Client::new();
             let user_info: GoogleUserInfo = client
                 .get("https://www.googleapis.com/oauth2/v3/userinfo")
-                .bearer_auth(token.access_token())
+                .bearer_auth(token.access_token().secret())
                 .send()
                 .await
                 .unwrap()
@@ -94,7 +89,11 @@ pub async fn google_callback(
             });
 
             let header = Header::default();
-            let jwt = match encode(&header, &claims, &EncodingKey::from_secret(state.jwt_auth.secret.as_bytes())) {
+            let jwt = match encode(
+                &header,
+                &claims,
+                &EncodingKey::from_secret(state.jwt_auth.secret.as_bytes()),
+            ) {
                 Ok(t) => t,
                 Err(e) => {
                     tracing::error!("JWT encoding failed: {}", e);
@@ -103,7 +102,8 @@ pub async fn google_callback(
             };
 
             // Redirect to frontend with token
-            let frontend_url = std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+            let frontend_url = std::env::var("FRONTEND_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string());
             let redirect_url = format!("{}?token={}", frontend_url, jwt);
             Redirect::to(&redirect_url).into_response()
         }

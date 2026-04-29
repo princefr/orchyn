@@ -8,17 +8,17 @@
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use orchyn_core::{DiagnosticEvent, EvidenceBundle, LogLevel};
 use orchyn_fixer_agent::AgentEvent;
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
-    Frame, Terminal,
 };
 use std::collections::VecDeque;
 use std::io::{self, Stdout};
@@ -224,16 +224,15 @@ fn draw(f: &mut Frame, state: &UiState) {
 
 fn draw_header(f: &mut Frame, area: Rect, state: &UiState) {
     let (n, max) = state.step;
-    let progress = if max == 0 {
+    let _progress = if max == 0 {
         "ready".to_string()
     } else {
         format!("step {}/{}", n, max)
     };
     let sha = state.initial_sha.as_deref().unwrap_or("<no-git>");
     let title = format!(
-        " ORCHYN  ·  Qwen 3.5 9B ({})  ·  {}  ·  HEAD@{} ",
+        " ORCHYN  ·  Qwen 3.5 9B ({})  ·   HEAD@{} ",
         state.model_id,
-        progress,
         &sha[..sha.len().min(8)]
     );
     let header = Paragraph::new(Line::from(vec![Span::styled(
@@ -253,7 +252,9 @@ fn draw_feed(f: &mut Frame, area: Rect, state: &UiState) {
         .iter()
         .map(|line| {
             let style = match line.kind {
-                FeedKind::Step => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                FeedKind::Step => Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
                 FeedKind::Call => Style::default().fg(Color::Yellow),
                 FeedKind::Ok => Style::default().fg(Color::Green),
                 FeedKind::Err => Style::default().fg(Color::Red),
@@ -282,7 +283,9 @@ fn draw_evidence(f: &mut Frame, area: Rect, state: &UiState) {
     let block = Block::default()
         .borders(Borders::ALL)
         .title(" human-parity evidence ");
-    let p = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    let p = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
     f.render_widget(p, area);
 }
 
@@ -296,53 +299,59 @@ fn render_evidence_lines(b: &EvidenceBundle) -> Vec<Line<'static>> {
         ]));
     }
 
-    if let Some(reality) = &b.reality {
-        // Visual
+    // Screenshot paths
+    if !b.screenshot_paths.is_empty() {
         lines.push(Line::from(vec![
             Span::styled("visual  ", Style::default().fg(Color::Blue)),
-            Span::raw(truncate(&reality.screenshot_path.display().to_string(), 60)),
+            Span::raw(format!("{} shots", b.screenshot_paths.len())),
         ]));
+    }
 
-        // DOM
-        lines.push(Line::from(vec![
-            Span::styled("dom     ", Style::default().fg(Color::Blue)),
-            Span::raw(format!("{} elements", reality.dom_elements.len())),
-        ]));
-
-        // Diagnostics
-        let console_errs = reality.diagnostics.iter().filter(|d| matches!(d, DiagnosticEvent::Console { level: LogLevel::Error, .. })).count();
+    // Diagnostics
+    if !b.diagnostics.is_empty() {
+        let console_errs = b
+            .diagnostics
+            .iter()
+            .filter(|d| {
+                matches!(
+                    d,
+                    DiagnosticEvent::Console {
+                        level: LogLevel::Error,
+                        ..
+                    }
+                )
+            })
+            .count();
         lines.push(Line::from(vec![
             Span::styled("console ", Style::default().fg(Color::Blue)),
-            Span::styled(format!("{} err", console_errs), color_for_count(console_errs)),
+            Span::styled(
+                format!("{} err", console_errs),
+                color_for_count(console_errs),
+            ),
         ]));
+    }
 
-        // Network
-        let net_count = reality.network_events.len();
+    // Network
+    if !b.network_events.is_empty() {
         lines.push(Line::from(vec![
             Span::styled("network ", Style::default().fg(Color::Blue)),
-            Span::raw(format!("{} events", net_count)),
+            Span::raw(format!("{} events", b.network_events.len())),
         ]));
     }
 
-    // Findings & Gaps
-    if !b.claims_found.is_empty() {
+    // Findings
+    if !b.findings.is_empty() {
         lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled("claims", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
-        for c in b.claims_found.iter().take(5) {
+        lines.push(Line::from(Span::styled(
+            "findings",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )));
+        for f in b.findings.iter().take(5) {
             lines.push(Line::from(vec![
-                Span::styled("✓ ", Style::default().fg(Color::Green)),
-                Span::raw(truncate(&c.to_string(), 50)),
-            ]));
-        }
-    }
-
-    if !b.gaps_detected.is_empty() {
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled("gaps", Style::default().fg(Color::White).add_modifier(Modifier::BOLD))));
-        for g in b.gaps_detected.iter().take(5) {
-            lines.push(Line::from(vec![
-                Span::styled("! ", Style::default().fg(Color::Red)),
-                Span::raw(truncate(&g.to_string(), 50)),
+                Span::styled("• ", Style::default().fg(Color::Green)),
+                Span::raw(truncate(&f.description, 50)),
             ]));
         }
     }

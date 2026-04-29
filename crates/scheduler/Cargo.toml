@@ -6,4 +6,8 @@ edition.workspace = true
 [dependencies]
 orchyn-core = { workspace = true }
 orchyn-actor-engine = { path = "../actor-engine" }
+orchyn-storage = { workspace = true }
+tracing = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+sqlx = { workspace = true }
+uuid = { workspace = true }

@@ -38,86 +38,29 @@ impl PostgresStorage {
     async fn init_schema(&self) -> Result<()> {
         info!("Initializing PostgreSQL schema...");
         
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS users (
-                id UUID PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                stripe_customer_id TEXT,
-                subscription_tier TEXT NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
+        let tables = vec![
+            ("users", "id UUID PRIMARY KEY, email TEXT UNIQUE NOT NULL, stripe_customer_id TEXT, subscription_tier TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"),
+            ("projects", "id UUID PRIMARY KEY, owner_id UUID NOT NULL REFERENCES users(id), name TEXT NOT NULL, source_url TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"),
+            ("project_members", "project_id UUID NOT NULL REFERENCES projects(id), user_id UUID NOT NULL REFERENCES users(id), role TEXT NOT NULL, joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(project_id, user_id)"),
+            ("invitations", "id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES projects(id), inviter_id UUID NOT NULL REFERENCES users(id), invitee_email TEXT NOT NULL, status TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"),
+            ("runs", "id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES projects(id), status TEXT NOT NULL, started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, finished_at TIMESTAMPTZ, diagnostics JSONB DEFAULT '[]'"),
+            ("artifacts", "id UUID PRIMARY KEY, run_id UUID NOT NULL REFERENCES runs(id), kind TEXT NOT NULL, local_path TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP"),
+        ];
         
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS projects (
-                id UUID PRIMARY KEY,
-                owner_id UUID NOT NULL REFERENCES users(id),
-                name TEXT NOT NULL,
-                source_url TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
+        for (table_name, definition) in tables {
+            info!("Creating table {} if not exists...", table_name);
+            let query = format!("CREATE TABLE IF NOT EXISTS {} ({})", table_name, definition);
+            
+            match sqlx::query(&query).execute(&self.pool).await {
+                Ok(_) => info!("Table {} created/exists", table_name),
+                Err(e) => {
+                    warn!("Failed to create table {}: {}", table_name, e);
+                    return Err(OrchynError::Storage(e.to_string()));
+                }
+            }
+        }
         
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS project_members (
-                project_id UUID NOT NULL REFERENCES projects(id),
-                user_id UUID NOT NULL REFERENCES users(id),
-                role TEXT NOT NULL,
-                joined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY(project_id, user_id)
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
-        
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS invitations (
-                id UUID PRIMARY KEY,
-                project_id UUID NOT NULL REFERENCES projects(id),
-                inviter_id UUID NOT NULL REFERENCES users(id),
-                invitee_email TEXT NOT NULL,
-                status TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
-        
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS runs (
-                id UUID PRIMARY KEY,
-                project_id UUID NOT NULL REFERENCES projects(id),
-                status TEXT NOT NULL,
-                started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                diagnostics JSONB DEFAULT '[]'
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
-        
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS artifacts (
-                id UUID PRIMARY KEY,
-                run_id UUID NOT NULL REFERENCES runs(id),
-                kind TEXT NOT NULL,
-                local_path TEXT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| OrchynError::Storage(e.to_string()))?;
-        
+        info!("Schema initialization complete.");
         Ok(())
     }
     
@@ -169,22 +112,77 @@ impl StorageProvider for PostgresStorage {
         let name = name.to_string();
         let source_url = source_url.to_string();
         Box::new(async move {
+            // Check subscription tier and project count
+            let user_pools = PostgresStorage { pool: pool.clone(), artifact_root: std::path::PathBuf::new() };
+            let tier = user_pools.get_subscription_tier(owner_id).await?;
+            let project_count = user_pools.get_user_project_count(owner_id).await?;
+            
+            if tier == "Free" && project_count >= 3 {
+                return Err(OrchynError::Storage(
+                    "Free tier limited to 3 projects. Please upgrade to Pro.".to_string()
+                ));
+            }
+            
             let id = Uuid::new_v4();
             sqlx::query(
                 "INSERT INTO projects (id, owner_id, name, source_url) VALUES ($1, $2, $3, $4)",
             )
-            .bind(id)
-            .bind(owner_id)
-            .bind(&name)
-            .bind(&source_url)
-            .execute(&pool)
-            .await
-            .map_err(|e| OrchynError::Storage(e.to_string()))?;
-            
+                .bind(id)
+                .bind(owner_id)
+                .bind(&name)
+                .bind(&source_url)
+                .execute(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+
             let add_member = PostgresStorage { pool: pool.clone(), artifact_root: std::path::PathBuf::new() };
             add_member.add_project_member(id, owner_id, "Owner").await?;
-            
+
             Ok(id)
+        })
+    }
+
+    fn add_project_member(
+        &self,
+        project_id: Uuid,
+        user_id: Uuid,
+        role: &str,
+    ) -> Box<dyn Future<Output = Result<(), OrchynError>> + Send + '_> {
+        let pool = self.pool.clone();
+        let role = role.to_string();
+        Box::new(async move {
+            // Check subscription tier and team member count
+            let tier_row = sqlx::query("SELECT subscription_tier FROM users WHERE id = (SELECT owner_id FROM projects WHERE id = $1)")
+                .bind(project_id)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+            
+            let tier: String = tier_row.get("subscription_tier");
+            
+            if tier == "Pro" {
+                let member_count_row = sqlx::query("SELECT COUNT(*) as count FROM project_members WHERE project_id = $1")
+                    .bind(project_id)
+                    .fetch_one(&pool)
+                    .await
+                    .map_err(|e| OrchynError::Storage(e.to_string()))?;
+                
+                let count: i64 = member_count_row.get("count");
+                // Pro tier with $9/member - no hardcoded limit, but check if we should enforce billing
+                // For now, just log
+                tracing::info!("Pro tier team member count: {}", count);
+            }
+            
+            sqlx::query(
+                "INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            )
+                .bind(project_id)
+                .bind(user_id)
+                .bind(&role)
+                .execute(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+            Ok(())
         })
     }
     
@@ -286,15 +284,62 @@ impl StorageProvider for PostgresStorage {
         })
     }
     
+    fn get_user_project_count(
+        &self,
+        user_id: Uuid,
+    ) -> Box<dyn Future<Output = std::result::Result<i64, OrchynError>> + Send + '_> {
+        let pool = self.pool.clone();
+        Box::new(async move {
+            let row = sqlx::query!("SELECT COUNT(*) as count FROM projects WHERE owner_id = $1", user_id)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+            
+            Ok(row.get::<i64, _>("count").unwrap_or(0))
+        })
+    }
+
+    fn get_subscription_tier(
+        &self,
+        user_id: Uuid,
+    ) -> Box<dyn Future<Output = std::result::Result<String>, OrchynError>> + Send + '_> {
+        let pool = self.pool.clone();
+        Box::new(async move {
+            let row = sqlx::query!("SELECT subscription_tier FROM users WHERE id = $1", user_id)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+            
+            Ok(row.get::<String, _>("subscription_tier").unwrap_or_else(|_| "Free".to_string()))
+        })
+    }
+
+    fn get_team_member_count(
+        &self,
+        project_id: Uuid,
+    ) -> Box<dyn Future<Output = std::result::Result<i64, OrchynError>> + Send + '_> {
+        let pool = self.pool.clone();
+        Box::new(async move {
+            let row = sqlx::query!(
+                "SELECT COUNT(*) as count FROM project_members WHERE project_id = $1",
+                project_id
+            )
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| OrchynError::Storage(e.to_string()))?;
+            
+            Ok(row.get::<i64, _>("count").unwrap_or(0))
+        })
+    }
+
     // Run & Artifact Methods
-    fn start_run(&self, project_id: Uuid) -> Box<dyn Future<Output = Result<Uuid, OrchynError>> + Send + '_> {
+    fn start_run(&self, project_id: Uuid) -> Box<dyn Future<Output = std::result::Result<Uuid, OrchynError>> + Send + '_> {
         let pool = self.pool.clone();
         Box::new(async move {
             let id = Uuid::new_v4();
-            sqlx::query("INSERT INTO runs (id, project_id, status) VALUES ($1, $2, $3)")
+            sqlx::query("INSERT INTO runs (id, project_id, status) VALUES ($1, $2, 'Running')")
                 .bind(id)
                 .bind(project_id)
-                .bind("Running")
                 .execute(&pool)
                 .await
                 .map_err(|e| OrchynError::Storage(e.to_string()))?;

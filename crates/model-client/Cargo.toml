@@ -22,4 +22,3 @@ base64 = "0.22"
 # llama.cpp bindings (Latest stable for Qwen 3.5 support)
 llama-cpp-2 = "0.1.145"
 hf-hub = "0.4.0"
-tokenizers = "0.21.0"

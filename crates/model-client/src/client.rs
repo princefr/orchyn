@@ -1,12 +1,18 @@
-use tokio::sync::OnceCell;
-use crate::traits::{ModelClient, CompletionRequest, ToolCallRequest, ToolCallResult, CompletionStream, Result};
 use crate::config::ModelConfig;
-use crate::inference::MistralEngine;
+use crate::inference::LlamaEngine;
+use crate::traits::{
+    CompletionRequest, CompletionStream, ModelClient, Result, ToolCallRequest, ToolCallResult,
+};
+use futures::{
+    StreamExt,
+    future::{BoxFuture, FutureExt},
+};
 use std::sync::Arc;
-use futures::StreamExt;
+use tokio::sync::OnceCell;
 
+#[derive(Debug)]
 pub struct QwenClient {
-    engine: OnceCell<Arc<MistralEngine>>,
+    engine: OnceCell<Arc<LlamaEngine>>,
     config: ModelConfig,
 }
 
@@ -18,31 +24,40 @@ impl QwenClient {
         })
     }
 
-    fn get_engine(&self) -> impl Future<Output = Result<Arc<MistralEngine>>> + Send + '_ {
+    fn get_engine(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Arc<LlamaEngine>>> + Send + '_ {
         async move {
-            self.engine.get_or_try_init(|| async {
-                let engine = MistralEngine::load().await
-                    .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
-                Ok(Arc::new(engine))
-            }).await.cloned()
+            self.engine
+                .get_or_try_init(|| async {
+                    let engine = LlamaEngine::load()
+                        .await
+                        .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                    Ok(Arc::new(engine))
+                })
+                .await
+                .cloned()
         }
     }
 }
 
 impl ModelClient for QwenClient {
-    fn complete(&self, req: CompletionRequest) -> impl Future<Output = Result<CompletionStream>> + Send {
+    fn complete(&self, req: CompletionRequest) -> BoxFuture<'_, Result<CompletionStream>> {
         let engine_future = self.get_engine();
         async move {
             let engine = engine_future.await?;
             engine.generate_stream(req)
         }
+        .boxed()
     }
 
-    fn tool_call(&self, req: ToolCallRequest) -> impl Future<Output = Result<ToolCallResult>> + Send {
+    fn tool_call(&self, req: ToolCallRequest) -> BoxFuture<'_, Result<ToolCallResult>> {
+        let engine_future = self.get_engine();
         async move {
-            // Simple implementation: use complete and parse JSON
+            let engine = engine_future.await?;
             let prompt = format!(
-                "Available tools: {:?}\nUser request: {}\nReturn JSON only.",
+                "SYSTEM: You are a tool-calling assistant. Available tools: {:?}\nUSER: {}\n\
+                Return ONLY a JSON object: {{\"name\":\"<tool>\",\"arguments\":{{...}}}}.",
                 req.tools, req.prompt
             );
             let completion_req = CompletionRequest {
@@ -50,22 +65,31 @@ impl ModelClient for QwenClient {
                 max_tokens: Some(512),
                 temperature: Some(0.0),
             };
-            
-            let mut stream = self.complete(completion_req).await?;
+
+            let mut stream = engine.generate_stream(completion_req)?;
             let mut response = String::new();
             while let Some(chunk) = stream.next().await {
                 response.push_str(&chunk?);
             }
-            
-            // Dummy parsing for now, should use the actual logic from fixer-agent if needed
+
+            let json_val = orchyn_core::utils::extract_json(&response)
+                .map_err(|e| orchyn_core::OrchynError::Model(format!("Failed to parse tool call JSON: {}", e)))?;
+
+            let tool_name = json_val.get("name").and_then(|v| v.as_str())
+                .ok_or_else(|| orchyn_core::OrchynError::Model("Tool call missing 'name'".to_string()))?
+                .to_string();
+            let arguments = json_val.get("arguments").cloned()
+                .unwrap_or(serde_json::Value::Object(Default::default()));
+
             Ok(ToolCallResult {
-                tool_name: "unknown".to_string(),
-                arguments: serde_json::Value::Null,
+                tool_name,
+                arguments,
             })
         }
+        .boxed()
     }
 
-    fn observe(&self, image: &[u8], prompt: &str) -> impl Future<Output = Result<serde_json::Value>> + Send {
+    fn observe(&self, image: &[u8], prompt: &str) -> BoxFuture<'_, Result<serde_json::Value>> {
         let engine_future = self.get_engine();
         let image = image.to_vec();
         let prompt = prompt.to_string();
@@ -73,9 +97,53 @@ impl ModelClient for QwenClient {
             let engine = engine_future.await?;
             engine.observe(&image, &prompt).await
         }
+        .boxed()
     }
 
     fn model_id(&self) -> &str {
         "qwen-3.5-0.8b"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::traits::CompletionRequest;
+    use futures::StreamExt;
+
+    #[tokio::test]
+    #[ignore] // Ignore by default as it downloads 600MB model
+    async fn test_qwen_client_completion() {
+        let client = QwenClient::new(None);
+        let req = CompletionRequest {
+            prompt: "<|im_start|>user\nWhat is 2+2?<|im_end|>\n<|im_start|>assistant\n".to_string(),
+            max_tokens: Some(128),
+            temperature: Some(0.0),
+        };
+
+        let mut stream = client.complete(req).await.unwrap();
+        let mut response = String::new();
+        while let Some(chunk) = stream.next().await {
+            response.push_str(&chunk.unwrap());
+        }
+
+        println!("Model response: {}", response);
+        assert!(response.contains("4"));
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_qwen_client_vision() {
+        let client = QwenClient::new(None);
+        let image_path = std::path::PathBuf::from("../../tests/fixtures/dog.jpg");
+        let image_bytes = std::fs::read(image_path).expect("Failed to read dog.jpg fixture");
+        
+        let prompt = "Describe this image in one word.";
+        
+        let result = client.observe(&image_bytes, prompt).await.unwrap();
+        println!("Vision response: {}", serde_json::to_string_pretty(&result).unwrap());
+        
+        let description = result.get("description").and_then(|v| v.as_str()).unwrap_or("");
+        assert!(description.to_lowercase().contains("dog"));
     }
 }

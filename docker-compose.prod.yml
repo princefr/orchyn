@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  orchyn-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://orchyn:orchyn_pass@db:5432/orchyn
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - RUST_LOG=info
+    depends_on:
+      - db
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G # Ensuring the model + server doesn't spike past 2GB
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: orchyn
+      POSTGRES_PASSWORD: orchyn_pass
+      POSTGRES_DB: orchyn
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  pgdata:

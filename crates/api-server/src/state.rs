@@ -1,16 +1,18 @@
 use crate::OrchynSchema;
-use crate::auth::AuthState;
 use crate::analytics::PostHogClient;
+use crate::auth::JwtAuth;
+use orchyn_harness::events::HarnessEvent;
 use orchyn_storage::Storage;
+use std::sync::Arc;
 use tokio::sync::broadcast;
 
 #[derive(Clone)]
 pub struct AppState {
     pub schema: OrchynSchema,
-    pub auth: Arc<AuthState>,
+    pub auth: Arc<JwtAuth>,
     pub storage: Arc<Storage>,
     pub analytics: Arc<PostHogClient>,
-    pub event_sender: tokio::sync::broadcast::Sender<crate::HarnessEvent>,
+    pub event_tx: broadcast::Sender<HarnessEvent>, // For SSE streaming
 }
 
 impl axum::extract::FromRef<AppState> for OrchynSchema {
@@ -19,7 +21,7 @@ impl axum::extract::FromRef<AppState> for OrchynSchema {
     }
 }
 
-impl axum::extract::FromRef<AppState> for Arc<AuthState> {
+impl axum::extract::FromRef<AppState> for Arc<JwtAuth> {
     fn from_ref(state: &AppState) -> Self {
         state.auth.clone()
     }
@@ -37,8 +39,8 @@ impl axum::extract::FromRef<AppState> for Arc<PostHogClient> {
     }
 }
 
-impl axum::extract::FromRef<AppState> for tokio::sync::broadcast::Sender<crate::HarnessEvent> {
+impl axum::extract::FromRef<AppState> for broadcast::Sender<HarnessEvent> {
     fn from_ref(state: &AppState) -> Self {
-        state.event_sender.clone()
+        state.event_tx.clone()
     }
 }

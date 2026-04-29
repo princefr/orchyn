@@ -1,6 +1,6 @@
+use orchyn_core::SourceRef;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use orchyn_core::SourceRef;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppMap {

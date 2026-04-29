@@ -1,16 +1,28 @@
-use orchyn_core::{Result, RealityContext, EvidenceBundle};
+use orchyn_core::{EvidenceBundle, RealityContext, Result};
 use orchyn_pixel_observer::UiState;
+use serde_json::Value;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use serde_json::Value;
 
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
-    Step { n: usize, max: usize },
-    ToolCall { name: String, args: Value },
-    ToolResult { name: String, ok: bool, summary: String },
+    Step {
+        n: usize,
+        max: usize,
+    },
+    ToolCall {
+        name: String,
+        args: Value,
+    },
+    ToolResult {
+        name: String,
+        ok: bool,
+        summary: String,
+    },
     Notice(String),
-    Finish { summary: String },
+    Finish {
+        summary: String,
+    },
     Evidence(Box<EvidenceBundle>),
 }
 

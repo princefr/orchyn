@@ -1,21 +1,37 @@
-use bytes::Bytes;
-use chrono::{DateTime, Utc};
-use orchyn_storage::Storage;
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::broadcast;
-use uuid::Uuid;
-use tracing::info;
-
 // --- Module declarations ---
-pub mod types;
 pub mod events;
-pub mod phases;
 pub mod harness;
+pub mod types;
 
 // --- Re-exports for convenience ---
-pub use types::*;
 pub use events::*;
+pub use harness::HarnessRunResult;
 pub use harness::OrchynHarness;
-pub use phases::*;
+pub use types::*;
+
+use orchyn_model_client::ModelClient;
+use std::sync::Arc;
+
+pub trait LlmClient: Send + Sync {
+    fn client(&self) -> Arc<dyn ModelClient>;
+}
+
+pub struct RealLlm {
+    pub client: Arc<dyn ModelClient>,
+}
+
+impl LlmClient for RealLlm {
+    fn client(&self) -> Arc<dyn ModelClient> {
+        self.client.clone()
+    }
+}
+
+pub struct MockLlm {
+    pub client: Arc<dyn ModelClient>,
+}
+
+impl LlmClient for MockLlm {
+    fn client(&self) -> Arc<dyn ModelClient> {
+        self.client.clone()
+    }
+}

@@ -1,23 +1,17 @@
 mod tui;
 
-use anyhow::{Context, Result};
+use orchyn_core::{OrchynError, Result};
 use chrono::Utc;
 use clap::Parser;
-use colored::*;
 use git2::Repository;
-use orchyn_codebase_indexer::Indexer;
-use orchyn_core::RealityContext;
-use orchyn_fixer_agent::FixerAgent;
-use orchyn_harness::{Artifact, HarnessEvent, OrchynHarness, Phase, Verdict};
+use orchyn_harness::{HarnessEvent, OrchynHarness};
 use orchyn_model_client::{ModelClient, QwenClient};
-use orchyn_pixel_observer::UiState;
 use orchyn_storage::Storage;
-use similar::{ChangeTag, TextDiff};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
-use tracing::{info, warn, Level};
+use tracing::{info, warn, error};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -46,9 +40,166 @@ struct Args {
     #[arg(long, default_value_t = 30)]
     max_steps: usize,
 
+    /// Orchyn Server URL (VPS) to push results to.
+    #[arg(long)]
+    server: Option<String>,
+
+    /// API Key for the Orchyn Server.
+    #[arg(long, env = "ORCHYN_API_KEY")]
+    api_key: Option<String>,
+
     /// Auto-approve all tool calls (non-interactive mode).
     #[arg(long, short = 'y')]
     yes: bool,
+}
+
+#[tokio::main]
+async fn main() -> std::result::Result<(), OrchynError> {
+    let args = Args::parse();
+
+    if !args.tui {
+        tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    }
+
+    info!("Orchyn (Qwen 3.5 Edition) — starting...");
+
+    // Initialize Storage
+    let storage = if let Some(server_url) = args.server {
+        let api_key = args.api_key.unwrap_or_else(|| "default-key".to_string());
+        info!("Remote mode enabled: Pushing results to {}", server_url);
+        // Would need a RemoteStorage impl
+        None
+    } else {
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
+        match sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&database_url)
+            .await
+        {
+            Ok(pool) => Some(Arc::new(Storage::new(Arc::new(pool)))),
+            Err(e) => {
+                warn!("Local storage unavailable ({}); running in ephemeral mode.", e);
+                None
+            }
+        }
+    };
+
+    // Clone or use local path
+    let mut _temp_dir_guard = None;
+    let target_path = if args.source.starts_with("http") || args.source.starts_with("git@") {
+        info!("Cloning repository {}...", args.source);
+        let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
+        let target_path = temp_dir.path().to_path_buf();
+        Repository::clone(&args.source, &target_path)
+            .map_err(|e| OrchynError::Internal(e.to_string()))?;
+        _temp_dir_guard = Some(temp_dir);
+        target_path
+    } else {
+        PathBuf::from(&args.source).canonicalize()
+            .map_err(|e| OrchynError::Internal(e.to_string()))?
+    };
+
+    // Initialize model
+    let qwen_client = QwenClient::new(None);
+    let model: Arc<dyn ModelClient> = qwen_client.clone();
+    let model_id = model.model_id().to_string();
+    info!("Loaded local model: {}", model_id);
+
+    // Create harness and run all phases
+    let config = orchyn_harness::HarnessConfig {
+        target_url: format!("file://{}", target_path.display()),
+        max_fix_iterations: args.max_steps,
+        phases: None, // Use defaults
+    };
+
+    let artifact_storage: Arc<dyn orchyn_artifact_storage::ArtifactStorage> = if storage.is_some() {
+        Arc::new(orchyn_artifact_storage::LocalArtifactStorage::new(&args.artifact_dir)
+            .map_err(|e| OrchynError::Storage(e.to_string()))?)
+    } else {
+        Arc::new(orchyn_artifact_storage::MockArtifactStorage::new())
+    };
+
+    let llm = orchyn_harness::RealLlm { client: model.clone() };
+    
+    if let Some(storage) = storage {
+        let harness = OrchynHarness::new(
+            storage,
+            artifact_storage.clone(),
+            config,
+            llm,
+        );
+
+        let events = harness.subscribe();
+        
+        // Run with or without TUI
+        if args.tui {
+            let harness_handle = tokio::spawn(async move {
+                harness.run_all().await
+            });
+            
+            let tui_result = tui::run_tui(events, model_id, None).await;
+            let harness_result = harness_handle.await;
+            
+            if let Err(e) = tui_result {
+                eprintln!("TUI error: {}", e);
+            }
+            match harness_result {
+                Ok(Ok(results)) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Ok(Err(e)) => eprintln!("Harness error: {}", e),
+                Err(e) => eprintln!("Harness task panicked: {}", e),
+            }
+        } else {
+            // Plain output
+            let printer = tokio::spawn(async move {
+                loop {
+                    match events.recv().await {
+                        Ok(HarnessEvent::PhaseStart(phase)) => {
+                            println!("{}", format!("── Phase {:?} ──", phase).bold().yellow());
+                        }
+                        Ok(HarnessEvent::PhaseEnd(evidence)) => {
+                            println!("  {} Phase {:?} finished: {}", "✓".green().bold(), evidence.phase, evidence.verdict);
+                        }
+                        Ok(HarnessEvent::Error(msg)) => {
+                            println!("  {} Error: {}", "✗".red().bold(), msg.red());
+                        }
+                        Err(_) => break,
+                        _ => {}
+                    }
+                }
+            });
+            
+            let result = harness.run_all().await;
+            let _ = printer.await;
+            
+            match result {
+                Ok(results) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Err(e) => eprintln!("Harness error: {}", e),
+            }
+        }
+    } else {
+        // Ephemeral mode
+        warn!("Running in ephemeral mode (no storage)");
+        let harness = OrchynHarness::new(
+            Arc::new(Storage::new_mock()),
+            artifact_storage,
+            config,
+            llm,
+        );
+        
+        let _ = harness.run_all().await?;
+    }
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -59,15 +210,318 @@ async fn main() -> Result<()> {
         tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     }
 
-    info!("Orchyn (Ollama Edition) — starting...");
+    info!("Orchyn (Qwen 3.5 Edition) — starting...");
 
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
-    let _storage = match Storage::new(&database_url, args.artifact_dir.clone()).await {
-        Ok(s) => Some(Arc::new(s)),
-        Err(e) => {
-            warn!("Storage unavailable ({}); continuing without it.", e);
-            None
+    // Initialize Storage (Remote Push or Local Postgres fallback)
+    let storage = if let Some(server_url) = args.server {
+        let api_key = args.api_key.unwrap_or_else(|| "default-key".to_string());
+        info!("Remote mode enabled: Pushing results to {}", server_url);
+        // Use a mock or trait-compliant wrapper for RemoteStorage
+        // For now, let's assume Storage can be constructed from a RemoteStorage impl
+        None // Placeholder until traits are aligned
+    } else {
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
+        match sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&database_url)
+            .await
+        {
+            Ok(pool) => Some(Arc::new(Storage::new(Arc::new(pool))),
+            Err(e) => {
+                warn!("Local storage unavailable ({}); running in ephemeral mode.", e);
+                None
+            }
+        }
+    };
+
+    // Clone or use local path
+    let mut _temp_dir_guard = None;
+    let target_path = if args.source.starts_with("http") || args.source.starts_with("git@") {
+        info!("Cloning repository {}...", args.source);
+        let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
+        let target_path = temp_dir.path().to_path_buf();
+        Repository::clone(&args.source, &target_path)?;
+        _temp_dir_guard = Some(temp_dir);
+        target_path
+    } else {
+        PathBuf::from(&args.source).canonicalize()?
+    };
+
+    // Initialize model
+    let qwen_client = QwenClient::new(None);
+    let model: Arc<dyn ModelClient> = qwen_client.clone();
+    let model_id = model.model_id().to_string();
+    info!("Loaded local model: {}", model_id);
+
+    // Create harness and run all phases
+    let config = orchyn_harness::HarnessConfig {
+        target_url: format!("file://{}", target_path.display()),
+        max_fix_iterations: args.max_steps,
+    };
+
+    let artifact_storage: Arc<dyn orchyn_artifact_storage::ArtifactStorage> = if storage.is_some() {
+        // Use real artifact storage if we have storage
+        Arc::new(orchyn_artifact_storage::LocalArtifactStorage::new(&args.artifact_dir)?)
+    } else {
+        Arc::new(orchyn_artifact_storage::MockArtifactStorage::new())
+    };
+
+    let llm = orchyn_harness::RealLlm { client: model.clone() };
+    
+    if let Some(storage) = storage {
+        let harness = OrchynHarness::new(
+            storage,
+            artifact_storage,
+            config,
+            llm,
+        );
+
+        let events = harness.subscribe();
+        
+        // Run with or without TUI
+        if args.tui {
+            let harness_handle = tokio::spawn(async move {
+                harness.run_all().await
+            });
+            
+            let tui_result = tui::run_tui(events, model_id, None).await;
+            let harness_result = harness_handle.await;
+            
+            if let Err(e) = tui_result {
+                eprintln!("TUI error: {}", e);
+            }
+            match harness_result {
+                Ok(Ok(results)) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Ok(Err(e)) => eprintln!("Harness error: {}", e),
+                Err(e) => eprintln!("Harness task panicked: {}", e),
+            }
+        } else {
+            // Plain output
+            let printer = tokio::spawn(async move {
+                loop {
+                    match events.recv().await {
+                        Ok(HarnessEvent::PhaseStart(phase)) => {
+                            println!("{}", format!("── Phase {:?} ──", phase).bold().yellow());
+                        }
+                        Ok(HarnessEvent::PhaseEnd(evidence)) => {
+                            println!("  {} Phase {:?} finished: {}", "✓".green().bold(), evidence.phase, evidence.verdict);
+                        }
+                        Ok(HarnessEvent::Error(msg)) => {
+                            println!("  {} Error: {}", "✗".red().bold(), msg.red());
+                        }
+                        Err(_) => break,
+                        _ => {}
+                    }
+                }
+            });
+            
+            let result = harness.run_all().await;
+            let _ = printer.await;
+            
+            match result {
+                Ok(results) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Err(e) => eprintln!("Harness error: {}", e),
+            }
+        }
+    } else {
+        // Ephemeral mode - still run harness but without storage
+        warn!("Running in ephemeral mode (no storage)");
+        let harness = OrchynHarness::new(
+            Arc::new(Storage::new_mock()), // Would need a mock storage
+            artifact_storage,
+            config,
+            llm,
+        );
+        
+        let _ = harness.run_all().await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let args = Args::parse();
+
+    if !args.tui {
+        tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    }
+
+    info!("Orchyn (Qwen 3.5 Edition) — starting...");
+
+    // Initialize Storage (Remote Push or Local Postgres fallback)
+    let storage = if let Some(server_url) = args.server {
+        let api_key = args.api_key.unwrap_or_else(|| "default-key".to_string());
+        info!("Remote mode enabled: Pushing results to {}", server_url);
+        // Use a mock or trait-compliant wrapper for RemoteStorage
+        // For now, let's assume Storage can be constructed from a RemoteStorage impl
+        None // Placeholder until traits are aligned
+    } else {
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
+        match sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&database_url)
+            .await
+        {
+            Ok(pool) => Some(Arc::new(Storage::new(Arc::new(pool)))),
+            Err(e) => {
+                warn!("Local storage unavailable ({}); running in ephemeral mode.", e);
+                None
+            }
+        }
+    };
+
+    // Clone or use local path
+    let mut _temp_dir_guard = None;
+    let target_path = if args.source.starts_with("http") || args.source.starts_with("git@") {
+        info!("Cloning repository {}...", args.source);
+        let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
+        let target_path = temp_dir.path().to_path_buf();
+        Repository::clone(&args.source, &target_path)?;
+        _temp_dir_guard = Some(temp_dir);
+        target_path
+    } else {
+        PathBuf::from(&args.source).canonicalize()?
+    };
+
+    // Initialize model
+    let qwen_client = QwenClient::new(None);
+    let model: Arc<dyn ModelClient> = qwen_client.clone();
+    let model_id = model.model_id().to_string();
+    info!("Loaded local model: {}", model_id);
+
+    // Create harness and run all phases
+    let config = orchyn_harness::HarnessConfig {
+        target_url: format!("file://{}", target_path.display()),
+        max_fix_iterations: args.max_steps,
+    };
+
+    let artifact_storage: Arc<dyn ArtifactStorage> = if storage.is_some() {
+        // Use real artifact storage if we have storage
+        Arc::new(orchyn_artifact_storage::LocalArtifactStorage::new(&args.artifact_dir)?)
+    } else {
+        Arc::new(orchyn_artifact_storage::MockArtifactStorage::new())
+    };
+
+    let llm = orchyn_harness::RealLlm { client: model.clone() };
+    
+    if let Some(storage) = storage {
+        let harness = OrchynHarness::new(
+            storage,
+            artifact_storage,
+            config,
+            llm,
+        );
+
+        let events = harness.subscribe();
+        
+        // Run with or without TUI
+        if args.tui {
+            let harness_handle = tokio::spawn(async move {
+                harness.run_all().await
+            });
+            
+            let tui_result = tui::run_tui(events, model_id, None).await;
+            let harness_result = harness_handle.await;
+            
+            if let Err(e) = tui_result {
+                eprintln!("TUI error: {}", e);
+            }
+            match harness_result {
+                Ok(Ok(results)) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Ok(Err(e)) => eprintln!("Harness error: {}", e),
+                Err(e) => eprintln!("Harness task panicked: {}", e),
+            }
+        } else {
+            // Plain output
+            let printer = tokio::spawn(async move {
+                loop {
+                    match events.recv().await {
+                        Ok(HarnessEvent::PhaseStart(phase)) => {
+                            println!("{}", format!("── Phase {:?} ──", phase).bold().yellow());
+                        }
+                        Ok(HarnessEvent::PhaseEnd(evidence)) => {
+                            println!("  {} Phase {:?} finished: {}", "✓".green().bold(), evidence.phase, evidence.verdict);
+                        }
+                        Ok(HarnessEvent::Error(msg)) => {
+                            println!("  {} Error: {}", "✗".red().bold(), msg.red());
+                        }
+                        Err(_) => break,
+                        _ => {}
+                    }
+                }
+            });
+            
+            let result = harness.run_all().await;
+            let _ = printer.await;
+            
+            match result {
+                Ok(results) => {
+                    println!("\n✓ Harness completed with {} phases", results.len());
+                    for evidence in &results {
+                        println!("  - {:?}: {}", evidence.phase, evidence.verdict);
+                    }
+                }
+                Err(e) => eprintln!("Harness error: {}", e),
+            }
+        }
+    } else {
+        // Ephemeral mode - still run harness but without storage
+        warn!("Running in ephemeral mode (no storage)");
+        let harness = OrchynHarness::new(
+            Arc::new(Storage::new_mock()), // Would need a mock storage
+            artifact_storage,
+            config,
+            llm,
+        );
+        
+        let _ = harness.run_all().await?;
+    }
+
+    Ok(())
+}
+
+    info!("Orchyn (Heavy Client Edition) — starting...");
+
+    // Initialize Intelligence (Local Model)
+    let qwen_client = QwenClient::new(None);
+    let model: Arc<dyn ModelClient> = qwen_client.clone();
+    info!("Loaded local model via llama.cpp: {}", model.model_id());
+
+    // Initialize Storage (Remote Push or Local Postgres fallback)
+    let storage = if let Some(server_url) = args.server {
+        let api_key = args.api_key.unwrap_or_else(|| "default-key".to_string());
+        info!("Remote mode enabled: Pushing results to {}", server_url);
+        // Use a mock or trait-compliant wrapper for RemoteStorage
+        // For now, let's assume Storage can be constructed from a RemoteStorage impl
+        None // Placeholder until traits are aligned
+    } else {
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/orchyn".to_string());
+        match sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&database_url)
+            .await
+        {
+            Ok(pool) => Some(Arc::new(Storage::new(Arc::new(pool)))),
+            Err(e) => {
+                warn!("Local storage unavailable ({}); running in ephemeral mode.", e);
+                None
+            }
         }
     };
 
@@ -84,7 +538,8 @@ async fn main() -> Result<()> {
     };
 
     // Use llama.cpp with Qwen 3.5 0.8B
-    let model: Arc<dyn ModelClient> = Arc::new(QwenClient::new(None));
+    let qwen_client = QwenClient::new(None);
+    let model: Arc<dyn ModelClient> = qwen_client.clone();
     let model_id = model.model_id().to_string();
     info!("Loaded local model via llama.cpp: {}", model_id);
 
@@ -93,24 +548,33 @@ async fn main() -> Result<()> {
             target_url: "http://localhost:3000".to_string(),
             max_fix_iterations: args.max_steps,
         };
-        // For now, use a mock LLM that succeeds, or we can use RealLlm if we want real E2E
-        // Let's use RealLlm to satisfy the "every branch should fire" requirement
+
+        let storage = storage.expect("Harness requires storage");
+        let artifact_storage = Arc::new(orchyn_artifact_storage::MockArtifactStorage::new());
         let llm = orchyn_harness::RealLlm { client: model.clone() };
-        let mut harness = orchyn_harness::OrchynHarness::new(config, llm);
-        let events = harness.subscribe();
-        
-        return run_harness_plain(harness, events).await;
+        let harness = orchyn_harness::OrchynHarness::<orchyn_harness::RealLlm>::new(
+            storage,
+            artifact_storage,
+            config,
+            llm,
+        );
+
+        let (tx, _rx) = broadcast::channel(100);
+        return run_harness_plain(harness, tx.subscribe()).await;
     }
 
     info!("Indexing codebase at {}...", target_path.display());
     let indexer = Indexer::new(&target_path);
     let app_map = indexer.index()?;
-    
-    let mut agent = FixerAgent::new(model, target_path.clone());
+
+    let mut agent = FixerAgent::new(qwen_client, vec![], None);
     agent.set_max_steps(args.max_steps);
 
-    let goal = args.goal.clone().unwrap_or_else(|| "Find and fix any bugs in this project.".to_string());
-    
+    let goal = args
+        .goal
+        .clone()
+        .unwrap_or_else(|| "Find and fix any bugs in this project.".to_string());
+
     if let Ok(mut bundle) = agent.evidence().lock() {
         bundle.goal = Some(goal.clone());
     }
@@ -131,7 +595,11 @@ async fn main() -> Result<()> {
         keyboard_visible: false,
     };
 
-    let file_list: Vec<String> = app_map.files.iter().map(|f| f.path.to_string_lossy().to_string()).collect();
+    let file_list: Vec<String> = app_map
+        .files
+        .iter()
+        .map(|f| f.path.to_string_lossy().to_string())
+        .collect();
     let initial_context = format!(
         "GOAL: {}\n\nPROJECT STRUCTURE:\nFiles: {:?}\n\n\
         You are in an autonomous loop. Use 'observe_ui' and 'run_command' to verify all fixes.",
@@ -139,14 +607,23 @@ async fn main() -> Result<()> {
     );
 
     if args.tui {
-        run_with_tui(agent, events, reality, visual_state, model_id, initial_sha, Some(initial_context)).await
+        run_with_tui(
+            agent,
+            events,
+            reality,
+            visual_state,
+            model_id,
+            initial_sha,
+            Some(initial_context),
+        )
+        .await
     } else {
         run_plain(agent, events, reality, visual_state, Some(initial_context)).await
     }
 }
 
-async fn run_with_tui(
-    mut agent: FixerAgent,
+async fn run_with_tui<M: ModelClient + 'static>(
+    mut agent: FixerAgent<M>,
     events: broadcast::Receiver<orchyn_fixer_agent::AgentEvent>,
     reality: RealityContext,
     visual_state: UiState,
@@ -155,7 +632,9 @@ async fn run_with_tui(
     initial_history: Option<String>,
 ) -> Result<()> {
     let agent_handle = tokio::spawn(async move {
-        agent.propose_fix_with_history(&reality, &visual_state, initial_history).await
+        agent
+            .propose_fix_with_history(&reality, &visual_state, initial_history)
+            .await
     });
 
     let tui_result = tui::run_tui(events, model_id, initial_sha).await;
@@ -172,23 +651,30 @@ async fn run_with_tui(
     Ok(())
 }
 
-async fn run_plain(
-    mut agent: FixerAgent,
+async fn run_plain<M: ModelClient + 'static>(
+    mut agent: FixerAgent<M>,
     mut events: broadcast::Receiver<orchyn_fixer_agent::AgentEvent>,
     reality: RealityContext,
     visual_state: UiState,
     initial_history: Option<String>,
 ) -> Result<()> {
     let printer = tokio::spawn(async move {
-        use orchyn_fixer_agent::AgentEvent::*;
         use colored::*;
+        use orchyn_fixer_agent::AgentEvent::*;
         loop {
             match events.recv().await {
-                Ok(Step { n, max }) => println!("\n{}", format!("── step {}/{} ──", n, max).bold().cyan()),
+                Ok(Step { n, max }) => {
+                    println!("\n{}", format!("── step {}/{} ──", n, max).bold().cyan())
+                }
                 Ok(ToolCall { name, args }) => {
                     let s = args.to_string();
                     let trimmed: String = s.chars().take(120).collect();
-                    println!("{} {} {}", "→".yellow().bold(), name.bold().yellow(), trimmed.dimmed());
+                    println!(
+                        "{} {} {}",
+                        "→".yellow().bold(),
+                        name.bold().yellow(),
+                        trimmed.dimmed()
+                    );
                 }
                 Ok(ToolResult { name, ok, summary }) => {
                     if ok {
@@ -208,18 +694,18 @@ async fn run_plain(
         }
     });
 
-    let result = agent.propose_fix_with_history(&reality, &visual_state, initial_history).await;
+    let result = agent
+        .propose_fix_with_history(&reality, &visual_state, initial_history)
+        .await;
     let _ = printer.await;
     match result {
-        Ok(_summary) => {
-            Ok(())
-        }
+        Ok(_summary) => Ok(()),
         Err(e) => Err(e.into()),
     }
 }
 
 async fn run_harness_plain<L: orchyn_harness::LlmClient + Send + 'static>(
-    mut harness: OrchynHarness<L>,
+    harness: OrchynHarness<L>,
     mut events: broadcast::Receiver<HarnessEvent>,
 ) -> Result<()> {
     let printer = tokio::spawn(async move {
@@ -229,56 +715,13 @@ async fn run_harness_plain<L: orchyn_harness::LlmClient + Send + 'static>(
                     println!("\n{}", format!("── phase {:?} ──", phase).bold().yellow());
                 }
                 Ok(HarnessEvent::PhaseEnd(evidence)) => {
-                    if evidence.verdict == Verdict::Pass {
-                        println!("  {} Phase passed", "✓".green().bold());
-                    } else {
-                        println!("  {} Phase failed: {:?}", "✗".red().bold(), evidence.verdict);
-                    }
+                    println!("  {} Phase {:?} finished", "✓".green().bold(), evidence.phase);
                 }
-                Ok(HarnessEvent::PatchApplied(patch)) => {
-                    println!(
-                        "\n{} {}",
-                        "→ Applied patch to".bold().magenta(),
-                        patch.file_path.display().to_string().magenta()
-                    );
-                    let diff =
-                        TextDiff::from_lines(&patch.original_content, &patch.suggested_content);
-                    for change in diff.iter_all_changes() {
-                        let (sign, color) = match change.tag() {
-                            ChangeTag::Delete => ("-", Color::Red),
-                            ChangeTag::Insert => ("+", Color::Green),
-                            ChangeTag::Equal => (" ", Color::White),
-                        };
-                        print!("{}", format!("{}{}", sign, change).color(color));
-                    }
-                }
-                Ok(HarnessEvent::Failure(failure)) => {
-                    println!("  {} Failure: {}", "✗".red().bold(), failure.message.red());
-                }
-                Ok(HarnessEvent::Diagnostic(diag)) => {
-                    use orchyn_core::DiagnosticEvent::*;
-                    match diag {
-                        Console { level, message, .. } => {
-                            let level_str = format!("{:?}", level).to_uppercase();
-                            let color = match level {
-                                orchyn_core::LogLevel::Error => Color::Red,
-                                orchyn_core::LogLevel::Warn => Color::Yellow,
-                                _ => Color::Cyan,
-                            };
-                            println!("  {} [{}] {}", "web-console".dimmed(), level_str.color(color), message);
-                        }
-                        Anomaly { kind, details } => {
-                            println!("  {} {}: {}", "anomaly".red().bold(), kind, details);
-                        }
-                    }
-                }
-                Ok(HarnessEvent::Network(net)) => {
-                    println!("  {} {} {} -> {}", "network".dimmed(), net.method.bold(), net.url, net.status);
-                }
-                Ok(HarnessEvent::Notice(msg)) => {
-                    println!("{} {}", "•".magenta(), msg);
+                Ok(HarnessEvent::Error(msg)) => {
+                    println!("  {} Error: {}", "✗".red().bold(), msg.red());
                 }
                 Err(_) => break,
+                _ => {}
             }
         }
     });

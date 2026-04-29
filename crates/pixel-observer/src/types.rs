@@ -22,7 +22,7 @@ pub struct Anomaly {
     pub details: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UiState {
     pub elements: Vec<UiElement>,
     pub anomalies: Vec<Anomaly>,

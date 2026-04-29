@@ -1,7 +1,8 @@
-use std::future::Future;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
-use crate::ArtifactError;
+use crate::error::Result;
+use futures::future::BoxFuture;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ArtifactKind {
@@ -24,20 +25,20 @@ pub struct ArtifactMetadata {
     pub content_type: String,
 }
 
-pub trait ArtifactStorage: Send + Sync {
+pub trait ArtifactStorage: Send + Sync + Debug {
     fn save(
         &self,
         run_id: Uuid,
         kind: ArtifactKind,
-        data: &[u8],
-        content_type: &str,
-    ) -> impl Future<Output = Result<ArtifactMetadata, ArtifactError>> + Send + '_;
+        data: Vec<u8>,
+        content_type: String,
+    ) -> BoxFuture<'_, Result<ArtifactMetadata>>;
     
-    fn get(&self, artifact_id: Uuid) -> impl Future<Output = Result<Vec<u8>, ArtifactError>> + Send + '_;
+    fn get(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<Vec<u8>>>;
     
-    fn get_metadata(&self, artifact_id: Uuid) -> impl Future<Output = Result<ArtifactMetadata, ArtifactError>> + Send + '_;
+    fn get_metadata(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<ArtifactMetadata>>;
     
-    fn list_for_run(&self, run_id: Uuid) -> impl Future<Output = Result<Vec<ArtifactMetadata>, ArtifactError>> + Send + '_;
+    fn list_for_run(&self, run_id: Uuid) -> BoxFuture<'_, Result<Vec<ArtifactMetadata>>>;
     
-    fn delete(&self, artifact_id: Uuid) -> impl Future<Output = Result<(), ArtifactError>> + Send + '_;
+    fn delete(&self, artifact_id: Uuid) -> BoxFuture<'_, Result<()>>;
 }

@@ -3,14 +3,17 @@ pub mod tools;
 pub mod traits;
 
 pub use agent::FixerAgent;
-pub use traits::{Agent, AgentEvent};
 pub use tools::FixerTool;
+pub use traits::{Agent, AgentEvent};
 
 use orchyn_model_client::ModelClient;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-pub fn create_default_tools<M: ModelClient + 'static>(model: Arc<M>, cwd: PathBuf) -> Vec<Box<dyn FixerTool>> {
+pub fn create_default_tools<M: ModelClient + 'static>(
+    model: Arc<M>,
+    cwd: PathBuf,
+) -> Vec<Box<dyn FixerTool>> {
     vec![
         Box::new(tools::ListFilesTool::new(cwd.clone())),
         Box::new(tools::GrepTool::new(cwd.clone())),
@@ -24,9 +27,12 @@ pub fn create_default_tools<M: ModelClient + 'static>(model: Arc<M>, cwd: PathBu
 
 pub fn create_fixer_agent<M: ModelClient + 'static>(model: Arc<M>, cwd: PathBuf) -> FixerAgent<M> {
     let tools = create_default_tools(model.clone(), cwd.clone());
-    
+
     let initial_sha = if let Ok(repo) = git2::Repository::open(&cwd) {
-        repo.head().ok().and_then(|h| h.target()).map(|t| t.to_string())
+        repo.head()
+            .ok()
+            .and_then(|h| h.target())
+            .map(|t| t.to_string())
     } else {
         None
     };
