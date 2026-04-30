@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 const SYSTEM_PROMPT_TEMPLATE: &str = include_str!("../../../../prompts/agent_system.md");
 const DEFAULT_MAX_MESSAGES: usize = 20;
-const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 768;
+const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 2048;
 const DEFAULT_TURN_TEMPERATURE: f32 = 0.0;
 
 fn collect_env_info(app_url: &str, project_root: &std::path::Path) -> String {
@@ -251,8 +251,17 @@ impl AgentHarness {
     }
 
     fn build_prompt(&self) -> String {
-        let schemas = self.tools.schemas();
-        let tools_json = serde_json::to_string_pretty(&schemas).unwrap_or_default();
+        // Compact tool listing: one line per tool instead of full JSON schemas.
+        // Full schemas are available on demand via the tool_search tool.
+        let tool_lines = {
+            let mut schemas = self.tools.schemas();
+            schemas.sort_by(|a, b| a.name.cmp(&b.name));
+            schemas
+                .iter()
+                .map(|s| format!("  {} — {}", s.name, s.description))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
         let history = self
             .memory
             .messages()
@@ -261,7 +270,10 @@ impl AgentHarness {
             .collect::<Vec<_>>()
             .join("\n\n");
         format!(
-            "{}\n\nTOOLS:\n{tools_json}\n\nCONVERSATION:\n{history}\n\nRespond now with the JSON object.",
+            "{}\n\nREGISTERED TOOLS:\n{tool_lines}\n\n\
+             (Use tool_search to get full argument schemas for any tool.)\n\n\
+             CONVERSATION:\n{history}\n\n\
+             Respond with a single JSON object only. No prose outside it.",
             self.system_prompt
         )
     }

@@ -13,8 +13,8 @@ pub mod task_tools;
 pub mod report_tools;
 
 pub use browser_tools::{
-    BrowserClickTool, BrowserGetConsoleTool, BrowserNavigateTool, BrowserScreenshotTool,
-    BrowserTypeTool,
+    BrowserClickTool, BrowserGetConsoleTool, BrowserGetNetworkTool, BrowserNavigateTool,
+    BrowserScreenshotTool, BrowserTypeTool,
 };
 pub use file_tools::{
     ReadFileTool, WriteFileTool, EditFileTool, GrepTool, GlobTool,
@@ -31,7 +31,7 @@ pub use meta_tools::{
     EnterPlanModeTool, ExitPlanModeTool, AskUserQuestionTool, SleepTool,
     ToolSearchTool, SkillTool, BriefTool, ConfigTool,
 };
-pub use report_tools::{GapReportTool, TestProposeTool, FixProposeTool};
+pub use report_tools::{GapReportTool, TestResultTool, FixProposeTool};
 
 pub use context::{ActorMap, AdapterFactory, ToolContext, WorkingMemory};
 pub use registry::{Tool, ToolCall, ToolRegistry, ToolResult};
@@ -74,7 +74,7 @@ pub fn default_registry() -> ToolRegistry {
     
     // Reporting tools (Orchyn specific)
     reg.register(Box::new(GapReportTool));
-    reg.register(Box::new(TestProposeTool));
+    reg.register(Box::new(TestResultTool));
     reg.register(Box::new(FixProposeTool));
     
     // Meta / Utility tools
@@ -96,6 +96,7 @@ pub fn default_registry() -> ToolRegistry {
     reg.register(Box::new(BrowserClickTool));
     reg.register(Box::new(BrowserTypeTool));
     reg.register(Box::new(BrowserGetConsoleTool));
+    reg.register(Box::new(BrowserGetNetworkTool));
     
     // Additional actors
     reg.register(Box::new(ActorSpawnTool));

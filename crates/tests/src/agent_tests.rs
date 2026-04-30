@@ -1,9 +1,7 @@
 /// Integration tests for Agent Mode: AgentHarness driven by a scripted model
 /// and scripted adapter, no real browser or LLM required.
 
-use super::mocks::{
-    agent_done_response, agent_tool_call_response, blank_png, scripted_model, ScriptedAdapter,
-};
+use super::mocks::{agent_done_response, agent_tool_call_response, scripted_model};
 use orchyn_harness::agent::{AgentHarness, AgentReport};
 use orchyn_toolkit::{default_registry, ToolContext};
 
@@ -53,31 +51,35 @@ async fn agent_captures_final_report_on_done() {
     assert_eq!(final_report["features_found"].as_array().unwrap().len(), 3);
 }
 
-// ── memory_store tool increments gap/test counters ────────────────────────────
+// ── result counters via working memory ───────────────────────────────────────
 
 #[tokio::test]
-async fn agent_gaps_and_tests_counted_via_working_memory() {
-    // Turn 1: memory_store a gap
-    // Turn 2: memory_store a test
-    // Turn 3: done
+async fn agent_result_counters_driven_by_memory_keys() {
+    // The agent runs two tests inline, stores results, then finishes.
     let responses = vec![
         agent_tool_call_response(
             "memory_store",
-            serde_json::json!({ "key": "gap_login", "value": { "description": "empty email accepted" } }),
+            serde_json::json!({ "key": "gap_empty_email", "value": { "description": "empty email accepted" } }),
         ),
         agent_tool_call_response(
             "memory_store",
-            serde_json::json!({ "key": "test_login_empty", "value": { "steps": [] } }),
+            serde_json::json!({ "key": "result_pass_login_happy", "value": { "ok": true } }),
         ),
-        agent_done_response("Two issues found."),
+        agent_tool_call_response(
+            "memory_store",
+            serde_json::json!({ "key": "result_fail_counter_nan", "value": { "ok": false, "reason": "NaN on load" } }),
+        ),
+        agent_done_response("found 1 gap, 1 pass, 1 fail"),
     ];
 
     let mut harness = harness_with_model(responses, 10);
     let report = harness.run("http://localhost/").await.unwrap();
 
     assert!(report.completed);
-    assert_eq!(report.gaps_found, 1, "one gap_ key stored");
-    assert_eq!(report.tests_proposed, 1, "one test_ key stored");
+    assert_eq!(report.gaps_found, 1);
+    assert_eq!(report.tests_executed, 2, "both result_ keys count");
+    assert_eq!(report.tests_passed, 1);
+    assert_eq!(report.tests_failed, 1);
 }
 
 // ── max turns guard ───────────────────────────────────────────────────────────
@@ -129,7 +131,9 @@ fn agent_report_defaults_are_sensible() {
         session_id: uuid::Uuid::new_v4(),
         turns_used: 0,
         gaps_found: 0,
-        tests_proposed: 0,
+        tests_executed: 0,
+        tests_passed: 0,
+        tests_failed: 0,
         fixes_proposed: 0,
         working_memory: serde_json::Value::Object(Default::default()),
         completed: false,

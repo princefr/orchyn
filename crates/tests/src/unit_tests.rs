@@ -1,6 +1,9 @@
 /// Supplemental unit tests for types/modules that either have no inline tests
 /// or whose inline coverage is thin. Tests here import from crate roots so
 /// they compile alongside the real code without modifying source files.
+///
+/// Constraint Mode modules (telemetry, validation, recovery, scheduler) have
+/// been removed — those modules no longer exist in the codebase.
 
 // ── core::action ─────────────────────────────────────────────────────────────
 
@@ -112,281 +115,6 @@ mod types_tests {
     }
 }
 
-// ── constraint::telemetry ─────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod telemetry_tests {
-    use orchyn_core::{ConsoleLog, NetworkRequest, RawTelemetry};
-    use orchyn_harness::constraint::telemetry::compress_telemetry;
-
-    #[test]
-    fn keeps_only_last_3_errors() {
-        let raw = RawTelemetry {
-            console_logs: (0..6)
-                .map(|i| ConsoleLog { level: "error".into(), message: format!("err{i}") })
-                .collect(),
-            current_url: "http://localhost/".into(),
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.console_errors.len(), 3);
-    }
-
-    #[test]
-    fn filters_info_and_debug_logs() {
-        let raw = RawTelemetry {
-            console_logs: vec![
-                ConsoleLog { level: "info".into(), message: "loaded".into() },
-                ConsoleLog { level: "debug".into(), message: "trace".into() },
-                ConsoleLog { level: "warn".into(), message: "slow".into() },
-                ConsoleLog { level: "error".into(), message: "boom".into() },
-            ],
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.console_errors.len(), 2);
-        assert!(snap.console_errors.iter().any(|e| e.contains("slow")));
-        assert!(snap.console_errors.iter().any(|e| e.contains("boom")));
-    }
-
-    #[test]
-    fn keeps_only_last_3_network_failures() {
-        let raw = RawTelemetry {
-            network_requests: (0..5)
-                .map(|i| NetworkRequest { method: "GET".into(), url: format!("/api/{i}"), status: 500 })
-                .collect(),
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.network_4xx_5xx.len(), 3);
-    }
-
-    #[test]
-    fn filters_2xx_3xx_requests() {
-        let raw = RawTelemetry {
-            network_requests: vec![
-                NetworkRequest { method: "GET".into(), url: "/ok".into(), status: 200 },
-                NetworkRequest { method: "GET".into(), url: "/redir".into(), status: 301 },
-                NetworkRequest { method: "POST".into(), url: "/fail".into(), status: 422 },
-            ],
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.network_4xx_5xx.len(), 1);
-        assert!(snap.network_4xx_5xx[0].contains("422"));
-    }
-
-    #[test]
-    fn preserves_current_url() {
-        let raw = RawTelemetry {
-            current_url: "http://localhost/dashboard".into(),
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.current_url, "http://localhost/dashboard");
-    }
-
-    #[test]
-    fn keeps_only_last_3_ws_messages() {
-        let raw = RawTelemetry {
-            ws_messages: vec!["a", "b", "c", "d", "e"]
-                .into_iter()
-                .map(str::to_string)
-                .collect(),
-            ..Default::default()
-        };
-        let snap = compress_telemetry(raw);
-        assert_eq!(snap.ws_messages.len(), 3);
-    }
-}
-
-// ── constraint::validation ────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod validation_tests {
-    use orchyn_core::action::{Action, AnnotatedElement, BoundingBox};
-    use orchyn_core::OrchynError;
-    use orchyn_harness::constraint::validation::parse_and_validate;
-
-    fn elem(id: u8) -> AnnotatedElement {
-        AnnotatedElement {
-            id,
-            element_type: "button".into(),
-            text: None,
-            bounds: BoundingBox { x: 0, y: 0, width: 10, height: 10 },
-        }
-    }
-
-    #[test]
-    fn rejects_actor_mismatch() {
-        let raw = r#"{"actor_id":"mallory","manifest_step":0,"thought":"","action":"CLICK","target":1}"#;
-        let err = parse_and_validate(raw, &[elem(1)], "alice", 0).unwrap_err();
-        assert!(matches!(err, OrchynError::Validation(_)));
-        assert!(err.to_string().contains("actor mismatch"));
-    }
-
-    #[test]
-    fn rejects_step_mismatch() {
-        let raw = r#"{"actor_id":"alice","manifest_step":5,"thought":"","action":"CLICK","target":1}"#;
-        let err = parse_and_validate(raw, &[elem(1)], "alice", 0).unwrap_err();
-        assert!(matches!(err, OrchynError::Validation(_)));
-        assert!(err.to_string().contains("step mismatch"));
-    }
-
-    #[test]
-    fn accepts_target_zero_for_navigate_style_actions() {
-        // target 0 means "no specific element" — valid for Wait and implicit scenarios
-        let raw = r#"{"actor_id":"alice","manifest_step":0,"thought":"","action":"NAVIGATE","value":"http://x/"}"#;
-        parse_and_validate(raw, &[], "alice", 0).unwrap();
-    }
-
-    #[test]
-    fn rejects_drag_with_bad_destination() {
-        let raw = r#"{"actor_id":"alice","manifest_step":0,"thought":"","action":"DRAG","target":1,"destination":99}"#;
-        let err = parse_and_validate(raw, &[elem(1)], "alice", 0).unwrap_err();
-        assert!(err.to_string().contains("invalid target id: 99"));
-    }
-
-    #[test]
-    fn accepts_drag_with_valid_source_and_destination() {
-        let raw = r#"{"actor_id":"alice","manifest_step":0,"thought":"","action":"DRAG","target":1,"destination":2}"#;
-        let d = parse_and_validate(raw, &[elem(1), elem(2)], "alice", 0).unwrap();
-        assert!(matches!(d.action, Action::Drag { target: 1, destination: 2 }));
-    }
-
-    #[tokio::test]
-    async fn execute_with_retry_exhausts_and_returns_error() {
-        use orchyn_core::OrchynError;
-        use orchyn_harness::constraint::validation::execute_with_retry;
-
-        let result: orchyn_core::Result<u32> =
-            execute_with_retry(|| async { Err(OrchynError::Internal("always fails".into())) }, 2)
-                .await;
-        assert!(matches!(result, Err(OrchynError::RecoveryExhausted(_))));
-    }
-}
-
-// ── constraint::recovery ─────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod recovery_tests {
-    use image::{Rgba, RgbaImage};
-    use orchyn_core::{FailPolicy, ManifestStep};
-    use orchyn_harness::constraint::recovery::{RecoveryAction, RecoveryPolicy, StuckDetector};
-
-    fn make_png(color: [u8; 4]) -> Vec<u8> {
-        let img = RgbaImage::from_pixel(32, 32, Rgba(color));
-        let mut buf = Vec::new();
-        image::DynamicImage::ImageRgba8(img)
-            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
-            .unwrap();
-        buf
-    }
-
-    #[test]
-    fn stuck_detector_returns_false_for_changing_screenshots() {
-        let mut det = StuckDetector::new(3);
-        // Each frame has a distinct fill colour → hashes are far apart → never stuck.
-        assert!(!det.is_stuck(&make_png([10, 10, 10, 255])).unwrap());
-        assert!(!det.is_stuck(&make_png([100, 100, 100, 255])).unwrap());
-        assert!(!det.is_stuck(&make_png([200, 200, 200, 255])).unwrap());
-        assert!(!det.is_stuck(&make_png([50, 150, 200, 255])).unwrap());
-    }
-
-    #[test]
-    fn stuck_detector_reset_clears_history() {
-        let mut det = StuckDetector::new(3);
-        let frame = make_png([0, 0, 0, 255]);
-        det.is_stuck(&frame).unwrap();
-        det.is_stuck(&frame).unwrap();
-        // Would be stuck on the next identical frame …
-        det.reset();
-        // … but after reset the history is empty, so it shouldn't be stuck yet.
-        assert!(!det.is_stuck(&frame).unwrap());
-    }
-
-    fn step(policy: FailPolicy) -> ManifestStep {
-        ManifestStep {
-            step: 0,
-            actor: "alice".into(),
-            instruction: "".into(),
-            on_fail: policy,
-            action_hint: None,
-        }
-    }
-
-    #[test]
-    fn skip_policy_returns_skip() {
-        let policy = RecoveryPolicy::new(3, 3);
-        assert_eq!(policy.decide(&step(FailPolicy::Skip), 0, 0), RecoveryAction::Skip);
-    }
-
-    #[test]
-    fn retry_policy_returns_retry_until_exhausted() {
-        let policy = RecoveryPolicy::new(3, 3);
-        assert_eq!(policy.decide(&step(FailPolicy::Retry), 0, 0), RecoveryAction::Retry);
-        assert_eq!(policy.decide(&step(FailPolicy::Retry), 2, 0), RecoveryAction::Retry);
-        // attempt == max_retries → halt
-        assert_eq!(policy.decide(&step(FailPolicy::Retry), 3, 0), RecoveryAction::Halt);
-    }
-
-    #[test]
-    fn max_waits_exhausted_halts_regardless_of_policy() {
-        let policy = RecoveryPolicy::new(5, 2);
-        assert_eq!(policy.decide(&step(FailPolicy::Skip), 0, 2), RecoveryAction::Halt);
-        assert_eq!(policy.decide(&step(FailPolicy::Retry), 0, 2), RecoveryAction::Halt);
-    }
-}
-
-// ── constraint::scheduler ────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod scheduler_tests {
-    use orchyn_core::{FailPolicy, ManifestStep};
-    use orchyn_harness::constraint::scheduler::TurnScheduler;
-
-    fn step(idx: usize, actor: &str) -> ManifestStep {
-        ManifestStep {
-            step: idx,
-            actor: actor.into(),
-            instruction: "noop".into(),
-            on_fail: FailPolicy::Halt,
-            action_hint: None,
-        }
-    }
-
-    #[test]
-    fn empty_manifest_is_immediately_complete() {
-        let s = TurnScheduler::new(vec![]);
-        assert!(s.is_complete());
-        assert_eq!(s.next_turn(), None);
-    }
-
-    #[test]
-    fn skip_current_advances_past_step() {
-        let mut s = TurnScheduler::new(vec![step(0, "alice"), step(1, "bob")]);
-        s.skip_current();
-        assert_eq!(s.next_turn(), Some(("bob".into(), 1)));
-    }
-
-    #[test]
-    fn multi_actor_manifest_returns_correct_actor_per_step() {
-        let manifest = vec![
-            step(0, "alice"),
-            step(1, "bob"),
-            step(2, "alice"),
-        ];
-        let mut s = TurnScheduler::new(manifest);
-        assert_eq!(s.next_turn().unwrap().0, "alice");
-        s.advance();
-        assert_eq!(s.next_turn().unwrap().0, "bob");
-        s.advance();
-        assert_eq!(s.next_turn().unwrap().0, "alice");
-        s.advance();
-        assert!(s.is_complete());
-    }
-}
-
 // ── pixel_observer::annotator ────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -418,7 +146,6 @@ mod annotator_tests {
         let png = blank_png(50, 50);
         let (out, map) = annotate_screenshot(&png, &[]).unwrap();
         assert!(map.is_empty());
-        // Output is still a valid PNG.
         image::load_from_memory(&out).unwrap();
     }
 
@@ -443,6 +170,15 @@ mod annotator_tests {
         let ids: Vec<u8> = map.iter().map(|e| e.id).collect();
         assert_eq!(ids, vec![1, 2, 3]);
     }
+
+    #[test]
+    fn element_text_and_type_are_forwarded() {
+        let png = blank_png(200, 200);
+        let elements = vec![el(10, 10, 80, 30, Some("Submit"))];
+        let (_, map) = annotate_screenshot(&png, &elements).unwrap();
+        assert_eq!(map[0].text.as_deref(), Some("Submit"));
+        assert_eq!(map[0].element_type, "button");
+    }
 }
 
 // ── toolkit::registry ────────────────────────────────────────────────────────
@@ -452,8 +188,8 @@ mod registry_tests {
     use futures::future::BoxFuture;
     use futures::FutureExt;
     use orchyn_core::OrchynError;
-    use orchyn_toolkit::{ToolCall, ToolContext, ToolRegistry, ToolResult};
     use orchyn_toolkit::registry::Tool;
+    use orchyn_toolkit::{ToolCall, ToolContext, ToolRegistry, ToolResult};
 
     struct EchoTool;
     impl Tool for EchoTool {
@@ -475,9 +211,7 @@ mod registry_tests {
         }
     }
 
-    fn ctx() -> ToolContext {
-        ToolContext::new(".")
-    }
+    fn ctx() -> ToolContext { ToolContext::new(".") }
 
     #[test]
     fn register_and_schema_round_trip() {
@@ -521,7 +255,7 @@ mod registry_tests {
 
 #[cfg(test)]
 mod working_memory_tests {
-    use orchyn_harness::agent::memory::{Message, WorkingMemory};
+    use orchyn_harness::agent::memory::{Message, TurnRecord, WorkingMemory};
 
     #[test]
     fn sliding_window_evicts_oldest_messages() {
@@ -529,7 +263,7 @@ mod working_memory_tests {
         mem.push_message(Message::user("first"));
         mem.push_message(Message::user("second"));
         mem.push_message(Message::user("third"));
-        mem.push_message(Message::user("fourth")); // evicts "first"
+        mem.push_message(Message::user("fourth"));
         let msgs = mem.messages();
         assert_eq!(msgs.len(), 3);
         assert!(msgs[0].content.contains("second"));
@@ -552,16 +286,8 @@ mod working_memory_tests {
     fn turn_count_increments_per_record() {
         let mut mem = WorkingMemory::new(10);
         assert_eq!(mem.turn_count(), 0);
-        mem.record_turn(orchyn_harness::agent::memory::TurnRecord {
-            turn: 0,
-            reasoning: "first turn".into(),
-            tool_results: vec![],
-        });
-        mem.record_turn(orchyn_harness::agent::memory::TurnRecord {
-            turn: 1,
-            reasoning: "second turn".into(),
-            tool_results: vec![],
-        });
+        mem.record_turn(TurnRecord { turn: 0, reasoning: "first".into(), tool_results: vec![] });
+        mem.record_turn(TurnRecord { turn: 1, reasoning: "second".into(), tool_results: vec![] });
         assert_eq!(mem.turn_count(), 2);
     }
 }

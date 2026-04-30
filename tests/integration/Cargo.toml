@@ -4,23 +4,18 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-orchyn-core = { workspace = true }
-orchyn-actor-engine = { path = "../../crates/actor-engine" }
+orchyn-core      = { workspace = true }
 orchyn-platform-web = { path = "../../crates/platform-web" }
-orchyn-action-executor = { path = "../../crates/action-executor" }
 orchyn-model-client = { workspace = true }
-orchyn-pixel-observer = { workspace = true }
-orchyn-harness = { path = "../../crates/orchyn-harness" }
-orchyn-storage = { path = "../../crates/storage" }
-orchyn-artifact-storage = { path = "../../crates/artifact-storage" }
-sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
-tokio = { workspace = true, features = ["full"] }
-uuid = { workspace = true }
-chrono = { workspace = true }
-anyhow.workspace = true
-tracing.workspace = true
+orchyn-harness   = { path = "../../crates/orchyn-harness" }
+orchyn-toolkit   = { path = "../../crates/toolkit" }
+
+futures          = { workspace = true }
+tokio            = { workspace = true, features = ["full"] }
+serde_json       = { workspace = true }
+image            = { workspace = true }
+uuid             = { workspace = true }
+chrono           = { workspace = true }
+tracing          = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-reqwest = { workspace = true }
-serde_json = { workspace = true }
-colored = "2.1"
-similar = { version = "2.4", features = ["inline"] }
+colored          = "2.1"

@@ -1,6 +1,8 @@
-//! Orchyn-specific reporting tools (gap_report, test_propose, fix_propose).
-//! These are NOT part of the OpenHarness surface — they back the agent's
-//! findings that get flattened into a Constraint Mode manifest by the CLI.
+//! Orchyn-specific reporting tools (gap_report, test_result, fix_propose).
+//! gap_report stores keys with prefix `gap_`.
+//! test_result stores keys with prefix `result_pass_` or `result_fail_`.
+//! fix_propose stores keys with prefix `fix_`.
+//! The AgentReport counters are derived from these key prefixes.
 
 use crate::context::ToolContext;
 use crate::registry::{Tool, ToolResult};
@@ -57,23 +59,24 @@ impl Tool for GapReportTool {
     }
 }
 
-// === test_propose ===
+// === test_result ===
 
-pub struct TestProposeTool;
+pub struct TestResultTool;
 
-impl Tool for TestProposeTool {
-    fn name(&self) -> &str { "test_propose" }
+impl Tool for TestResultTool {
+    fn name(&self) -> &str { "test_result" }
     fn description(&self) -> &str {
-        "Propose a manifest entry for Constraint Mode (a multi-step test scenario)."
+        "Record a test execution result. Stores result_pass_<name> or result_fail_<name> in memory."
     }
     fn schema(&self) -> serde_json::Value {
         json!({
             "type": "object",
             "properties": {
-                "name": {"type": "string"},
-                "steps": {"type": "array", "items": {"type": "object"}}
+                "name": {"type": "string", "description": "Short slug for the test, e.g. login_happy_path"},
+                "passed": {"type": "boolean"},
+                "reason": {"type": "string", "description": "Required when passed=false"}
             },
-            "required": ["name", "steps"]
+            "required": ["name", "passed"]
         })
     }
     fn execute<'a>(
@@ -82,14 +85,21 @@ impl Tool for TestProposeTool {
         ctx: &'a ToolContext,
     ) -> BoxFuture<'a, Result<ToolResult>> {
         async move {
-            let id = Uuid::new_v4();
-            let entry = json!({
-                "test_id": id,
-                "name": args.get("name").cloned().unwrap_or_default(),
-                "steps": args.get("steps").cloned().unwrap_or(json!([])),
-            });
-            store_in_memory(ctx, format!("test_{id}"), entry.clone()).await;
-            Ok(ToolResult::ok(json!({"test_id": id, "status": "proposed"})))
+            let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let passed = args.get("passed").and_then(|v| v.as_bool()).unwrap_or(false);
+            let reason = args.get("reason").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let key = if passed {
+                format!("result_pass_{name}")
+            } else {
+                format!("result_fail_{name}")
+            };
+            let value = if passed {
+                json!({"ok": true})
+            } else {
+                json!({"ok": false, "reason": reason})
+            };
+            store_in_memory(ctx, key.clone(), value).await;
+            Ok(ToolResult::ok(json!({"key": key, "recorded": true})))
         }
         .boxed()
     }

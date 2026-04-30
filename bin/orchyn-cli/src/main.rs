@@ -45,8 +45,14 @@ async fn run_agent(args: Cli) -> Result<()> {
 
     let factory: Arc<dyn AdapterFactory> =
         Arc::new(WebAdapterFactory { initial_url: args.app.clone() });
-    let ctx = ToolContext::new(args.project_root).with_factory(factory);
     let registry = default_registry();
+    let tool_index = registry.schemas().into_iter()
+        .map(|s| orchyn_toolkit::schema::ToolDescriptor { name: s.name, description: s.description })
+        .collect();
+    let ctx = ToolContext::new(args.project_root)
+        .with_factory(factory)
+        .with_shell(true)
+        .with_tool_index(tool_index);
 
     let mut harness = AgentHarness::new(model, registry, ctx, args.max_turns);
     let report = harness.run(&args.app).await?;

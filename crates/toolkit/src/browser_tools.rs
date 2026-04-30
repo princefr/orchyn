@@ -203,6 +203,50 @@ impl Tool for BrowserTypeTool {
     }
 }
 
+// === browser_get_network ===
+
+pub struct BrowserGetNetworkTool;
+
+impl Tool for BrowserGetNetworkTool {
+    fn name(&self) -> &str { "browser_get_network" }
+    fn description(&self) -> &str { "Return recent HTTP requests with method, URL, status, and bodies." }
+    fn schema(&self) -> serde_json::Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "actor": {"type": "string"},
+                "only_errors": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, return only 4xx/5xx responses"
+                }
+            },
+            "required": ["actor"]
+        })
+    }
+    fn execute<'a>(
+        &'a self,
+        args: serde_json::Value,
+        ctx: &'a ToolContext,
+    ) -> BoxFuture<'a, Result<ToolResult>> {
+        async move {
+            let actor_id = require_str(&args, "actor")?.to_string();
+            let only_errors = args.get("only_errors").and_then(|v| v.as_bool()).unwrap_or(false);
+            let adapter = locate_actor(ctx, &actor_id).await?;
+            let mut guard = adapter.lock().await;
+            let telemetry = guard.collect_telemetry().await?;
+            let requests: Vec<_> = telemetry
+                .network_requests
+                .into_iter()
+                .filter(|r| !only_errors || r.status >= 400)
+                .map(|r| json!({"method": r.method, "url": r.url, "status": r.status}))
+                .collect();
+            Ok(ToolResult::ok(json!({"actor": actor_id, "requests": requests})))
+        }
+        .boxed()
+    }
+}
+
 // === browser_get_console ===
 
 pub struct BrowserGetConsoleTool;

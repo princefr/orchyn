@@ -1,14 +1,10 @@
-/// Shared mock implementations used across all test modules.
-///
-/// ScriptedAdapter plays back pre-loaded screenshots and element lists,
-/// recording every execute_harness call for later assertions.
-/// ScriptedModel yields JSON strings from a fixed queue — plug in valid
-/// LlmDecision / agent-turn JSON to drive the harnesses deterministically.
+#![allow(dead_code)]
+
 use futures::future::{BoxFuture, FutureExt};
 use image::{Rgba, RgbaImage};
 use orchyn_core::{
     action::{Action as HarnessAction, AnnotatedElement},
-    Action, DeviceInfo, DiagnosticEvent, NetworkEvent, OrchynError, PlatformAdapter, Platform,
+    Action, DeviceInfo, DiagnosticEvent, NetworkEvent, PlatformAdapter, Platform,
     RawTelemetry, Result, UiElement,
 };
 use orchyn_model_client::MockClient;
@@ -210,7 +206,9 @@ pub fn agent_done_response(summary: &str) -> String {
             "app_type": "test fixture",
             "features_found": ["login", "dashboard"],
             "gaps_found": 0,
-            "tests_created": 1,
+            "tests_executed": 1,
+            "tests_passed": 1,
+            "tests_failed": 0,
             "summary": summary
         }
     })
