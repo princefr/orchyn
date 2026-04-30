@@ -7,6 +7,7 @@ edition.workspace = true
 orchyn-core = { workspace = true }
 orchyn-action-executor = { workspace = true }
 headless_chrome = "1.0.15"
+serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true

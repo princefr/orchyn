@@ -45,6 +45,7 @@ orchyn-spec-engine = { path = "crates/spec-engine" }
 orchyn-storage = { path = "crates/storage" }
 orchyn-api-server = { path = "crates/api-server" }
 orchyn-scheduler = { path = "crates/scheduler" }
+orchyn-toolkit = { path = "crates/toolkit" }
 
 # Common & Inherited
 cc = "1.2.61"

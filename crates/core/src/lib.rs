@@ -6,10 +6,14 @@ pub use types::{
     Confidence, Platform, LogLevel, SourceRef,
     DiagnosticEvent, NetworkEvent, RealityContext,
     Evidence, EvidenceBundle,
+    // Hybrid harness types
+    UiElement, ConsoleLog, NetworkRequest, RawTelemetry, TelemetrySnapshot,
+    ActorState, StepRecord, ManifestStep, FailPolicy, RunStatus, TestRunRecord,
 };
 pub use mock_adapter::MockAdapter;
 
 // Modules
+pub mod action;
 pub mod errors;
 pub mod traits;
 pub mod types;

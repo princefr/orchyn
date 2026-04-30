@@ -1,3 +1,4 @@
+use crate::action::BoundingBox;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -96,6 +97,105 @@ pub struct EvidenceBundle {
     pub network_events: Vec<NetworkEvent>,
     pub screenshot_paths: Vec<PathBuf>,
     pub findings: Vec<Evidence>,
+}
+
+// === Hybrid harness types ===
+//
+// These types power Constraint Mode (pre-written manifest execution) and
+// Agent Mode (tool-using autonomous exploration). They are separate from the
+// older phase-based pipeline that lives alongside in `RealityContext` etc.
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UiElement {
+    pub element_type: String,
+    pub text: Option<String>,
+    pub bounds: BoundingBox,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConsoleLog {
+    pub level: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkRequest {
+    pub method: String,
+    pub url: String,
+    pub status: u16,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RawTelemetry {
+    pub console_logs: Vec<ConsoleLog>,
+    pub network_requests: Vec<NetworkRequest>,
+    pub ws_messages: Vec<String>,
+    pub current_url: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TelemetrySnapshot {
+    pub current_url: String,
+    pub console_errors: Vec<String>,
+    pub network_4xx_5xx: Vec<String>,
+    pub ws_messages: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepRecord {
+    pub step_idx: usize,
+    pub action: String,
+    pub success: bool,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ActorState {
+    pub actor_id: String,
+    pub logged_in: bool,
+    pub current_url: Option<String>,
+    pub last_action: Option<String>,
+    pub last_target: Option<u8>,
+    pub seen_elements: Vec<String>,
+    pub step_history: Vec<StepRecord>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FailPolicy {
+    #[default]
+    Halt,
+    Skip,
+    Retry,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ManifestStep {
+    pub step: usize,
+    pub actor: String,
+    pub instruction: String,
+    #[serde(default)]
+    pub on_fail: FailPolicy,
+    #[serde(default)]
+    pub action_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RunStatus {
+    Running,
+    Passed,
+    Failed(String),
+    Stuck,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestRunRecord {
+    pub id: Uuid,
+    pub project_id: String,
+    pub started_at: DateTime<Utc>,
+    pub finished_at: Option<DateTime<Utc>>,
+    pub status: RunStatus,
+    pub manifest: Vec<ManifestStep>,
 }
 
 #[cfg(test)]

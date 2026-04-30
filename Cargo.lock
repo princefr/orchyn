@@ -4001,6 +4001,7 @@ dependencies = [
  "bytes",
  "chrono",
  "futures",
+ "image",
  "orchyn-action-executor",
  "orchyn-actor-engine",
  "orchyn-artifact-storage",
@@ -4124,6 +4125,7 @@ dependencies = [
  "headless_chrome",
  "orchyn-action-executor",
  "orchyn-core",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",
@@ -4230,6 +4232,22 @@ dependencies = [
  "orchyn-platform-web",
  "orchyn-storage",
  "tokio",
+ "uuid 1.23.1",
+]
+
+[[package]]
+name = "orchyn-toolkit"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "ignore",
+ "orchyn-core",
+ "orchyn-pixel-observer",
+ "regex",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
  "uuid 1.23.1",
 ]
 

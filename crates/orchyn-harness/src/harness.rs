@@ -52,7 +52,8 @@ impl<L: crate::LlmClient> OrchynHarness<L> {
                 info!("Starting Ingest phase (codebase indexing + spec inference)...");
                 
                 // Use codebase-indexer to index the code
-                let target_path = std::path::Path::new(&self.config.target_url.replace("file://", ""));
+                let target_url = self.config.target_url.replace("file://", "");
+                let target_path = std::path::Path::new(&target_url);
                 let indexer = orchyn_codebase_indexer::Indexer::new(target_path);
                 let app_map = indexer.index()
                     .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
@@ -138,38 +139,23 @@ impl<L: crate::LlmClient> OrchynHarness<L> {
             }
             
             Phase::FixLoop => {
-                info!("Starting real FixLoop phase...");
-                let mut agent = orchyn_fixer_agent::FixerAgent::new(
-                    self.llm.client(),
-                    vec![],
-                    None
-                );
-                
-                let reality = orchyn_core::RealityContext {
-                    screenshot_path: std::path::PathBuf::new(),
-                    dom_elements: vec![],
-                    diagnostics: vec![],
-                    network_events: vec![],
-                    timestamp: chrono::Utc::now(),
-                };
-                let visual = orchyn_pixel_observer::UiState {
-                    elements: vec![],
-                    anomalies: vec![],
-                    keyboard_visible: false,
-                };
-                
-                let summary = agent.propose_fix(&reality, &visual).await
-                    .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
-                
+                // Legacy phase-based FixLoop is being superseded by the new
+                // hybrid `agent` module. The original wiring constructed
+                // `FixerAgent` with `Arc<dyn ModelClient>` (it requires a
+                // concrete `M: ModelClient`) and called a non-existent
+                // `propose_fix` method. Stubbed until the legacy pipeline is
+                // migrated or removed.
+                info!("FixLoop phase is stubbed pending hybrid migration");
                 let evidence = Evidence {
                     id: Uuid::new_v4(),
                     phase: Phase::FixLoop,
                     kind: EvidenceKind::Log,
-                    data: EvidenceData::Text(summary),
+                    data: EvidenceData::Text(
+                        "FixLoop stubbed — see crates/orchyn-harness/src/agent for replacement".into(),
+                    ),
                     timestamp: chrono::Utc::now(),
                     verdict: Verdict::Pass,
                 };
-                
                 let _ = self.events_tx.send(HarnessEvent::PhaseEnd(evidence.clone()));
                 Ok(evidence)
             }

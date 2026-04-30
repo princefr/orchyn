@@ -1,7 +1,7 @@
 use crate::errors::OrchynError;
 use crate::types::*;
 
-use futures::future::BoxFuture;
+use futures::future::{BoxFuture, FutureExt};
 
 pub trait StorageProvider: Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
@@ -32,6 +32,41 @@ pub trait PlatformAdapter: Send + Sync + Debug {
     fn diagnostics(&mut self) -> BoxFuture<'_, Result<Vec<DiagnosticEvent>>>;
     fn network_events(&mut self) -> BoxFuture<'_, Result<Vec<NetworkEvent>>>;
     fn get_elements(&mut self) -> BoxFuture<'_, Result<Vec<serde_json::Value>>>;
+
+    // === Hybrid harness extensions (Constraint + Agent modes) ===
+    //
+    // Default impls return safe empty values so existing adapters that haven't
+    // been migrated still compile. Real adapters (e.g. WebAdapter) override.
+
+    fn scrape_elements(&mut self) -> BoxFuture<'_, Result<Vec<UiElement>>> {
+        async move { Ok(vec![]) }.boxed()
+    }
+
+    fn current_url(&mut self) -> BoxFuture<'_, Result<String>> {
+        async move { Ok(String::new()) }.boxed()
+    }
+
+    fn collect_telemetry(&mut self) -> BoxFuture<'_, Result<RawTelemetry>> {
+        async move { Ok(RawTelemetry::default()) }.boxed()
+    }
+
+    fn execute_harness(
+        &mut self,
+        action: &crate::action::Action,
+        element_map: &[crate::action::AnnotatedElement],
+    ) -> BoxFuture<'_, Result<()>> {
+        let _ = (action, element_map);
+        async move {
+            Err(OrchynError::Platform(
+                "execute_harness not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
+
+    fn shutdown(&mut self) -> BoxFuture<'_, Result<()>> {
+        async move { Ok(()) }.boxed()
+    }
 }
 
 pub type Result<T> = std::result::Result<T, OrchynError>;

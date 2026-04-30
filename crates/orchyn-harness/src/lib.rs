@@ -1,4 +1,5 @@
 // --- Module declarations ---
+pub mod constraint;
 pub mod events;
 pub mod harness;
 pub mod types;

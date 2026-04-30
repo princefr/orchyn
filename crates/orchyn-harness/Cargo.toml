@@ -15,6 +15,7 @@ orchyn-action-executor = { path = "../action-executor" }
 orchyn-storage = { path = "../storage" }
 orchyn-codebase-indexer = { path = "../codebase-indexer" }
 orchyn-fixer-agent = { path = "../fixer-agent" }
+orchyn-toolkit = { path = "../toolkit" }
 
 tokio = { workspace = true }
 futures = { workspace = true }
@@ -23,6 +24,7 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+image = { workspace = true }
 # async-trait removed - using native async traits
 bytes = { version = "1.0", features = ["serde"] }
 chrono = { workspace = true }

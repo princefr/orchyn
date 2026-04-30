@@ -19,6 +19,12 @@ pub enum OrchynError {
 
     #[error("Validation error: {0}")]
     Validation(String),
+
+    #[error("Stuck detected: {0}")]
+    Stuck(String),
+
+    #[error("Recovery exhausted: {0}")]
+    RecoveryExhausted(String),
 }
 
 pub type Result<T> = std::result::Result<T, OrchynError>;
