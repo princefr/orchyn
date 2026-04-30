@@ -5,7 +5,6 @@ edition.workspace = true
 
 [dependencies]
 orchyn-core = { workspace = true }
-orchyn-spec-engine = { path = "../spec-engine" }
 sqlx = { workspace = true, features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
 tokio = { workspace = true, features = ["full"] }
 aws-sdk-s3 = "1.131.0"

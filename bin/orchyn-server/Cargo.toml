@@ -6,6 +6,8 @@ edition.workspace = true
 [dependencies]
 orchyn-api-server = { path = "../../crates/api-server" }
 orchyn-storage = { path = "../../crates/storage" }
+orchyn-core = { path = "../../crates/core" }
+orchyn-harness = { path = "../../crates/orchyn-harness" }
 tokio = { workspace = true, features = ["full"] }
 axum.workspace = true
 sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }

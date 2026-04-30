@@ -1,8 +1,9 @@
 use async_graphql::{Context, EmptySubscription, ID, Object, Schema, SimpleObject};
 use chrono::{DateTime, Utc};
 use orchyn_storage::{ProjectRow, RunRow, Storage};
-use crate::auth::middleware::{AuthUser, RequireAuth};
+use crate::auth::middleware::AuthUser;
 use std::sync::Arc;
+use uuid::Uuid;
 
 // --- GraphQL Object Types ---
 
@@ -18,7 +19,6 @@ pub struct Project {
     pub id: ID,
     pub name: String,
     pub source_url: String,
-    pub framework: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -28,7 +28,6 @@ impl From<ProjectRow> for Project {
             id: ID::from(row.id),
             name: row.name,
             source_url: row.source_url,
-            framework: row.framework,
             created_at: row.created_at.unwrap_or_else(Utc::now),
         }
     }
@@ -39,7 +38,7 @@ pub struct Run {
     pub id: ID,
     pub project_id: ID,
     pub status: String,
-    pub started_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
     pub finished_at: Option<DateTime<Utc>>,
     pub screenshots: Vec<Artifact>,
     pub diagnostics: Vec<DiagnosticLog>,
@@ -115,10 +114,10 @@ impl Query {
     }
 
     async fn projects(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<Project>> {
-        let _auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
+        let auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         let storage = ctx.data::<Arc<Storage>>().map_err(|_| "Storage not available")?;
         
-        let rows = storage.list_projects().await
+        let rows = storage.get_user_projects(auth.user_id).await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
         Ok(rows.into_iter().map(Project::from).collect())
@@ -128,10 +127,11 @@ impl Query {
         let _auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         let storage = ctx.data::<Arc<Storage>>().map_err(|_| "Storage not available")?;
         
-        let run = storage.get_run(&id.to_string()).await
+        let uuid = Uuid::parse_str(&id.to_string()).map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        let run = storage.get_run(uuid).await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
-        Ok(run.map(Run::from))
+        Ok(Some(Run::from(run)))
     }
 }
 
@@ -146,32 +146,33 @@ impl Mutation {
         ctx: &Context<'_>,
         name: String,
         source_url: String,
-        framework: Option<String>,
-    ) -> async_graphql::Result<Project> {
+        _framework: Option<String>,
+    ) -> async_graphql::Result<ID> {
         let auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         let storage = ctx.data::<Arc<Storage>>().map_err(|_| "Storage not available")?;
         
-        let project = storage.create_project(&auth.user_id, &name, &source_url, framework.as_deref()).await
+        let project_id = storage.create_project(auth.user_id, &name, &source_url).await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
-        Ok(Project::from(project))
+        Ok(ID::from(project_id))
     }
 
     async fn scan_repo(
         &self,
         ctx: &Context<'_>,
         project_id: ID,
-        skill: Option<String>,
-    ) -> async_graphql::Result<Run> {
+        _skill: Option<String>,
+    ) -> async_graphql::Result<ID> {
         let _auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         let storage = ctx.data::<Arc<Storage>>().map_err(|_| "Storage not available")?;
         
-        let run = storage.create_run(&project_id.to_string(), skill.as_deref()).await
+        let uuid = Uuid::parse_str(&project_id.to_string()).map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        let run_id = storage.start_run(uuid).await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
         // TODO: Actually trigger the harness to run
         
-        Ok(Run::from(run))
+        Ok(ID::from(run_id))
     }
 
     async fn invite_team_member(
@@ -184,7 +185,10 @@ impl Mutation {
         let auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         let storage = ctx.data::<Arc<Storage>>().map_err(|_| "Storage not available")?;
         
-        storage.invite_member(&auth.user_id, &project_id.to_string(), &email, &role).await
+        let project_uuid = Uuid::parse_str(&project_id.to_string()).map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        
+        // Use create_invitation instead of invite_member
+        storage.create_invitation(project_uuid, auth.user_id, &email).await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
         Ok("invited".to_string())
@@ -193,7 +197,7 @@ impl Mutation {
     async fn create_checkout_session(
         &self,
         ctx: &Context<'_>,
-        plan: String,
+        _plan: String,
     ) -> async_graphql::Result<CheckoutSession> {
         let _auth = ctx.data::<AuthUser>().map_err(|_| "Unauthorized")?;
         

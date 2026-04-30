@@ -1,9 +1,13 @@
-use orchyn_gap_detector::Gap;
 use orchyn_model_client::{ModelClient, CompletionRequest};
 use std::sync::Arc;
 use futures::StreamExt;
 
 const SYSTEM_PROMPT: &str = include_str!("../../../prompts/gap_reporter.md");
+
+pub struct Gap {
+    pub description: String,
+    pub severity: String,
+}
 
 pub struct ReportGenerator<M: ModelClient> {
     model: Arc<M>,
@@ -19,8 +23,8 @@ impl<M: ModelClient> ReportGenerator<M> {
 
         for gap in gaps {
             let prompt = format!(
-                "{}\n\nGAP DATA:\n{:?}\n\nGenerate the markdown report segment for this gap:",
-                SYSTEM_PROMPT, gap
+                "{}\n\nGAP DATA:\nDescription: {}\nSeverity: {}\n\nGenerate the markdown report segment for this gap:",
+                SYSTEM_PROMPT, gap.description, gap.severity
             );
 
             let req = CompletionRequest {

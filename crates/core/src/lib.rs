@@ -2,7 +2,7 @@
 pub use errors::OrchynError;
 pub use traits::{StorageProvider, PlatformAdapter, Action, DeviceInfo};
 pub use types::{
-    AppId, SpecId, ClaimId, ActorId, PatternId, GapId,
+    AppId, SpecId, ClaimId, ActorId, PatternId, GapId, Goal,
     Confidence, Platform, LogLevel, SourceRef,
     DiagnosticEvent, NetworkEvent, RealityContext,
     Evidence, EvidenceBundle,

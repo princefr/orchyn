@@ -27,32 +27,42 @@ pub mod auth_routes {
 }
 
 pub mod sse_routes {
-    use axum::{extract::State, response::Sse, routing::get, Router, body::Bytes};
+    use axum::{extract::State, response::sse::{Event, KeepAlive, Sse}, routing::get, Router};
     use tokio::sync::broadcast;
     use tokio_stream::wrappers::BroadcastStream;
     use orchyn_harness::events::HarnessEvent;
     use std::time::Duration;
+    use tokio_stream::StreamExt;
     
     pub async fn stream_events(
         State(event_tx): State<broadcast::Sender<HarnessEvent>>,
-        path: axum::extract::Path<String>,
-    ) -> Sse<impl tokio_stream::Stream<Item = Result<Bytes, axum::Error>>> {
+        _path: axum::extract::Path<String>,
+    ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, axum::Error>>> {
         let rx = event_tx.subscribe();
         let stream = BroadcastStream::new(rx);
         
         // Convert HarnessEvent to SSE format
         let sse_stream = stream.filter_map(|result| {
-            result.ok().and_then(|event| {
-                let json = serde_json::to_string(&event).ok()?;
-                Some(Ok(Bytes::from(format!("data: {}\n\n", json)))
-            })
+            match result {
+                Ok(event) => {
+                    let json = serde_json::to_string(&event).ok()?;
+                    Some(Ok(Event::default().data(json)))
+                }
+                Err(_) => None,
+            }
         });
         
-        Sse::new(sse_stream).keep_alive(Duration::from_secs(15))
+        Sse::new(sse_stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
     }
     
-    pub fn router() -> Router {
+    pub fn router<S>() -> Router<S> 
+    where 
+        S: Clone + Send + Sync + 'static,
+        broadcast::Sender<HarnessEvent>: axum::extract::FromRef<S>
+    {
         Router::new()
             .route("/api/jobs/:id/stream", get(stream_events))
     }
 }
+
+

@@ -4,7 +4,6 @@ members = [
     "crates/*",
     "bin/*",
     "crates/tests",
-    "crates/fixer-agent",
     "crates/orchyn-harness",
     "crates/artifact-storage",
     "tests/integration",
@@ -28,20 +27,14 @@ categories = ["science", "api-bindings", "text-processing"]
 orchyn-core = { path = "crates/core" }
 orchyn-model-client = { path = "crates/model-client" }
 orchyn-artifact-storage = { path = "crates/artifact-storage" }
-orchyn-codebase-indexer = { path = "crates/codebase-indexer" }
 orchyn-platform-web = { path = "crates/platform-web" }
 orchyn-action-executor = { path = "crates/action-executor" }
 orchyn-pixel-observer = { path = "crates/pixel-observer" }
-orchyn-action-planner = { path = "crates/action-planner" }
 orchyn-actor-engine = { path = "crates/actor-engine" }
-orchyn-fixer-agent = { path = "crates/fixer-agent" }
 orchyn-harness = { path = "crates/orchyn-harness" }
-orchyn-navigator-agent = { path = "crates/navigator-agent" }
 orchyn-pattern-library = { path = "crates/pattern-library" }
 orchyn-runtime-tracer = { path = "crates/runtime-tracer" }
 orchyn-report-generator = { path = "crates/report-generator" }
-orchyn-gap-detector = { path = "crates/gap-detector" }
-orchyn-spec-engine = { path = "crates/spec-engine" }
 orchyn-storage = { path = "crates/storage" }
 orchyn-api-server = { path = "crates/api-server" }
 orchyn-scheduler = { path = "crates/scheduler" }

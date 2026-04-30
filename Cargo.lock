@@ -2563,6 +2563,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "html-escape"
+version = "0.2.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d1ad449764d627e22bfd7cd5e8868264fc9236e07c752972b4080cd351cb476"
+dependencies = [
+ "utf8-width",
+]
+
+[[package]]
 name = "http"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3818,28 +3827,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "orchyn-action-planner"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "orchyn-action-executor",
- "orchyn-core",
- "orchyn-model-client",
- "orchyn-pixel-observer",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
 name = "orchyn-actor-engine"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
  "orchyn-action-executor",
- "orchyn-action-planner",
  "orchyn-core",
  "orchyn-model-client",
  "orchyn-pixel-observer",
@@ -3862,12 +3855,15 @@ dependencies = [
  "jsonwebtoken",
  "oauth2",
  "orchyn-core",
+ "orchyn-harness",
  "orchyn-storage",
  "posthog-rs",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
+ "tokio-stream",
  "tower-http",
  "tracing",
  "uuid 1.23.1",
@@ -3901,18 +3897,19 @@ dependencies = [
  "clap",
  "colored 3.1.1",
  "crossterm",
+ "futures",
  "git2",
  "orchyn-action-executor",
  "orchyn-artifact-storage",
- "orchyn-codebase-indexer",
  "orchyn-core",
- "orchyn-fixer-agent",
  "orchyn-harness",
  "orchyn-model-client",
- "orchyn-navigator-agent",
  "orchyn-pixel-observer",
+ "orchyn-platform-web",
  "orchyn-storage",
+ "orchyn-toolkit",
  "ratatui",
+ "serde",
  "serde_json",
  "similar",
  "sqlx",
@@ -3920,23 +3917,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "orchyn-codebase-indexer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ignore",
- "orchyn-core",
- "rayon",
- "serde",
- "serde_json",
- "tracing",
- "tree-sitter",
- "tree-sitter-dart",
- "tree-sitter-javascript",
- "tree-sitter-typescript",
 ]
 
 [[package]]
@@ -3954,46 +3934,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orchyn-fixer-agent"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "futures",
- "git2",
- "globset",
- "ignore",
- "orchyn-action-executor",
- "orchyn-codebase-indexer",
- "orchyn-core",
- "orchyn-model-client",
- "orchyn-pixel-observer",
- "orchyn-platform-web",
- "regex",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "orchyn-gap-detector"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "orchyn-actor-engine",
- "orchyn-core",
- "orchyn-model-client",
- "orchyn-spec-engine",
- "serde",
- "serde_json",
- "tracing",
- "uuid 1.23.1",
-]
-
-[[package]]
 name = "orchyn-harness"
 version = "0.1.0"
 dependencies = [
@@ -4005,14 +3945,13 @@ dependencies = [
  "orchyn-action-executor",
  "orchyn-actor-engine",
  "orchyn-artifact-storage",
- "orchyn-codebase-indexer",
  "orchyn-core",
- "orchyn-fixer-agent",
  "orchyn-model-client",
  "orchyn-pixel-observer",
  "orchyn-platform-web",
  "orchyn-runtime-tracer",
  "orchyn-storage",
+ "orchyn-toolkit",
  "path-clean",
  "serde",
  "serde_json",
@@ -4031,15 +3970,11 @@ dependencies = [
  "chrono",
  "colored 2.2.0",
  "orchyn-action-executor",
- "orchyn-action-planner",
  "orchyn-actor-engine",
  "orchyn-artifact-storage",
- "orchyn-codebase-indexer",
  "orchyn-core",
- "orchyn-fixer-agent",
  "orchyn-harness",
  "orchyn-model-client",
- "orchyn-navigator-agent",
  "orchyn-pixel-observer",
  "orchyn-platform-web",
  "orchyn-storage",
@@ -4071,23 +4006,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-stream",
- "tracing",
-]
-
-[[package]]
-name = "orchyn-navigator-agent"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "ignore",
- "orchyn-codebase-indexer",
- "orchyn-core",
- "orchyn-model-client",
- "regex",
- "serde",
- "serde_json",
- "tokio",
  "tracing",
 ]
 
@@ -4141,7 +4059,6 @@ dependencies = [
  "anyhow",
  "futures",
  "orchyn-core",
- "orchyn-gap-detector",
  "orchyn-model-client",
  "serde",
  "serde_json",
@@ -4178,27 +4095,13 @@ dependencies = [
  "axum",
  "oauth2",
  "orchyn-api-server",
+ "orchyn-core",
+ "orchyn-harness",
  "orchyn-storage",
  "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "orchyn-spec-engine"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "futures",
- "orchyn-codebase-indexer",
- "orchyn-core",
- "orchyn-model-client",
- "serde",
- "serde_json",
- "tracing",
- "uuid 1.23.1",
 ]
 
 [[package]]
@@ -4211,7 +4114,6 @@ dependencies = [
  "aws-sdk-s3",
  "chrono",
  "orchyn-core",
- "orchyn-spec-engine",
  "serde",
  "serde_json",
  "sqlx",
@@ -4224,13 +4126,14 @@ dependencies = [
 name = "orchyn-tests"
 version = "0.1.0"
 dependencies = [
- "orchyn-action-planner",
- "orchyn-actor-engine",
+ "futures",
+ "image",
  "orchyn-core",
+ "orchyn-harness",
  "orchyn-model-client",
  "orchyn-pixel-observer",
- "orchyn-platform-web",
- "orchyn-storage",
+ "orchyn-toolkit",
+ "serde_json",
  "tokio",
  "uuid 1.23.1",
 ]
@@ -4239,15 +4142,21 @@ dependencies = [
 name = "orchyn-toolkit"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "futures",
+ "git2",
+ "globset",
+ "html-escape",
  "ignore",
  "orchyn-core",
  "orchyn-pixel-observer",
  "regex",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
+ "urlencoding",
  "uuid 1.23.1",
 ]
 
@@ -4256,6 +4165,8 @@ name = "orchyn-worker"
 version = "0.1.0"
 dependencies = [
  "orchyn-scheduler",
+ "orchyn-storage",
+ "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -6269,6 +6180,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -6463,16 +6375,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-dart"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bba6bf8675e6fe92ba6da371a5497ee5df2a04d2c503e3599c8ad771f6f1faec"
-dependencies = [
- "cc",
- "tree-sitter-language",
-]
-
-[[package]]
 name = "tree-sitter-html"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6497,16 +6399,6 @@ name = "tree-sitter-language"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "009994f150cc0cd50ff54917d5bc8bffe8cad10ca10d81c34da2ec421ae61782"
-
-[[package]]
-name = "tree-sitter-typescript"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c5f76ed8d947a75cc446d5fccd8b602ebf0cde64ccf2ffa434d873d7a575eff"
-dependencies = [
- "cc",
- "tree-sitter-language",
-]
 
 [[package]]
 name = "try-lock"
@@ -6713,6 +6605,12 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
+
+[[package]]
+name = "utf8-width"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1292c0d970b54115d14f2492fe0170adf21d68a1de108eebc51c1df4f346a091"
 
 [[package]]
 name = "utf8-zero"

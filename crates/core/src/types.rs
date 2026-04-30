@@ -142,6 +142,11 @@ pub struct TelemetrySnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Goal {
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepRecord {
     pub step_idx: usize,
     pub action: String,

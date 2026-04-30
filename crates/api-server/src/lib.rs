@@ -8,7 +8,8 @@ pub mod webhooks;
 // Re-export main types for convenience
 pub use analytics::PostHogClient;
 pub use auth::middleware::{AuthMiddleware, AuthUser, RequireAuth};
-pub use auth::{JwtAuth, OAuthState};
+pub use auth::oauth::OAuthState;
+pub use auth::JwtAuth;
 pub use schema::*;
 pub use state::AppState;
 
@@ -20,7 +21,7 @@ pub fn build_schema() -> OrchynSchema {
     Schema::build(Query, Mutation, EmptySubscription).finish()
 }
 
-pub fn build_router(state: AppState, oauth_state: std::sync::Arc<auth::OAuthState>) -> Router {
+pub fn build_router(state: AppState, oauth_state: std::sync::Arc<auth::oauth::OAuthState>) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -28,21 +29,9 @@ pub fn build_router(state: AppState, oauth_state: std::sync::Arc<auth::OAuthStat
 
     Router::new()
         .route("/graphql", post(routes::handler::graphql_handler))
-        .nest("/auth", routes::auth_routes::router(oauth_state))
-        .nest("/api", routes::sse_routes::router())
-        .layer(cors)
+        .nest("/api", routes::sse_routes::router::<AppState>())
         .with_state(state)
-}
-
-pub fn build_router(state: AppState, oauth_state: std::sync::Arc<OAuthState>) -> Router {
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
-
-    Router::new()
-        .route("/graphql", post(routes::handler::graphql_handler))
         .nest("/auth", routes::auth_routes::router(oauth_state))
         .layer(cors)
-        .with_state(state)
 }
+

@@ -1,10 +1,8 @@
-// --- Module declarations ---
-pub mod constraint;
+pub mod agent;
 pub mod events;
 pub mod harness;
 pub mod types;
 
-// --- Re-exports for convenience ---
 pub use events::*;
 pub use harness::HarnessRunResult;
 pub use harness::OrchynHarness;

@@ -13,8 +13,6 @@ orchyn-actor-engine = { path = "../actor-engine" }
 orchyn-platform-web = { path = "../platform-web" }
 orchyn-action-executor = { path = "../action-executor" }
 orchyn-storage = { path = "../storage" }
-orchyn-codebase-indexer = { path = "../codebase-indexer" }
-orchyn-fixer-agent = { path = "../fixer-agent" }
 orchyn-toolkit = { path = "../toolkit" }
 
 tokio = { workspace = true }

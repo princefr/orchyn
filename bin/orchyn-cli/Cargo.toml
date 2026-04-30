@@ -6,18 +6,19 @@ edition.workspace = true
 [dependencies]
 orchyn-core = { workspace = true }
 orchyn-model-client = { workspace = true }
-orchyn-codebase-indexer = { workspace = true }
-orchyn-navigator-agent = { workspace = true }
-orchyn-fixer-agent = { workspace = true }
 orchyn-harness = { workspace = true }
 orchyn-artifact-storage = { workspace = true }
 orchyn-pixel-observer = { workspace = true }
 orchyn-storage = { path = "../../crates/storage" }
 orchyn-action-executor = { workspace = true }
+orchyn-platform-web = { workspace = true }
+orchyn-toolkit = { workspace = true }
+futures.workspace = true
+serde.workspace = true
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 tempfile = "3.10"
 git2 = { workspace = true }
 anyhow.workspace = true

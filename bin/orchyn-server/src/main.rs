@@ -56,7 +56,7 @@ async fn main() -> std::result::Result<(), OrchynError> {
 
     let auth = Arc::new(JwtAuth::new(jwt_secret));
 
-    let oauth_state = Arc::new(orchyn_api_server::AuthState {
+    let oauth_state = Arc::new(orchyn_api_server::OAuthState {
         client,
         storage: storage.clone(),
         jwt_auth: auth.clone(),
@@ -77,7 +77,8 @@ async fn main() -> std::result::Result<(), OrchynError> {
 
     let app = build_router(state, oauth_state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await
+        .map_err(|e| OrchynError::Internal(e.to_string()))?;
     info!("Server listening on http://127.0.0.1:3000");
     axum::serve(listener, app).await.map_err(|e| OrchynError::Internal(e.to_string()))?;
 

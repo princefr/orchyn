@@ -13,6 +13,12 @@ impl Storage {
         Self { db }
     }
 
+    pub fn new_mock() -> Self {
+        // This is a hack because Storage is tied to PgPool
+        // We might want a trait if we need real mocking
+        unimplemented!("Mock storage not yet implemented with sqlx")
+    }
+
     pub async fn ensure_user(&self, email: &str) -> Result<Uuid> {
         let user_id = Uuid::new_v4();
         let row = sqlx::query(

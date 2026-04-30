@@ -7,7 +7,6 @@ edition.workspace = true
 orchyn-core = { workspace = true }
 orchyn-model-client = { workspace = true }
 orchyn-pixel-observer = { workspace = true }
-orchyn-action-planner = { workspace = true }
 orchyn-action-executor = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true

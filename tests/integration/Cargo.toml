@@ -6,14 +6,10 @@ edition.workspace = true
 [dependencies]
 orchyn-core = { workspace = true }
 orchyn-actor-engine = { path = "../../crates/actor-engine" }
-orchyn-codebase-indexer = { path = "../../crates/codebase-indexer" }
 orchyn-platform-web = { path = "../../crates/platform-web" }
 orchyn-action-executor = { path = "../../crates/action-executor" }
 orchyn-model-client = { workspace = true }
 orchyn-pixel-observer = { workspace = true }
-orchyn-action-planner = { workspace = true }
-orchyn-fixer-agent = { path = "../../crates/fixer-agent" }
-orchyn-navigator-agent = { path = "../../crates/navigator-agent" }
 orchyn-harness = { path = "../../crates/orchyn-harness" }
 orchyn-storage = { path = "../../crates/storage" }
 orchyn-artifact-storage = { path = "../../crates/artifact-storage" }

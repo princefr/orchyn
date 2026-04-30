@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, info};
 
-const SYSTEM_PROMPT: &str = include_str!("../../../prompts/vlm_observer.md");
+const SYSTEM_PROMPT: &str = include_str!("../../../prompts/system.md");
 
 #[derive(Clone)]
 pub struct PixelObserver<M: ModelClient> {

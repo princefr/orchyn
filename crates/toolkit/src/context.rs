@@ -1,3 +1,4 @@
+use crate::schema::ToolDescriptor;
 use futures::future::BoxFuture;
 use orchyn_core::PlatformAdapter;
 use serde_json::Value;
@@ -36,6 +37,10 @@ impl WorkingMemoryStore {
         self.facts.get(key)
     }
 
+    pub fn remove(&mut self, key: &str) -> Option<Value> {
+        self.facts.remove(key)
+    }
+
     pub fn entries(&self) -> impl Iterator<Item = (&String, &Value)> {
         self.facts.iter()
     }
@@ -55,6 +60,16 @@ pub struct ToolContext {
     pub memory: WorkingMemory,
     pub adapter_factory: Option<Arc<dyn AdapterFactory>>,
     pub project_root: Arc<std::path::PathBuf>,
+    /// Gate for shell-execution tools. Default off — opt in explicitly.
+    pub allow_shell: bool,
+    /// Snapshot of registered tools (name + description), used by
+    /// `tool_search`. Empty when the registry was built without
+    /// [`crate::default_registry_with_context`].
+    pub tool_index: Arc<Vec<ToolDescriptor>>,
+    /// Current permission mode (e.g. "plan", "default").
+    pub permission_mode: Arc<Mutex<String>>,
+    /// Callback to ask the user a question.
+    pub ask_user: Option<Arc<dyn Fn(String) -> BoxFuture<'static, String> + Send + Sync>>,
 }
 
 impl ToolContext {
@@ -64,11 +79,30 @@ impl ToolContext {
             memory: Arc::new(Mutex::new(WorkingMemoryStore::new())),
             adapter_factory: None,
             project_root: Arc::new(project_root.into()),
+            allow_shell: false,
+            tool_index: Arc::new(Vec::new()),
+            permission_mode: Arc::new(Mutex::new("default".to_string())),
+            ask_user: None,
         }
     }
 
     pub fn with_factory(mut self, factory: Arc<dyn AdapterFactory>) -> Self {
         self.adapter_factory = Some(factory);
+        self
+    }
+
+    pub fn with_shell(mut self, allow: bool) -> Self {
+        self.allow_shell = allow;
+        self
+    }
+
+    pub fn with_tool_index(mut self, index: Vec<ToolDescriptor>) -> Self {
+        self.tool_index = Arc::new(index);
+        self
+    }
+
+    pub fn with_ask_user(mut self, cb: Arc<dyn Fn(String) -> BoxFuture<'static, String> + Send + Sync>) -> Self {
+        self.ask_user = Some(cb);
         self
     }
 }

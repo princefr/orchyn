@@ -5,6 +5,8 @@ edition.workspace = true
 
 [dependencies]
 orchyn-scheduler = { path = "../../crates/scheduler" }
+orchyn-storage = { path = "../../crates/storage" }
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

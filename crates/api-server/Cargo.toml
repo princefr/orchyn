@@ -21,3 +21,6 @@ jsonwebtoken = "9.3"
 tracing.workspace = true
 async-stripe = { version = "0.33", features = ["runtime-tokio-hyper", "webhook-events"] }
 posthog-rs = "0.5"
+tokio-stream = { workspace = true, features = ["sync"] }
+orchyn-harness = { path = "../orchyn-harness" }
+sqlx = { workspace = true, features = ["runtime-tokio", "postgres"] }

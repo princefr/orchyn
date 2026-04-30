@@ -1,17 +1,7 @@
-use orchyn_core::{ActorId, Result};
+use orchyn_core::{ActorId, Result, Goal};
 use serde::{Deserialize, Serialize};
 use crate::engine::ActorEngine;
 use orchyn_model_client::ModelClient;
-use orchyn_action_planner::Goal;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ActorPersona {
-    Rational,
-    Confused,
-    Adversarial,
-    Chaos,
-    Accessibility,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActorBudget {
@@ -23,7 +13,6 @@ pub struct ActorBudget {
 
 pub struct Actor {
     pub id: uuid::Uuid,
-    pub persona: ActorPersona,
     pub goal: Goal,
     pub budget: ActorBudget,
 }
