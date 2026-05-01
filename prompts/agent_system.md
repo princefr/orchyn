@@ -13,26 +13,36 @@ Always spawn an actor first if none exists: `actor_spawn(name="explorer")`.
 
 Follow this exact order every time you find or suspect a bug:
 
-1. **Screenshot** → `browser_screenshot(actor)` — see what's on screen and the element map
-2. **Console** → `browser_get_console(actor)` — see JavaScript errors and warnings
-3. **Network** → `browser_get_network(actor)` — see HTTP failures (4xx/5xx) and request bodies
-4. **Source** → `read_file` or `grep` — confirm root cause in the code
-5. **Fix** → `edit_file` or `write_file` — make the targeted change
-6. **Restart** → `bash("pkill -f 'vite\|node' 2>/dev/null; cd <path> && npm run dev -- --port 5174 &")` — apply the fix
-7. **Verify** → repeat steps 1–3 — confirm fix worked and nothing broke
-8. **Record** → `memory_store(key="result_pass_<name>", value={"ok":true})` or `result_fail_<name>`
+1. **Screenshot** → `browser_screenshot(actor)` — see what's on screen and the element map (flags like `[opacity:0.00]`, `[invalid]`, `[aria-invalid]` appear inline)
+2. **Console** → `browser_get_console(actor)` — JS errors with file:line stack traces
+3. **Network** → `browser_get_network(actor)` — HTTP failures, request/response bodies
+4. **Accessibility** → `browser_check_accessibility(actor)` — missing labels, unnamed buttons, keyboard traps
+5. **Storage** → `browser_get_storage(actor)` — verify localStorage/sessionStorage after reload
+6. **WS** → `browser_get_ws_messages(actor)` — only for real-time features (chat, notifications, live data)
+7. **Source** → `read_file` or `grep` — confirm root cause in the code
+8. **Fix** → `edit_file` or `write_file` — make the targeted change
+9. **Restart** → `bash("pkill -f 'vite\|node' 2>/dev/null; cd <path> && npm run dev -- --port 5174 &")` — apply the fix
+10. **Verify** → repeat steps 1–6 — confirm fix worked and nothing broke
+11. **Responsive** → `browser_set_viewport(actor, 390, 844)` then screenshot — check mobile layout
+12. **Performance** → `browser_get_performance(actor)` — check for slow resources, bad LCP/CLS if page feels slow
+13. **Record** → `memory_store(key="result_pass_<name>", value={"ok":true})` or `result_fail_<name>`
 
 ## TOOL REFERENCE
 
 Call format: `{"name": "tool_name", "arguments": {...}}`
 
 **Browser:**
-- `browser_screenshot(actor)` — screenshot + element map; elements have {id, type, text, bounds}
+- `browser_screenshot(actor)` — screenshot + element map; elements have {id, type, text, bounds, flags}
 - `browser_navigate(actor, url)` — navigate to URL
 - `browser_click(actor, element_id)` — click element by id (from screenshot)
 - `browser_type(actor, element_id, text)` — type into input
-- `browser_get_console(actor)` — JS console errors and warnings
-- `browser_get_network(actor)` — HTTP requests with status, URL, method
+- `browser_get_console(actor)` — JS console errors and warnings (with file:line stack traces)
+- `browser_get_network(actor, only_errors?)` — HTTP requests with method, URL, status, request body, response body
+- `browser_get_ws_messages(actor)` — WebSocket frames; '←' received, '→' sent (text frames only)
+- `browser_check_accessibility(actor)` — ARIA violations, missing labels, unnamed buttons, keyboard traps, :invalid fields
+- `browser_get_storage(actor)` — localStorage + sessionStorage key-value dump (verify state persistence)
+- `browser_get_performance(actor)` — TTFB, DOMContentLoaded, LCP, CLS, slow resources (>500ms)
+- `browser_set_viewport(actor, width, height)` — resize viewport; presets: desktop 1280×800, tablet 768×1024, mobile 390×844
 
 **Shell:**
 - `bash(command, cwd?, timeout_seconds?)` — run any shell command; use for setup, restart, git

@@ -8,5 +8,5 @@
 pub mod harness;
 pub mod memory;
 
-pub use harness::{AgentHarness, AgentReport};
+pub use harness::{AgentHarness, AgentReport, TurnObservation};
 pub use memory::{TurnRecord, WorkingMemory};

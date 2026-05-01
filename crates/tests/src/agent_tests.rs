@@ -138,6 +138,7 @@ fn agent_report_defaults_are_sensible() {
         working_memory: serde_json::Value::Object(Default::default()),
         completed: false,
         final_report: None,
+        turn_observations: vec![],
     };
     assert!(!report.completed);
     assert!(report.final_report.is_none());

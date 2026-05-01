@@ -46,13 +46,29 @@ impl Tool for GapReportTool {
     ) -> BoxFuture<'a, Result<ToolResult>> {
         async move {
             let id = Uuid::new_v4();
+            let description = args.get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown gap");
             let entry = json!({
                 "gap_id": id,
-                "description": args.get("description").cloned().unwrap_or_default(),
+                "description": description,
                 "severity": args.get("severity").cloned().unwrap_or_default(),
                 "reproduction": args.get("reproduction").cloned().unwrap_or(json!([])),
             });
             store_in_memory(ctx, format!("gap_{id}"), entry.clone()).await;
+            // Every gap is a test failure — auto-record result_fail_* so the
+            // report's tests_executed / tests_failed counts are consistent.
+            let slug = description
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .take(30)
+                .collect::<String>()
+                .to_lowercase();
+            store_in_memory(
+                ctx,
+                format!("result_fail_{slug}"),
+                json!({"ok": false, "gap_id": id, "reason": description}),
+            ).await;
             Ok(ToolResult::ok(json!({"gap_id": id, "status": "recorded"})))
         }
         .boxed()

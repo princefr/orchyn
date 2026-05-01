@@ -10,7 +10,7 @@
 /// - `tests/fixtures/broken-login/`   — Express login that sets a cookie but
 ///   the dashboard page ignores it.
 /// - `tests/fixtures/qa-target/`      — Vue 3 + Vite app with 7 intentional
-///   bugs. Requires `npm run dev` on port 5174 — marked `#[ignore]`.
+///   bugs. The real-LLM test lets the agent start the server autonomously.
 ///
 /// # Prerequisites
 /// - Node.js must be in PATH.
@@ -22,8 +22,8 @@
 mod tests {
     use futures::future::{BoxFuture, FutureExt};
     use orchyn_core::{PlatformAdapter, Result};
-    use orchyn_harness::agent::AgentHarness;
-    use orchyn_model_client::MockClient;
+    use orchyn_harness::agent::{AgentHarness, TurnObservation};
+    use orchyn_model_client::{MockClient, QwenClient};
     use orchyn_platform_web::WebAdapter;
     use orchyn_toolkit::{default_registry, AdapterFactory, ToolContext};
     use std::path::{Path, PathBuf};
@@ -115,6 +115,62 @@ mod tests {
         AgentHarness::new(model, default_registry(), ctx, max_turns)
     }
 
+    /// Build a harness wired to a real WebAdapter and the actual Qwen 3.5 0.8B model.
+    fn real_agent_harness(
+        project_root: &Path,
+        url: &str,
+        max_turns: usize,
+    ) -> AgentHarness {
+        let model = QwenClient::new(None);
+        let factory = Arc::new(WebAdapterFactory { url: url.to_string() });
+        let ctx = ToolContext::new(project_root)
+            .with_factory(factory)
+            .with_shell(true);
+        AgentHarness::new(model, default_registry(), ctx, max_turns)
+    }
+
+    /// Assert that every STATE snapshot collected by the harness has the
+    /// required telemetry fields with valid structure. This verifies the sensor
+    /// fusion pipeline actually wired all four channels each turn — not just
+    /// the channels the model happened to ask about.
+    fn assert_turn_telemetry(turn_observations: &[TurnObservation]) {
+        assert!(
+            !turn_observations.is_empty(),
+            "harness must collect at least one STATE snapshot"
+        );
+        for obs in turn_observations {
+            let turn = obs.turn;
+            // Every actor must have the four telemetry channels
+            let actors = obs.state.as_object()
+                .unwrap_or_else(|| panic!("turn {turn}: STATE must be a JSON object"));
+            assert!(!actors.is_empty(), "turn {turn}: STATE must have at least one actor");
+
+            for (actor_id, state) in actors {
+                let url = state.get("current_url")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or_else(|| panic!("turn {turn}/{actor_id}: missing current_url"));
+                assert!(!url.is_empty(), "turn {turn}/{actor_id}: current_url must not be empty");
+
+                assert!(
+                    state.get("elements").and_then(|e| e.as_array()).is_some(),
+                    "turn {turn}/{actor_id}: missing or non-array 'elements' in STATE"
+                );
+                assert!(
+                    state.get("console_errors").and_then(|e| e.as_array()).is_some(),
+                    "turn {turn}/{actor_id}: missing or non-array 'console_errors' in STATE"
+                );
+                assert!(
+                    state.get("http_requests").and_then(|r| r.as_array()).is_some(),
+                    "turn {turn}/{actor_id}: missing or non-array 'http_requests' in STATE"
+                );
+                assert!(
+                    state.get("ws_messages").and_then(|w| w.as_array()).is_some(),
+                    "turn {turn}/{actor_id}: missing or non-array 'ws_messages' in STATE"
+                );
+            }
+        }
+    }
+
     // ── Test 1: raw WebAdapter screenshot ────────────────────────────────────
 
     /// Verifies that a `WebAdapter` successfully takes a screenshot of a live
@@ -161,6 +217,52 @@ mod tests {
         assert_eq!(report.tests_executed, 1, "one test recorded");
         assert_eq!(report.tests_failed, 1, "that test failed");
         assert_eq!(report.tests_passed, 0);
+    }
+
+    // ── Test 2.5: Real LLM finds gap in broken-counter ───────────────────────
+
+    /// This test uses the actual Qwen 3.5 0.8B model to explore the broken-counter
+    /// fixture. It verifies that the model can autonomously decide to use tools
+    /// and eventually find the gap.
+    #[tokio::test]
+    #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
+    async fn harness_real_llm_explores_broken_counter() {
+        let srv = FixtureServer::start("broken-counter", 18096);
+
+        let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
+        let report = harness.run(&srv.url()).await.expect("harness.run failed");
+
+        assert!(report.completed, "agent should set done=true");
+        assert!(report.gaps_found >= 1, "should find the gap autonomously");
+        assert!(report.tests_executed >= 1);
+        assert!(report.tests_failed >= 1);
+        assert_turn_telemetry(&report.turn_observations);
+    }
+
+    // ── Test 2.7: Fully Autonomous Lifecycle ────────────────────────────────
+
+    /// This test represents the "holy grail" of autonomy: the agent is given
+    /// a path to a project, and it must autonomously:
+    /// 1. Run `npm install` via shell_execute.
+    /// 2. Figure out how to start the app.
+    /// 3. Explore and find gaps.
+    #[tokio::test]
+    #[ignore = "Full autonomous run with real LLM is slow and model-heavy"]
+    async fn harness_autonomous_lifecycle_todo_app() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/todo-app")
+            .canonicalize()
+            .unwrap();
+
+        // We don't start the FixtureServer here because the agent should do it!
+        // But for a stable test, we'll give it the goal of getting the app running.
+        let mut harness = real_agent_harness(&root, "http://localhost:8080", 25);
+        
+        let goal = "Install dependencies, start the app on port 8080, and verify if the todo list works.";
+        let report = harness.run(goal).await.expect("Autonomous run failed");
+
+        assert!(report.completed);
+        assert!(report.tests_executed > 0);
     }
 
     // ── Test 3: browser_get_console surfaces injected error log ──────────────
@@ -234,6 +336,72 @@ mod tests {
         let report = harness.run(&srv.url()).await.expect("harness.run failed");
 
         assert!(report.completed);
+    }
+
+    // ── Test 2.8: Real LLM finds auth gap in broken-login ───────────────────
+
+    /// Qwen 3.5 0.8B explores the broken-login fixture autonomously.
+    /// The fixture sets a session cookie on POST /api/login but the dashboard
+    /// route never validates it — the auth gap must be found and reported.
+    #[tokio::test]
+    #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
+    async fn harness_real_llm_explores_broken_login() {
+        let srv = FixtureServer::start("broken-login", 18097);
+
+        let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
+        let report = harness.run(&srv.url()).await.expect("harness.run failed");
+
+        assert!(report.completed, "agent should set done=true");
+        assert!(report.gaps_found >= 1, "should find the auth gap autonomously");
+        assert!(report.tests_executed >= 1);
+        assert!(report.tests_failed >= 1);
+        assert_turn_telemetry(&report.turn_observations);
+    }
+
+    // ── Test 2.9: Real LLM explores todo-app ────────────────────────────────
+
+    /// Qwen 3.5 0.8B explores the shared-team todo app fixture.
+    /// The app uses innerHTML for list items — an XSS vector — and the server
+    /// accepts empty todo text. The agent must surface at least one gap.
+    #[tokio::test]
+    #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
+    async fn harness_real_llm_explores_todo_app() {
+        let srv = FixtureServer::start("todo-app", 18098);
+
+        let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
+        let report = harness.run(&srv.url()).await.expect("harness.run failed");
+
+        assert!(report.completed, "agent should set done=true");
+        assert!(report.gaps_found >= 1, "should find at least one gap");
+        assert!(report.tests_executed >= 1);
+        assert_turn_telemetry(&report.turn_observations);
+    }
+
+    // ── Test 2.10: Real LLM explores qa-target (Vue 3 + Vite) ───────────────
+
+    /// Qwen 3.5 0.8B explores the qa-target Vue 3 app which has 7 intentional
+    /// bugs (BUG-1 through BUG-7). The agent autonomously runs `npm run dev`,
+    /// discovers the port from Vite's output, navigates there, then finds bugs.
+    #[tokio::test]
+    #[ignore = "requires Qwen 3.5 0.8B model and npm/node in PATH"]
+    async fn harness_real_llm_explores_qa_target() {
+        let qa_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/qa-target")
+            .canonicalize()
+            .unwrap();
+
+        // No FixtureServer — the agent autonomously starts the dev server via bash.
+        let mut harness = real_agent_harness(&qa_dir, "about:blank", 25);
+        let report = harness
+            .run(&qa_dir.display().to_string())
+            .await
+            .expect("harness.run failed");
+
+        assert!(report.completed, "agent should set done=true");
+        assert!(report.gaps_found >= 1, "should find at least one of the 7 bugs");
+        assert!(report.tests_executed >= 1);
+        assert!(report.tests_failed >= 1);
+        assert_turn_telemetry(&report.turn_observations);
     }
 
     // ── Test 6: qa-target Vite app (ignored — needs dev server) ──────────────

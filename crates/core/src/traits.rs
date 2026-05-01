@@ -67,6 +67,28 @@ pub trait PlatformAdapter: Send + Sync + Debug {
     fn shutdown(&mut self) -> BoxFuture<'_, Result<()>> {
         async move { Ok(()) }.boxed()
     }
+
+    /// Evaluate a JavaScript expression and return the result as a JSON string.
+    fn eval_js(&mut self, js: &str) -> BoxFuture<'_, Result<String>> {
+        let _ = js;
+        async move {
+            Err(OrchynError::Platform(
+                "eval_js not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
+
+    /// Resize the browser viewport (for responsive testing).
+    fn set_viewport(&mut self, width: u32, height: u32) -> BoxFuture<'_, Result<()>> {
+        let _ = (width, height);
+        async move {
+            Err(OrchynError::Platform(
+                "set_viewport not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
 }
 
 pub type Result<T> = std::result::Result<T, OrchynError>;

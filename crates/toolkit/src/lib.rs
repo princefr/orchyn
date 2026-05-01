@@ -13,8 +13,10 @@ pub mod task_tools;
 pub mod report_tools;
 
 pub use browser_tools::{
-    BrowserClickTool, BrowserGetConsoleTool, BrowserGetNetworkTool, BrowserNavigateTool,
-    BrowserScreenshotTool, BrowserTypeTool,
+    BrowserCheckAccessibilityTool, BrowserClickTool, BrowserGetConsoleTool,
+    BrowserGetNetworkTool, BrowserGetPerformanceTool, BrowserGetStorageTool,
+    BrowserGetWsMessagesTool, BrowserNavigateTool, BrowserScreenshotTool,
+    BrowserSetViewportTool, BrowserTypeTool,
 };
 pub use file_tools::{
     ReadFileTool, WriteFileTool, EditFileTool, GrepTool, GlobTool,
@@ -97,6 +99,11 @@ pub fn default_registry() -> ToolRegistry {
     reg.register(Box::new(BrowserTypeTool));
     reg.register(Box::new(BrowserGetConsoleTool));
     reg.register(Box::new(BrowserGetNetworkTool));
+    reg.register(Box::new(BrowserCheckAccessibilityTool));
+    reg.register(Box::new(BrowserGetStorageTool));
+    reg.register(Box::new(BrowserGetPerformanceTool));
+    reg.register(Box::new(BrowserSetViewportTool));
+    reg.register(Box::new(BrowserGetWsMessagesTool));
     
     // Additional actors
     reg.register(Box::new(ActorSpawnTool));

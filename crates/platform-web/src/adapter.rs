@@ -1,4 +1,7 @@
+use chrono::Utc;
 use futures::future::{BoxFuture, FutureExt};
+use headless_chrome::protocol::cdp::types::Event;
+use headless_chrome::protocol::cdp::{Emulation, Log, Network};
 use headless_chrome::{Browser, LaunchOptions};
 use orchyn_action_executor::{Action, DeviceInfo, PlatformAdapter};
 use orchyn_core::action::{Action as HarnessAction, AnnotatedElement, BoundingBox};
@@ -6,6 +9,7 @@ use orchyn_core::{
     ConsoleLog, DiagnosticEvent, LogLevel, NetworkEvent, NetworkRequest, OrchynError, Platform,
     RawTelemetry, Result, UiElement,
 };
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -15,7 +19,7 @@ pub struct WebAdapter {
     device_info: DeviceInfo,
     diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>>,
     network_events: Arc<Mutex<Vec<NetworkEvent>>>,
-    _response_bodies: Arc<Mutex<std::collections::HashMap<String, String>>>,
+    ws_messages: Arc<Mutex<Vec<String>>>,
 }
 
 impl std::fmt::Debug for WebAdapter {
@@ -34,25 +38,241 @@ impl WebAdapter {
             LaunchOptions::default_builder()
                 .headless(true)
                 .build()
-                .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?,
+                .map_err(|e| OrchynError::Internal(e.to_string()))?,
         )
-        .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+        .map_err(|e| OrchynError::Internal(e.to_string()))?;
 
         let tab = browser
             .new_tab()
-            .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+            .map_err(|e| OrchynError::Internal(e.to_string()))?;
 
-        let diagnostics = Arc::new(Mutex::new(Vec::new()));
-        let network_events = Arc::new(Mutex::new(Vec::new()));
-        let response_bodies = Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>> = Arc::new(Mutex::new(Vec::new()));
+        let network_events: Arc<Mutex<Vec<NetworkEvent>>> = Arc::new(Mutex::new(Vec::new()));
+        let ws_messages: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
 
+        // Enable Log + Runtime domains before registering the listener.
         tab.enable_log()
-            .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+            .map_err(|e| OrchynError::Internal(e.to_string()))?
+            .enable_runtime()
+            .map_err(|e| OrchynError::Internal(e.to_string()))?;
+
+        // Enable Network domain (idempotent; also called internally by register_response_handling).
+        tab.call_method(Network::Enable {
+            max_total_buffer_size: None,
+            max_resource_buffer_size: None,
+            max_post_data_size: None,
+            report_direct_socket_traffic: None,
+            enable_durable_messages: None,
+        })
+        .map_err(|e| OrchynError::Internal(format!("Network.enable: {e}")))?;
+
+        // request_id → (method, post_data) from RequestWillBeSent so we can attach them to the
+        // response. Shared between the event listener and the response handler.
+        let pending: Arc<Mutex<HashMap<String, (String, Option<String>)>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+
+        // ── event listener: console, WS frames, request capture, network failures ──────────────
+        {
+            let diag_l = Arc::clone(&diagnostics);
+            let net_l = Arc::clone(&network_events);
+            let ws_l = Arc::clone(&ws_messages);
+            let pending_l = Arc::clone(&pending);
+
+            tab.add_event_listener(Arc::new(move |event: &Event| {
+                match event {
+                    // Log-domain console messages (console.log/warn/error → Log.entryAdded).
+                    Event::LogEntryAdded(ev) => {
+                        let level = match ev.params.entry.level {
+                            Log::LogEntryLevel::Error => LogLevel::Error,
+                            Log::LogEntryLevel::Warning => LogLevel::Warn,
+                            _ => LogLevel::Info,
+                        };
+                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                            level,
+                            message: ev.params.entry.text.clone(),
+                            timestamp: Utc::now(),
+                        });
+                    }
+
+                    // Uncaught JS exceptions — include file + line + first stack frame.
+                    Event::RuntimeExceptionThrown(ev) => {
+                        let details = &ev.params.exception_details;
+                        let base_msg = details
+                            .exception
+                            .as_ref()
+                            .and_then(|e| e.description.clone())
+                            .unwrap_or_else(|| details.text.clone());
+
+                        // Attach file:line if available.
+                        let location = if let Some(url) = &details.url {
+                            format!(" ({}:{}:{})", url, details.line_number, details.column_number)
+                        } else {
+                            String::new()
+                        };
+
+                        // Append first few call frames so the model knows where to look.
+                        let frames = details
+                            .stack_trace
+                            .as_ref()
+                            .map(|st| {
+                                st.call_frames
+                                    .iter()
+                                    .take(3)
+                                    .map(|f| {
+                                        format!(
+                                            "\n    at {}{}:{}:{}",
+                                            if f.function_name.is_empty() {
+                                                "<anonymous>".to_string()
+                                            } else {
+                                                f.function_name.clone()
+                                            },
+                                            if f.url.is_empty() {
+                                                String::new()
+                                            } else {
+                                                format!(" ({})", f.url)
+                                            },
+                                            f.line_number,
+                                            f.column_number,
+                                        )
+                                    })
+                                    .collect::<String>()
+                            })
+                            .unwrap_or_default();
+
+                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                            level: LogLevel::Error,
+                            message: format!("Uncaught: {base_msg}{location}{frames}"),
+                            timestamp: Utc::now(),
+                        });
+                    }
+
+                    // Direct console API calls via the Runtime domain (distinct from Log domain).
+                    // Only capture warn/error to avoid noise.
+                    Event::RuntimeConsoleAPICalled(ev) => {
+                        use headless_chrome::protocol::cdp::Runtime::ConsoleAPICalledEventTypeOption;
+                        let level = match ev.params.Type {
+                            ConsoleAPICalledEventTypeOption::Error => LogLevel::Error,
+                            ConsoleAPICalledEventTypeOption::Warning => LogLevel::Warn,
+                            _ => return,
+                        };
+                        let msg = ev
+                            .params
+                            .args
+                            .iter()
+                            .filter_map(|a| {
+                                a.value
+                                    .as_ref()
+                                    .map(|v| v.to_string())
+                                    .or_else(|| a.description.clone())
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                            level,
+                            message: msg,
+                            timestamp: Utc::now(),
+                        });
+                    }
+
+                    // Store request metadata so the response handler can join it.
+                    Event::NetworkRequestWillBeSent(ev) => {
+                        pending_l.lock().unwrap().insert(
+                            ev.params.request_id.clone(),
+                            (
+                                ev.params.request.method.clone(),
+                                ev.params.request.post_data.clone(),
+                            ),
+                        );
+                    }
+
+                    // Network-level failures (DNS, CORS, connection refused) — no HTTP status.
+                    Event::NetworkLoadingFailed(ev) => {
+                        let (method, req_body) = pending_l
+                            .lock()
+                            .unwrap()
+                            .remove(&ev.params.request_id)
+                            .unwrap_or_default();
+                        net_l.lock().unwrap().push(NetworkEvent {
+                            method,
+                            url: String::new(),
+                            status: 0,
+                            request_body: req_body,
+                            response_body: Some(ev.params.error_text.clone()),
+                            timestamp: Utc::now(),
+                        });
+                    }
+
+                    // WebSocket frames (text frames only; opcode 1 = text, 2 = binary).
+                    Event::NetworkWebSocketFrameReceived(ev) => {
+                        if ev.params.response.opcode as u8 == 1 {
+                            let payload = ev.params.response.payload_data.clone();
+                            if payload.len() <= 2048 {
+                                ws_l.lock().unwrap().push(format!("← {payload}"));
+                            } else {
+                                ws_l.lock().unwrap().push(format!("← {}…", &payload[..2048]));
+                            }
+                        }
+                    }
+                    Event::NetworkWebSocketFrameSent(ev) => {
+                        if ev.params.response.opcode as u8 == 1 {
+                            let payload = ev.params.response.payload_data.clone();
+                            if payload.len() <= 2048 {
+                                ws_l.lock().unwrap().push(format!("→ {payload}"));
+                            } else {
+                                ws_l.lock().unwrap().push(format!("→ {}…", &payload[..2048]));
+                            }
+                        }
+                    }
+
+                    _ => {}
+                }
+            }))
+            .map_err(|e| OrchynError::Internal(format!("event_listener: {e}")))?;
+        }
+
+        // ── response handler: fires on loadingFinished, gives us status + optional body ────────
+        {
+            let net_l = Arc::clone(&network_events);
+            let pending_l = Arc::clone(&pending);
+
+            tab.register_response_handling(
+                "orchyn",
+                Box::new(move |params, fetch_body| {
+                    let (method, req_body) = pending_l
+                        .lock()
+                        .unwrap()
+                        .remove(&params.request_id)
+                        .unwrap_or_default();
+
+                    // Only fetch body for API calls; skip images, fonts, CSS, scripts.
+                    let resp_body = match params.Type {
+                        Network::ResourceType::Xhr
+                        | Network::ResourceType::Fetch
+                        | Network::ResourceType::Document => fetch_body()
+                            .ok()
+                            .filter(|r| !r.base_64_encoded)
+                            .map(|r| r.body)
+                            .filter(|b| !b.is_empty() && b.len() <= 16_384),
+                        _ => None,
+                    };
+
+                    net_l.lock().unwrap().push(NetworkEvent {
+                        method,
+                        url: params.response.url.clone(),
+                        status: params.response.status as u16,
+                        request_body: req_body,
+                        response_body: resp_body,
+                        timestamp: Utc::now(),
+                    });
+                }),
+            )
+            .map_err(|e| OrchynError::Internal(format!("response_handler: {e}")))?;
+        }
 
         tab.navigate_to(url)
-            .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+            .map_err(|e| OrchynError::Internal(e.to_string()))?;
         tab.wait_until_navigated()
-            .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+            .map_err(|e| OrchynError::Internal(e.to_string()))?;
 
         Ok(Self {
             _browser: browser,
@@ -64,8 +284,43 @@ impl WebAdapter {
             },
             diagnostics,
             network_events,
-            _response_bodies: response_bodies,
+            ws_messages,
         })
+    }
+
+    /// Change the browser viewport. Affects both screenshot dimensions and responsive CSS.
+    pub fn set_viewport(&self, width: u32, height: u32) -> Result<()> {
+        self.tab
+            .call_method(Emulation::SetDeviceMetricsOverride {
+                width,
+                height,
+                device_scale_factor: 1.0,
+                mobile: false,
+                scale: None,
+                screen_width: None,
+                screen_height: None,
+                position_x: None,
+                position_y: None,
+                dont_set_visible_size: None,
+                screen_orientation: None,
+                viewport: None,
+                display_feature: None,
+                device_posture: None,
+            })
+            .map_err(|e| OrchynError::Platform(format!("set_viewport: {e}")))?;
+        Ok(())
+    }
+
+    /// Evaluate an arbitrary JS expression and return the JSON result string.
+    pub fn eval_json(&self, js: &str) -> Result<String> {
+        let remote = self
+            .tab
+            .evaluate(js, false)
+            .map_err(|e| OrchynError::Platform(format!("eval: {e}")))?;
+        Ok(remote
+            .value
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".to_string()))
     }
 }
 
@@ -81,7 +336,7 @@ impl PlatformAdapter for WebAdapter {
             use headless_chrome::protocol::cdp::Page;
             let png = tab
                 .capture_screenshot(Page::CaptureScreenshotFormatOption::Png, None, None, true)
-                .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                .map_err(|e| OrchynError::Internal(e.to_string()))?;
             Ok(png)
         }
         .boxed()
@@ -100,18 +355,18 @@ impl PlatformAdapter for WebAdapter {
                         y: y as f64,
                     };
                     tab.click_point(point)
-                        .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                        .map_err(|e| OrchynError::Internal(e.to_string()))?;
                 }
                 Action::Type { text } => {
                     tab.type_str(&text)
-                        .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                        .map_err(|e| OrchynError::Internal(e.to_string()))?;
                 }
                 Action::Wait { ms } => {
                     tokio::time::sleep(tokio::time::Duration::from_millis(ms as u64)).await;
                 }
                 Action::Reset => {
                     tab.navigate_to("about:blank")
-                        .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                        .map_err(|e| OrchynError::Internal(e.to_string()))?;
                 }
             }
             Ok(())
@@ -149,17 +404,12 @@ impl PlatformAdapter for WebAdapter {
         let tab = self.tab.clone();
         async move {
             tab.navigate_to("about:blank")
-                .map_err(|e| orchyn_core::OrchynError::Internal(e.to_string()))?;
+                .map_err(|e| OrchynError::Internal(e.to_string()))?;
             Ok(())
         }
         .boxed()
     }
 
-    // === Hybrid harness extensions ===
-
-    /// Enumerates interactive UI elements via in-page JS and returns them in
-    /// document order. Elements with zero area or off-screen are filtered out
-    /// in JS so the caller only sees elements a real user could click.
     fn scrape_elements(&mut self) -> BoxFuture<'_, Result<Vec<UiElement>>> {
         let tab = self.tab.clone();
         async move {
@@ -188,21 +438,24 @@ impl PlatformAdapter for WebAdapter {
         let tab = self.tab.clone();
         let diags = self.diagnostics.clone();
         let nets = self.network_events.clone();
+        let ws = self.ws_messages.clone();
         async move {
             let console_logs: Vec<ConsoleLog> = {
                 let mut lock = diags.lock().unwrap();
-                let drained: Vec<_> = lock.drain(..).collect();
-                drained.into_iter().filter_map(diag_to_console).collect()
+                lock.drain(..).filter_map(diag_to_console).collect()
             };
             let network_requests: Vec<NetworkRequest> = {
                 let mut lock = nets.lock().unwrap();
-                let drained: Vec<_> = lock.drain(..).collect();
-                drained.into_iter().map(net_to_request).collect()
+                lock.drain(..).map(net_to_request).collect()
+            };
+            let ws_messages: Vec<String> = {
+                let mut lock = ws.lock().unwrap();
+                lock.drain(..).collect()
             };
             Ok(RawTelemetry {
                 console_logs,
                 network_requests,
-                ws_messages: vec![],
+                ws_messages,
                 current_url: tab.get_url(),
             })
         }
@@ -238,7 +491,6 @@ impl PlatformAdapter for WebAdapter {
                 HarnessAction::Clear { target } => {
                     let bb = lookup(&element_map, target)?;
                     click_center(&tab, &bb)?;
-                    // Select-all + delete: reasonable cross-platform clear.
                     tab.evaluate(
                         "document.activeElement && (document.activeElement.value = '')",
                         false,
@@ -255,9 +507,7 @@ impl PlatformAdapter for WebAdapter {
                 }
                 HarnessAction::AssertSuccess { .. }
                 | HarnessAction::AssertFailure { .. }
-                | HarnessAction::WsWait { .. } => {
-                    // Assertions are evaluated by the harness, not the adapter.
-                }
+                | HarnessAction::WsWait { .. } => {}
             }
             Ok(())
         }
@@ -267,24 +517,59 @@ impl PlatformAdapter for WebAdapter {
     fn shutdown(&mut self) -> BoxFuture<'_, Result<()>> {
         async move { Ok(()) }.boxed()
     }
+
+    fn eval_js(&mut self, js: &str) -> BoxFuture<'_, Result<String>> {
+        let tab = self.tab.clone();
+        let js = js.to_string();
+        async move {
+            let remote = tab
+                .evaluate(&js, false)
+                .map_err(|e| OrchynError::Platform(format!("eval_js: {e}")))?;
+            Ok(remote
+                .value
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "null".to_string()))
+        }
+        .boxed()
+    }
+
+    fn set_viewport(&mut self, width: u32, height: u32) -> BoxFuture<'_, Result<()>> {
+        let tab = self.tab.clone();
+        async move {
+            tab.call_method(Emulation::SetDeviceMetricsOverride {
+                width,
+                height,
+                device_scale_factor: 1.0,
+                mobile: false,
+                scale: None,
+                screen_width: None,
+                screen_height: None,
+                position_x: None,
+                position_y: None,
+                dont_set_visible_size: None,
+                screen_orientation: None,
+                viewport: None,
+                display_feature: None,
+                device_posture: None,
+            })
+            .map_err(|e| OrchynError::Platform(format!("set_viewport: {e}")))?;
+            Ok(())
+        }
+        .boxed()
+    }
 }
 
-// === scrape_elements helpers ===
+// === JS snippets ============================================================
 
+/// Interactive element scraper. Includes CSS anomaly flags so the model can
+/// detect invisible-but-present elements and invalid form fields.
 const SCRAPE_ELEMENTS_JS: &str = r#"
 (() => {
     const SELECTORS = [
-        'button',
-        'a[href]',
-        'input:not([type="hidden"])',
-        'textarea',
-        'select',
-        '[role="button"]',
-        '[role="link"]',
-        '[role="checkbox"]',
-        '[role="radio"]',
-        '[role="textbox"]',
-        '[role="combobox"]',
+        'button', 'a[href]', 'input:not([type="hidden"])',
+        'textarea', 'select',
+        '[role="button"]', '[role="link"]', '[role="checkbox"]',
+        '[role="radio"]', '[role="textbox"]', '[role="combobox"]',
         '[contenteditable="true"]',
     ];
     const seen = new Set();
@@ -295,7 +580,6 @@ const SCRAPE_ELEMENTS_JS: &str = r#"
             seen.add(el);
             const r = el.getBoundingClientRect();
             if (r.width <= 0 || r.height <= 0) continue;
-            // Skip elements scrolled fully off-screen.
             if (r.bottom < 0 || r.right < 0) continue;
             const style = window.getComputedStyle(el);
             if (style.visibility === 'hidden' || style.display === 'none') continue;
@@ -304,6 +588,14 @@ const SCRAPE_ELEMENTS_JS: &str = r#"
             const type = role || tag;
             let text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || '').trim();
             if (text.length > 80) text = text.slice(0, 80);
+            // CSS anomaly flags
+            const opacity = parseFloat(style.opacity);
+            const flags = [];
+            if (opacity < 0.1) flags.push('opacity:' + opacity.toFixed(2));
+            if (style.pointerEvents === 'none') flags.push('pointer-events:none');
+            if (el.matches(':invalid')) flags.push('invalid');
+            if (el.getAttribute('aria-invalid') === 'true') flags.push('aria-invalid');
+            if (style.color === style.backgroundColor && style.color !== '') flags.push('invisible-text');
             out.push({
                 type,
                 text: text || null,
@@ -311,12 +603,110 @@ const SCRAPE_ELEMENTS_JS: &str = r#"
                 y: Math.max(0, Math.round(r.top)),
                 w: Math.round(r.width),
                 h: Math.round(r.height),
+                flags: flags.length ? flags : null,
             });
         }
     }
     return JSON.stringify(out);
 })()
 "#;
+
+/// Accessibility violation scanner. Returns an array of plain-English issues.
+pub const ARIA_VIOLATIONS_JS: &str = r#"
+(() => {
+    const issues = [];
+    // Images without alt text
+    for (const img of document.querySelectorAll('img:not([alt])')) {
+        const src = img.src.split('/').pop() || 'img';
+        issues.push({ type: 'missing-alt', element: 'img', detail: src });
+    }
+    // Inputs without labels
+    for (const inp of document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"])')) {
+        const id = inp.id;
+        const hasLabel = (id && document.querySelector('label[for="' + id + '"]'))
+            || inp.closest('label')
+            || inp.getAttribute('aria-label')
+            || inp.getAttribute('aria-labelledby');
+        if (!hasLabel) {
+            issues.push({ type: 'missing-label', element: 'input', detail: inp.type || 'text', name: inp.name });
+        }
+    }
+    // Buttons without accessible names
+    for (const btn of document.querySelectorAll('button, [role="button"]')) {
+        const name = (btn.innerText || btn.getAttribute('aria-label') || btn.getAttribute('title') || '').trim();
+        if (!name) issues.push({ type: 'unnamed-button', element: btn.tagName.toLowerCase() });
+    }
+    // Links without text
+    for (const a of document.querySelectorAll('a[href]')) {
+        const name = (a.innerText || a.getAttribute('aria-label') || a.getAttribute('title') || '').trim();
+        if (!name) issues.push({ type: 'unnamed-link', href: a.href });
+    }
+    // Focusable elements with tabIndex < 0 that look interactive
+    for (const el of document.querySelectorAll('button, a, input, select, textarea')) {
+        if (el.tabIndex < 0) {
+            issues.push({ type: 'unreachable-by-keyboard', element: el.tagName.toLowerCase(),
+                text: (el.innerText || el.value || '').trim().slice(0, 40) });
+        }
+    }
+    // form :invalid fields
+    for (const el of document.querySelectorAll(':invalid')) {
+        issues.push({ type: 'invalid-field', element: el.tagName.toLowerCase(),
+            name: el.name || el.id || null });
+    }
+    return JSON.stringify(issues);
+})()
+"#;
+
+/// localStorage + sessionStorage snapshot (keys and values, capped at 4 KB each).
+pub const STORAGE_SNAPSHOT_JS: &str = r#"
+(() => {
+    const dump = (store) => {
+        const out = {};
+        for (let i = 0; i < store.length; i++) {
+            const k = store.key(i);
+            let v = store.getItem(k);
+            if (v && v.length > 4096) v = v.slice(0, 4096) + '…';
+            out[k] = v;
+        }
+        return out;
+    };
+    return JSON.stringify({
+        localStorage: dump(localStorage),
+        sessionStorage: dump(sessionStorage),
+    });
+})()
+"#;
+
+/// Performance metrics via the Web Performance API.
+pub const PERFORMANCE_JS: &str = r#"
+(() => {
+    const nav = performance.getEntriesByType('navigation')[0] || {};
+    const resources = performance.getEntriesByType('resource');
+    const slowResources = resources
+        .filter(r => r.duration > 500)
+        .map(r => ({ name: r.name.split('/').pop(), duration: Math.round(r.duration), type: r.initiatorType }))
+        .slice(0, 10);
+    // LCP via PerformanceObserver buffer (only available if page loaded after observer)
+    const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
+    const lcp = lcpEntries.length ? Math.round(lcpEntries[lcpEntries.length - 1].startTime) : null;
+    const cls = (() => {
+        let score = 0;
+        for (const e of performance.getEntriesByType('layout-shift')) score += e.value;
+        return parseFloat(score.toFixed(4));
+    })();
+    return JSON.stringify({
+        domContentLoaded: Math.round(nav.domContentLoadedEventEnd - nav.startTime) || null,
+        loadComplete: Math.round(nav.loadEventEnd - nav.startTime) || null,
+        ttfb: Math.round(nav.responseStart - nav.startTime) || null,
+        lcp,
+        cls,
+        slowResources,
+        totalResources: resources.length,
+    });
+})()
+"#;
+
+// === helpers ================================================================
 
 #[derive(serde::Deserialize)]
 struct RawElement {
@@ -327,13 +717,24 @@ struct RawElement {
     y: u32,
     w: u32,
     h: u32,
+    flags: Option<Vec<String>>,
 }
 
 impl RawElement {
     fn into_ui(self) -> UiElement {
+        let mut label = self.text;
+        if let Some(flags) = self.flags {
+            if !flags.is_empty() {
+                let flag_str = format!("[{}]", flags.join(", "));
+                label = Some(match label {
+                    Some(t) => format!("{t} {flag_str}"),
+                    None => flag_str,
+                });
+            }
+        }
         UiElement {
             element_type: self.ty,
-            text: self.text,
+            text: label,
             bounds: BoundingBox {
                 x: self.x,
                 y: self.y,
