@@ -1,8 +1,11 @@
 pub mod agent;
+pub mod diff_engine;
 pub mod events;
 pub mod harness;
 pub mod types;
 
+pub use agent::AgentProgressEvent;
+pub use diff_engine::{DiffEngine, DiffReport, GapEntry};
 pub use events::*;
 pub use harness::HarnessRunResult;
 pub use harness::OrchynHarness;

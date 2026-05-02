@@ -37,6 +37,9 @@ impl WebAdapter {
         let browser = Browser::new(
             LaunchOptions::default_builder()
                 .headless(true)
+                // Default idle_browser_timeout is 30s — too short when LLM inference
+                // takes 15-40s per turn. Set to 10 minutes to outlast any turn.
+                .idle_browser_timeout(std::time::Duration::from_secs(600))
                 .build()
                 .map_err(|e| OrchynError::Internal(e.to_string()))?,
         )

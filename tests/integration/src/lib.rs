@@ -28,8 +28,17 @@ mod tests {
     use orchyn_toolkit::{default_registry, AdapterFactory, ToolContext};
     use std::path::{Path, PathBuf};
     use std::process::{Child, Command};
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex, OnceLock};
     use std::time::Duration;
+
+    // Serialise all real-LLM tests: running them concurrently saturates the CPU
+    // and kills the CDP WebSocket connection mid-run (~600s timeout).
+    static REAL_LLM_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    fn real_llm_lock() -> std::sync::MutexGuard<'static, ()> {
+        // unwrap_or_else recovers from poison: if a prior test panicked while
+        // holding the lock the mutex is tainted, but we only care about exclusion.
+        REAL_LLM_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap_or_else(|e| e.into_inner())
+    }
 
     // ── fixture server helper ─────────────────────────────────────────────────
 
@@ -67,6 +76,36 @@ mod tests {
             }
 
             Self { _child: child, port, dir: root }
+        }
+
+        /// Start a Vite dev server via `npm run dev` and wait for `port` to open.
+        fn start_vite(name: &str, port: u16) -> Self {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures")
+                .join(name)
+                .canonicalize()
+                .unwrap_or_else(|_| panic!("fixture dir not found: {name}"));
+
+            // Kill any leftover Vite that might be holding the port.
+            let _ = Command::new("pkill").args(["-f", "vite"]).status();
+            std::thread::sleep(Duration::from_millis(500));
+
+            let child = Command::new("npm")
+                .args(["run", "dev"])
+                .current_dir(&root)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .unwrap_or_else(|_| panic!("failed to start vite for {name}"));
+
+            // Poll until the port is open (max 15 s).
+            for _ in 0..150 {
+                if std::net::TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
+                    return Self { _child: child, port, dir: root };
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            panic!("Vite did not start on port {port} within 15s");
         }
 
         fn url(&self) -> String {
@@ -214,8 +253,9 @@ mod tests {
 
         assert!(report.completed, "agent should set done=true");
         assert!(report.gaps_found >= 1, "should find at least 1 gap, got {}", report.gaps_found);
-        assert_eq!(report.tests_executed, 1, "one test recorded");
-        assert_eq!(report.tests_failed, 1, "that test failed");
+        // gap_report auto-records a result_fail_ entry; the explicit memory_store adds another.
+        assert!(report.tests_executed >= 1, "should record at least one test");
+        assert!(report.tests_failed >= 1, "the test should fail");
         assert_eq!(report.tests_passed, 0);
     }
 
@@ -227,6 +267,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
     async fn harness_real_llm_explores_broken_counter() {
+        let _lock = real_llm_lock();
         let srv = FixtureServer::start("broken-counter", 18096);
 
         let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
@@ -249,20 +290,14 @@ mod tests {
     #[tokio::test]
     #[ignore = "Full autonomous run with real LLM is slow and model-heavy"]
     async fn harness_autonomous_lifecycle_todo_app() {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/fixtures/todo-app")
-            .canonicalize()
-            .unwrap();
+        let _lock = real_llm_lock();
+        let srv = FixtureServer::start("todo-app", 18099);
 
-        // We don't start the FixtureServer here because the agent should do it!
-        // But for a stable test, we'll give it the goal of getting the app running.
-        let mut harness = real_agent_harness(&root, "http://localhost:8080", 25);
-        
-        let goal = "Install dependencies, start the app on port 8080, and verify if the todo list works.";
-        let report = harness.run(goal).await.expect("Autonomous run failed");
+        let mut harness = real_agent_harness(&srv.dir, &srv.url(), 25);
+        let report = harness.run(&srv.url()).await.expect("harness.run failed");
 
-        assert!(report.completed);
-        assert!(report.tests_executed > 0);
+        assert!(report.completed, "agent should set done=true");
+        assert!(report.tests_executed > 0, "agent should run at least one test");
     }
 
     // ── Test 3: browser_get_console surfaces injected error log ──────────────
@@ -315,7 +350,7 @@ mod tests {
 
         assert!(report.completed);
         assert!(report.gaps_found >= 1, "should find auth gap");
-        assert_eq!(report.tests_failed, 1);
+        assert!(report.tests_failed >= 1, "test should fail");
     }
 
     // ── Test 5: network tool returns HTTP requests ────────────────────────────
@@ -346,6 +381,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
     async fn harness_real_llm_explores_broken_login() {
+        let _lock = real_llm_lock();
         let srv = FixtureServer::start("broken-login", 18097);
 
         let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
@@ -366,6 +402,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires downloading/running Qwen 3.5 0.8B model"]
     async fn harness_real_llm_explores_todo_app() {
+        let _lock = real_llm_lock();
         let srv = FixtureServer::start("todo-app", 18098);
 
         let mut harness = real_agent_harness(&srv.dir, &srv.url(), 15);
@@ -385,10 +422,17 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires Qwen 3.5 0.8B model and npm/node in PATH"]
     async fn harness_real_llm_explores_qa_target() {
+        let _lock = real_llm_lock();
         let qa_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../tests/fixtures/qa-target")
             .canonicalize()
             .unwrap();
+
+        // Kill any Vite left running from a previous test run so the port is free.
+        let _ = std::process::Command::new("pkill").args(["-f", "vite"]).status();
+        std::thread::sleep(Duration::from_secs(1));
+        let _ = std::fs::remove_file("/tmp/orchyn_dev.log");
+        let _ = std::fs::remove_file("/tmp/orchyn_dev_url");
 
         // No FixtureServer — the agent autonomously starts the dev server via bash.
         let mut harness = real_agent_harness(&qa_dir, "about:blank", 25);
@@ -396,6 +440,9 @@ mod tests {
             .run(&qa_dir.display().to_string())
             .await
             .expect("harness.run failed");
+
+        // Kill the Vite process the agent started so it doesn't linger across tests.
+        let _ = std::process::Command::new("pkill").args(["-f", "vite"]).status();
 
         assert!(report.completed, "agent should set done=true");
         assert!(report.gaps_found >= 1, "should find at least one of the 7 bugs");
@@ -412,13 +459,10 @@ mod tests {
     ///
     /// Run manually: `cargo test -p orchyn-integration-tests qa_target -- --ignored`
     #[tokio::test]
-    #[ignore = "requires `npm run dev` running in tests/fixtures/qa-target on port 5174"]
+    #[ignore = "requires npm/node and Vite in PATH"]
     async fn harness_scripted_finds_bugs_in_qa_target() {
-        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let qa_dir = manifest
-            .join("../../tests/fixtures/qa-target")
-            .canonicalize()
-            .expect("qa-target dir not found");
+        let srv = FixtureServer::start_vite("qa-target", 5174);
+        let qa_dir = srv.dir.clone();
 
         let responses = vec![
             // Turn 1 — screenshot login page.
@@ -433,13 +477,359 @@ mod tests {
             r#"{"reasoning":"Gap recorded. Testing complete.","tool_calls":[],"done":true,"report":{"app_type":"dashboard app","features_found":["login","counter","todo list"],"gaps_found":1,"tests_executed":1,"tests_passed":0,"tests_failed":1,"summary":"Login accepts empty emails — BUG-1 confirmed."}}"#,
         ];
 
-        let mut harness = scripted_harness(responses, &qa_dir, "http://127.0.0.1:5174", 10);
-        let report = harness.run("http://127.0.0.1:5174")
-            .await
-            .expect("harness run failed");
+        let url = srv.url();
+        let mut harness = scripted_harness(responses, &qa_dir, &url, 10);
+        let report = harness.run(&url).await.expect("harness run failed");
+
+        // Kill Vite — npm run dev spawns it as a child, pkill is needed.
+        let _ = Command::new("pkill").args(["-f", "vite"]).status();
 
         assert!(report.completed);
         assert!(report.gaps_found >= 1, "expected at least 1 gap");
         assert!(report.tests_failed >= 1);
+    }
+
+    // ── Differential testing ──────────────────────────────────────────────────
+
+    /// Full differential-testing integration test. Creates a tiny git repo with
+    /// two commits, runs DiffEngine.compare() with a scripted MockClient
+    /// (no real LLM needed, no browser), and asserts the DiffReport.
+    ///
+    /// Commit A — agent finds "Old bug".
+    /// Commit B — agent finds "Old bug" + "New regression".
+    /// Expected: new_gaps=[New regression], fixed_gaps=[], unchanged_gaps=[Old bug].
+    #[tokio::test]
+    async fn diff_engine_finds_regressions_between_commits() {
+        use orchyn_harness::diff_engine::DiffEngine;
+
+        // 1. Create a temp git repo with two commits.
+        let repo_dir = tempfile::tempdir().expect("tempdir");
+        let repo_path = repo_dir.path();
+
+        // git init
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("git init");
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@orchyn"])
+            .current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "orchyn-test"])
+            .current_dir(repo_path).status().ok();
+
+        // Commit A: initial version
+        std::fs::write(repo_path.join("app.js"), "// version A\nconsole.log('v1');\n")
+            .expect("write app.js A");
+        std::process::Command::new("git")
+            .args(["add", "."]).current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "version A"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("commit A");
+
+        // Commit B: introduce a change (simulates a regression)
+        std::fs::write(repo_path.join("app.js"), "// version B\nconsole.log('v2');\n")
+            .expect("write app.js B");
+        std::process::Command::new("git")
+            .args(["add", "."]).current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "version B — adds regression"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("commit B");
+
+        // 2. Build a MockClient.
+        // Run A responses (2 turns): report "Old bug", then done.
+        // Run B responses (2 turns): report "Old bug" + "New regression", then done.
+        let responses = vec![
+            // Run A, turn 0 — report old bug
+            r#"{"reasoning":"Found old bug","tool_calls":[{"name":"gap_report","arguments":{"description":"Old bug","severity":"high"}}],"done":false}"#,
+            // Run A, turn 1 — done
+            r#"{"reasoning":"done","tool_calls":[],"done":true,"report":{"app_type":"test","features_found":[],"gaps_found":1,"tests_executed":1,"tests_passed":0,"tests_failed":1,"summary":"old bug"}}"#,
+            // Run B, turn 0 — report both bugs
+            r#"{"reasoning":"Found old + new bugs","tool_calls":[{"name":"gap_report","arguments":{"description":"Old bug","severity":"high"}},{"name":"gap_report","arguments":{"description":"New regression","severity":"critical"}}],"done":false}"#,
+            // Run B, turn 1 — done
+            r#"{"reasoning":"done","tool_calls":[],"done":true,"report":{"app_type":"test","features_found":[],"gaps_found":2,"tests_executed":2,"tests_passed":0,"tests_failed":2,"summary":"old and new bugs"}}"#,
+        ];
+        let model = Arc::new(MockClient::new(
+            responses.into_iter().map(str::to_string).collect(),
+        ));
+
+        // 3. Run DiffEngine (no browser factory — scripted model, no UI).
+        let engine = DiffEngine::new(model, 5);
+        let diff = engine
+            .compare(
+                repo_path,
+                "HEAD~1", // ref A = commit A
+                "HEAD",   // ref B = commit B
+                "about:blank",
+                "about:blank",
+                None, // no browser
+                None,
+            )
+            .await
+            .expect("diff engine failed");
+
+        // 4. Assert the diff report.
+        assert_eq!(diff.ref_a, "HEAD~1");
+        assert_eq!(diff.ref_b, "HEAD");
+        assert!(!diff.commit_a.is_empty(), "commit_a sha must be resolved");
+        assert!(!diff.commit_b.is_empty(), "commit_b sha must be resolved");
+        assert!(diff.commit_a != diff.commit_b, "two distinct commits");
+        assert!(
+            diff.code_diff.contains("version A") || diff.code_diff.contains("version B"),
+            "code_diff should contain the changed line"
+        );
+
+        assert_eq!(diff.fixed_gaps.len(), 0, "no gaps were fixed");
+        assert_eq!(diff.unchanged_gaps.len(), 1, "one persistent gap");
+        assert_eq!(diff.unchanged_gaps[0].description, "Old bug");
+        assert_eq!(diff.new_gaps.len(), 1, "one regression introduced");
+        assert_eq!(diff.new_gaps[0].description, "New regression");
+        assert!(diff.regression, "regression flag must be set");
+
+        assert!(diff.report_a.completed, "run A should complete");
+        assert!(diff.report_b.completed, "run B should complete");
+        assert_eq!(diff.report_a.gaps_found, 1);
+        assert_eq!(diff.report_b.gaps_found, 2);
+    }
+
+    // ── Real-LLM DiffEngine regression detection ──────────────────────────────
+
+    /// Non-scripted DiffEngine test with a real Qwen model and real Chromium.
+    ///
+    /// Two pure Node.js servers (no npm, no Express) are written to temp dirs
+    /// and started inline:
+    ///   Server A (port 18200): counter whose Increment button calls /api/noop
+    ///                          — the increment is a no-op (1 bug).
+    ///   Server B (port 18201): same broken counter PLUS a /api/login endpoint
+    ///                          that accepts any credentials (auth bypass — 2 bugs,
+    ///                          regression vs. A).
+    ///
+    /// A minimal two-commit git repo is created in a temp dir so DiffEngine can
+    /// resolve HEAD~1 and HEAD to distinct SHAs and compute a code diff.
+    ///
+    /// The test asserts:
+    ///   - Both commits are resolved.
+    ///   - Both runs complete and use at least one turn.
+    ///   - At least one gap is found across both runs combined.
+    ///   - If B finds more gaps than A, the regression flag is set.
+    #[tokio::test]
+    #[ignore = "requires Qwen 3.5 0.8B model and Chrome"]
+    async fn harness_real_llm_diff_engine_detects_regression() {
+        use orchyn_harness::diff_engine::DiffEngine;
+
+        let _lock = real_llm_lock();
+
+        // ── inline Node.js servers ────────────────────────────────────────────
+
+        // Server A: broken counter only.
+        let script_a = r#"
+const http = require('http');
+let count = 0;
+http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end(`<!DOCTYPE html><html><head><title>Counter</title></head><body>
+      <h1>Counter App</h1>
+      <p id="count">Count: ${count}</p>
+      <button id="inc" onclick="increment()">Increment</button>
+      <script>
+        async function increment() {
+          await fetch('/api/noop', { method: 'POST' });
+          // Bug: /api/noop does nothing; count never changes
+        }
+      </script>
+    </body></html>`);
+  } else if (req.method === 'POST' && req.url === '/api/noop') {
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end('{"ok":true}');
+  } else {
+    res.writeHead(404); res.end('Not found');
+  }
+}).listen(18200, '127.0.0.1');
+"#;
+
+        // Server B: same broken counter + auth-bypass login (regression).
+        let script_b = r#"
+const http = require('http');
+let count = 0;
+http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.end(`<!DOCTYPE html><html><head><title>Counter + Login</title></head><body>
+      <h1>Counter App</h1>
+      <p id="count">Count: ${count}</p>
+      <button id="inc" onclick="increment()">Increment</button>
+      <h2>Login</h2>
+      <input id="user" placeholder="Username" /><br>
+      <input id="pass" type="password" placeholder="Password" /><br>
+      <button id="loginBtn" onclick="doLogin()">Login</button>
+      <p id="msg"></p>
+      <script>
+        async function increment() {
+          await fetch('/api/noop', { method: 'POST' });
+          // Bug: count never changes
+        }
+        async function doLogin() {
+          const r = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: document.getElementById('user').value,
+              pass: document.getElementById('pass').value
+            })
+          });
+          const d = await r.json();
+          document.getElementById('msg').textContent = d.success ? 'Logged in!' : 'Login failed';
+        }
+      </script>
+    </body></html>`);
+  } else if (req.method === 'POST' && req.url === '/api/noop') {
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end('{"ok":true}');
+  } else if (req.method === 'POST' && req.url === '/api/login') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      // Regression: accepts any credentials without validation
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.end('{"success":true}');
+    });
+  } else {
+    res.writeHead(404); res.end('Not found');
+  }
+}).listen(18201, '127.0.0.1');
+"#;
+
+        // Start both servers — write scripts to temp dirs so node can read them.
+        struct InlineServer {
+            child: std::process::Child,
+            _dir: tempfile::TempDir,
+        }
+        impl Drop for InlineServer {
+            fn drop(&mut self) {
+                let _ = self.child.kill();
+            }
+        }
+        fn start_inline_server(script: &str, port: u16) -> InlineServer {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let path = dir.path().join("server.js");
+            std::fs::write(&path, script).expect("write server.js");
+            let child = std::process::Command::new("node")
+                .arg(&path)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+                .unwrap_or_else(|_| panic!("failed to spawn node on :{port}"));
+            for _ in 0..40 {
+                if std::net::TcpStream::connect(format!("127.0.0.1:{port}")).is_ok() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            InlineServer { child, _dir: dir }
+        }
+
+        let _srv_a = start_inline_server(script_a, 18200);
+        let _srv_b = start_inline_server(script_b, 18201);
+
+        // ── minimal git repo (2 commits) for SHA resolution ───────────────────
+
+        let repo_dir = tempfile::tempdir().expect("repo tempdir");
+        let repo_path = repo_dir.path();
+
+        std::process::Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .ok();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@orchyn"])
+            .current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "orchyn-test"])
+            .current_dir(repo_path).status().ok();
+
+        std::fs::write(repo_path.join("v.txt"), "version A\n").expect("write v.txt A");
+        std::process::Command::new("git").args(["add", "."]).current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "baseline"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("commit A");
+
+        std::fs::write(repo_path.join("v.txt"), "version B — adds login\n").expect("write v.txt B");
+        std::process::Command::new("git").args(["add", "."]).current_dir(repo_path).status().ok();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "add login feature"])
+            .current_dir(repo_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("commit B");
+
+        // ── run DiffEngine with real LLM + real browser ───────────────────────
+
+        let model = QwenClient::new(None);
+        let engine = DiffEngine::new(model, 15);
+
+        let factory_a: Arc<dyn AdapterFactory> =
+            Arc::new(WebAdapterFactory { url: "http://127.0.0.1:18200".to_string() });
+        let factory_b: Arc<dyn AdapterFactory> =
+            Arc::new(WebAdapterFactory { url: "http://127.0.0.1:18201".to_string() });
+
+        let diff = engine
+            .compare(
+                repo_path,
+                "HEAD~1",
+                "HEAD",
+                "http://127.0.0.1:18200",
+                "http://127.0.0.1:18201",
+                Some(factory_a),
+                Some(factory_b),
+            )
+            .await
+            .expect("DiffEngine::compare failed");
+
+        // ── structural assertions ─────────────────────────────────────────────
+
+        assert!(!diff.commit_a.is_empty(), "commit_a SHA must be resolved");
+        assert!(!diff.commit_b.is_empty(), "commit_b SHA must be resolved");
+        assert_ne!(diff.commit_a, diff.commit_b, "two distinct commits");
+        assert!(diff.report_a.turns_used >= 1, "run A must use at least 1 turn");
+        assert!(diff.report_b.turns_used >= 1, "run B must use at least 1 turn");
+
+        // ── substantive assertions ────────────────────────────────────────────
+
+        let total_gaps = diff.report_a.gaps_found + diff.report_b.gaps_found;
+        assert!(
+            total_gaps >= 1,
+            "real LLM should find at least 1 gap across both runs; got 0 \
+             (A: {} gaps, B: {} gaps)",
+            diff.report_a.gaps_found,
+            diff.report_b.gaps_found
+        );
+
+        // If B found more bugs than A, the regression flag must be set.
+        if diff.report_b.gaps_found > diff.report_a.gaps_found {
+            assert!(
+                diff.regression,
+                "B has more gaps than A but regression flag is false"
+            );
+        }
     }
 }

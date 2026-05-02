@@ -4,6 +4,7 @@
 pub mod browser_tools;
 pub mod file_tools;
 pub mod context;
+pub mod git_tools;
 pub mod meta_tools;
 pub mod registry;
 pub mod schema;
@@ -21,6 +22,7 @@ pub use browser_tools::{
 pub use file_tools::{
     ReadFileTool, WriteFileTool, EditFileTool, GrepTool, GlobTool,
 };
+pub use git_tools::{GitLogTool, GitDiffTool, GitShowTool, GitStatusTool};
 pub use shell_tools::{BashTool, EnterWorktreeTool, ExitWorktreeTool};
 pub use web_tools::{WebFetchTool, WebSearchTool};
 pub use task_tools::{
@@ -54,6 +56,12 @@ pub fn default_registry() -> ToolRegistry {
     reg.register(Box::new(BashTool));
     reg.register(Box::new(EnterWorktreeTool));
     reg.register(Box::new(ExitWorktreeTool));
+
+    // Git tools
+    reg.register(Box::new(GitLogTool));
+    reg.register(Box::new(GitDiffTool));
+    reg.register(Box::new(GitShowTool));
+    reg.register(Box::new(GitStatusTool));
     
     // Web tools
     reg.register(Box::new(WebFetchTool));

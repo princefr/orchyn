@@ -15,6 +15,7 @@ orchyn-action-executor = { path = "../action-executor" }
 orchyn-storage = { path = "../storage" }
 orchyn-toolkit = { path = "../toolkit" }
 
+git2 = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }

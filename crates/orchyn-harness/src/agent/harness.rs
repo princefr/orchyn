@@ -1,10 +1,12 @@
+use crate::agent::events::AgentProgressEvent;
 use crate::agent::memory::{Message, TurnRecord, TurnToolResult, WorkingMemory};
 use futures::StreamExt;
 use orchyn_core::{OrchynError, Result};
 use orchyn_model_client::{CompletionRequest, ModelClient};
 use orchyn_toolkit::{AdapterFactory, ToolCall, ToolContext, ToolRegistry, ToolSchema};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio::sync::broadcast;
 use tracing::{info, warn};
 use uuid::Uuid;
 
@@ -68,7 +70,7 @@ fn build_system_prompt(app_url: &str, project_root: &std::path::Path) -> String 
     let setup_section = if !app_url.starts_with("http") {
         format!(
             "\n\nSETUP (the app is a local directory — it is NOT yet running):\
-             \n  Step 1 — bash: cd {project} && npm install --if-present 2>/dev/null; npm run dev &>/tmp/orchyn_dev.log & for i in $(seq 1 20); do sleep 1; URL=$(grep -oE 'http://localhost:[0-9]+' /tmp/orchyn_dev.log | head -1); [ -n \"$URL\" ] && echo \"$URL\" | tee /tmp/orchyn_dev_url && break; done\
+             \n  Step 1 — bash: cd {project} && npm run dev >/tmp/orchyn_dev.log 2>&1 & sleep 5 && grep -oE 'http://localhost:[0-9]+' /tmp/orchyn_dev.log | head -1 | tee /tmp/orchyn_dev_url\
              \n  Step 2 — the bash output is the dev server URL. Use it directly in browser_navigate.\
              \n  Then proceed with WORKFLOW above."
         )
@@ -92,18 +94,20 @@ pub struct AgentHarness {
     max_turns: usize,
     /// Built once at `run()` time from the prompt template + env info.
     system_prompt: String,
+    /// Optional progress broadcast channel. Subscribe before calling run().
+    progress_tx: Option<broadcast::Sender<AgentProgressEvent>>,
 }
 
 /// Per-turn fused telemetry snapshot collected before the model sees each turn.
 /// Shape mirrors the STATE block sent to the model:
 /// `{ "explorer": { "current_url", "elements", "console_errors", "http_requests", "ws_messages" } }`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TurnObservation {
     pub turn: usize,
     pub state: serde_json::Value,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AgentReport {
     pub session_id: Uuid,
     pub turns_used: usize,
@@ -136,11 +140,26 @@ impl AgentHarness {
             session_id: Uuid::new_v4(),
             max_turns,
             system_prompt: String::new(),
+            progress_tx: None,
         }
     }
 
     pub fn session_id(&self) -> Uuid {
         self.session_id
+    }
+
+    /// Attach a progress broadcast channel. Call before `run()`.
+    /// Returns a `Receiver` that fires `AgentProgressEvent` as the run proceeds.
+    pub fn subscribe(&mut self) -> broadcast::Receiver<AgentProgressEvent> {
+        let (tx, rx) = broadcast::channel(256);
+        self.progress_tx = Some(tx);
+        rx
+    }
+
+    fn emit(&self, event: AgentProgressEvent) {
+        if let Some(tx) = &self.progress_tx {
+            let _ = tx.send(event);
+        }
     }
 
     /// Run the agent against an app. The harness spawns a default `explorer`
@@ -194,6 +213,14 @@ impl AgentHarness {
             let observations = self.collect_observations().await;
             turn_observations.push(TurnObservation { turn, state: observations.clone() });
             log_state(turn, &observations);
+            let current_url = observations
+                .as_object()
+                .and_then(|actors| actors.values().next())
+                .and_then(|state| state.get("current_url"))
+                .and_then(|u| u.as_str())
+                .unwrap_or("about:blank")
+                .to_string();
+            self.emit(AgentProgressEvent::TurnStart { turn, url: current_url });
             let observation_msg = format!(
                 "STATE (turn {turn} — all telemetry fused):\n{}",
                 serde_json::to_string_pretty(&observations).unwrap_or_default()
@@ -216,6 +243,7 @@ impl AgentHarness {
                 repeated_tool_count = 0;
                 forced
             } else {
+                self.emit(AgentProgressEvent::LlmThinking { turn });
                 let prompt = self.build_prompt(turn);
                 self.complete(prompt).await?
             };
@@ -255,6 +283,11 @@ impl AgentHarness {
                 &parsed.reasoning[..parsed.reasoning.len().min(120)],
                 parsed.tool_calls.iter().map(|c| c.name.as_str()).collect::<Vec<_>>().join(", ")
             );
+            self.emit(AgentProgressEvent::LlmResponse {
+                turn,
+                reasoning: parsed.reasoning[..parsed.reasoning.len().min(120)].to_string(),
+                tool_names: parsed.tool_calls.iter().map(|c| c.name.clone()).collect(),
+            });
 
             if parsed.tool_calls.is_empty() && parsed.done {
                 final_report = parsed.report.clone();
@@ -309,11 +342,29 @@ impl AgentHarness {
                     call.name,
                     serde_json::to_string(&call.arguments).unwrap_or_default()
                 );
+                self.emit(AgentProgressEvent::ToolCalling {
+                    turn,
+                    name: call.name.clone(),
+                    args: call.arguments.clone(),
+                });
                 let result = self.tools.execute(&call, &self.ctx).await;
                 match &result {
                     Ok(r)  => eprintln!("[ORCHYN:RESULT turn={turn}] {} → ok  data={}", call.name,
                                   serde_json::to_string(&r.data).unwrap_or_default().chars().take(200).collect::<String>()),
                     Err(e) => eprintln!("[ORCHYN:RESULT turn={turn}] {} → ERR {e}", call.name),
+                }
+                let (success, preview) = match &result {
+                    Ok(r) => (true, serde_json::to_string(&r.data).unwrap_or_default().chars().take(120).collect::<String>()),
+                    Err(e) => (false, e.to_string().chars().take(120).collect::<String>()),
+                };
+                self.emit(AgentProgressEvent::ToolResult { turn, name: call.name.clone(), success, preview });
+
+                // If this was a gap_report call that succeeded, emit GapFound
+                if call.name == "gap_report" && success {
+                    let desc = call.arguments.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let sev  = call.arguments.get("severity").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                    let key  = format!("gap_{}", desc.to_lowercase().replace(' ', "_").chars().take(30).collect::<String>());
+                    self.emit(AgentProgressEvent::GapFound { turn, key, description: desc, severity: sev });
                 }
                 turn_results.push(TurnToolResult {
                     call,
@@ -386,7 +437,13 @@ impl AgentHarness {
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
 
-        self.build_report(completed, final_report, turn_observations).await
+        let report = self.build_report(completed, final_report, turn_observations).await?;
+        self.emit(AgentProgressEvent::RunComplete {
+            completed: report.completed,
+            turns_used: report.turns_used,
+            gaps_found: report.gaps_found,
+        });
+        Ok(report)
     }
 
     async fn spawn_actor(&self, name: &str, factory: &dyn AdapterFactory) -> Result<()> {
@@ -623,12 +680,9 @@ fn derive_action_from_state(
             // Write it to a temp file so the navigate step can read it without
             // hardcoding any port.
             let cmd = format!(
-                "cd {path} && npm install --if-present 2>/dev/null; \
-                 npm run dev &>/tmp/orchyn_dev.log & \
-                 for i in $(seq 1 20); do sleep 1; \
-                   URL=$(grep -oE 'http://localhost:[0-9]+' /tmp/orchyn_dev.log | head -1); \
-                   [ -n \"$URL\" ] && echo \"$URL\" | tee /tmp/orchyn_dev_url && break; \
-                 done"
+                "cd {path} && npm run dev >/tmp/orchyn_dev.log 2>&1 & \
+                 sleep 5 && grep -oE 'http://localhost:[0-9]+' /tmp/orchyn_dev.log | head -1 \
+                 | tee /tmp/orchyn_dev_url"
             );
             return serde_json::json!({
                 "reasoning": "App not running — starting dev server and capturing its URL.",

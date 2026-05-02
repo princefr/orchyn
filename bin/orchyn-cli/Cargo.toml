@@ -29,3 +29,4 @@ crossterm = "0.28"
 serde_json.workspace = true
 colored = "3.1.1"
 similar = { version = "2.4", features = ["inline"] }
+indicatif = { workspace = true }
