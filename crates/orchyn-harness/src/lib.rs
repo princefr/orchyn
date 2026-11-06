@@ -3,6 +3,7 @@ pub mod diff_engine;
 pub mod events;
 pub mod harness;
 pub mod intent;
+pub mod invariants;
 pub mod replay;
 pub mod types;
 
