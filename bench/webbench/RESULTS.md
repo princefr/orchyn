@@ -87,3 +87,56 @@ with an **independent source** — the transcript, contracts in the code,
 invariants mined from a known-good version, production traffic — which is
 exactly where the internal benchmark shows Orchyn earning its keep
 (regression detection), rather than in first-time construction.
+
+## Round 2: independent checks, ambiguity lint, popups
+
+Improvements tested after round 1:
+
+- **Independent checker** — a separate agent writes `checks/task-N.json` from the
+  task text *before any code exists*; the coder must make them pass, may not
+  edit them, and records conflicts (`indep-checks/`). Coders also got the
+  ambiguity linter (`orchyn-check --lint-spec`) and the round-2 tool (dialogs,
+  drag, hover, value/count/storage/attribute assertions).
+- **v4** (survey only): the checker can follow `window.open` popups
+  (`switch_to_popup`) and real `:hover`, so checks follow the real
+  design → Preview → new-window flow.
+
+Hidden tests passed (tasks 1–15, two replicates each):
+
+| arm | expressjs | form | survey | total /90 |
+|---|---|---|---|---|
+| shell only | 13, 13 | 14, 14 | 12, 9 | **75** |
+| orchyn, own checks (round 1) | 13, 13 | 14, 13 | 8, 10 | 71 |
+| orchyn, independent checks | **14, 14** | 14, 14 | 8, 6 | 70 |
+| … survey with v4 popup-capable checks | 14, 14 | 14, 14 | 9, 8 | 73 |
+
+What happened:
+
+- **expressjs: independence beat the "ceiling".** Every other arm hit 13/15
+  because task 13's hidden test expects the admin portal links to be hidden
+  from non-admins, which the task text never says. The independent checker
+  pinned "admin-only" and both coders scored 14/15.
+- **survey: independence hurt when the checker guessed wrong.** Checks written
+  from text alone encode guesses (e.g. `.q-starCount` as a checkbox; the
+  reference uses a number input). On the reference solution only 7/15
+  (v1) and 8/15 (v4) of the checker's manifests pass. Coders forced to satisfy
+  them drifted from the hidden tests. The remaining survey failures are
+  under-specified details (design-mode controls, value encodings) that no
+  check written from the text could know.
+- **form: no difference** — all arms 13–14/15.
+- **Ambiguity lint** flagged all four phrases behind the round-1 failures
+  (`lint/`), but in a benchmark there is no human to answer the question, so
+  it cannot change the score; it is a product feature, not a benchmark lever.
+
+Tool gaps found and fixed during this round (each found by an agent hitting
+it): CSS-only `:hover` menus (now a real pointer move), `window.open` popups
+(`switch_to_popup`), clicks racing the navigation they trigger, `alert()`
+freezing checks, router mounts reported as false reality gaps, and Chrome
+hanging when TMPDIR is long. Known remaining gap: an `alert()` fired during
+a popup's first load can still block before the popup is instrumented.
+
+**Bottom line:** checks only help as much as their source is independent
+*and* right. An independent author helped where the hidden intent was
+guessable (expressjs) and hurt where it was not (survey). Without a human to
+resolve ambiguity, the best arm (shell, 75/90) and the best Orchyn arm
+(73/90) are within noise.
