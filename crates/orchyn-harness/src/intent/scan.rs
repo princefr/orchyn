@@ -215,12 +215,17 @@ fn resolve_module(from: &Path, spec: &str, known: &HashSet<PathBuf>) -> Option<P
             .iter()
             .map(|ext| append_extension(&base, ext)),
     );
-    if matches!(base.extension().and_then(|e| e.to_str()), Some("js" | "mjs" | "cjs")) {
+    if matches!(
+        base.extension().and_then(|e| e.to_str()),
+        Some("js" | "mjs" | "cjs")
+    ) {
         candidates.push(base.with_extension("ts"));
     }
     candidates.push(base.join("index.js"));
     candidates.push(base.join("index.ts"));
-    candidates.into_iter().find(|candidate| known.contains(candidate))
+    candidates
+        .into_iter()
+        .find(|candidate| known.contains(candidate))
 }
 
 fn append_extension(path: &Path, ext: &str) -> PathBuf {

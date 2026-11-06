@@ -354,3 +354,288 @@ fn reconcile_matches_parameterised_routes_at_runtime() {
     let observed = vec![req("DELETE", "http://localhost:3000/api/todos/42", 204)];
     assert!(reconcile(&intent, &observed).is_empty());
 }
+
+const PRODUCTS_API: &str = "\
+const express = require('express');
+const router = express.Router();
+router.get('/', listProducts);
+router.post('/:id', updateProduct);
+module.exports = router;
+";
+
+#[test]
+fn mount_with_commonjs_identifier_prefixes_routes() {
+    let project = TempProject::new("mount-ident");
+    project.write(
+        "index.js",
+        "\
+const productsApi = require('./routes/products/api')
+app.use('/api/products', productsApi)
+",
+    );
+    project.write("routes/products/api.js", PRODUCTS_API);
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/api/products"), ("POST", "/api/products/:id")])
+    );
+    let get = intent
+        .server_routes
+        .iter()
+        .find(|e| e.method == "GET")
+        .unwrap();
+    assert_eq!(
+        get,
+        &ep("GET", "/api/products", "routes/products/api.js", 3)
+    );
+}
+
+#[test]
+fn mount_with_inline_require_prefixes_routes() {
+    let project = TempProject::new("mount-inline");
+    project.write(
+        "index.js",
+        "app.use('/api/auth', require('./routes/auth/api.js'))\n",
+    );
+    project.write(
+        "routes/auth/api.js",
+        "\
+const router = express.Router();
+router.post('/login', login);
+router.get('/me', me);
+",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/api/auth/me"), ("POST", "/api/auth/login")])
+    );
+}
+
+#[test]
+fn mount_with_esm_import_prefixes_routes() {
+    let project = TempProject::new("mount-esm");
+    project.write(
+        "server.mjs",
+        "\
+import express from 'express'
+import productsApi from './routes/products/api.js'
+import authApi from './routes/auth/api.mjs'
+const app = express()
+app.use('/api/products', productsApi)
+app.use('/api/auth', authApi)
+",
+    );
+    project.write("routes/products/api.js", PRODUCTS_API);
+    project.write(
+        "routes/auth/api.mjs",
+        "\
+import express from 'express'
+const router = express.Router()
+router.get('/me', me)
+export default router
+",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[
+            ("GET", "/api/auth/me"),
+            ("GET", "/api/products"),
+            ("POST", "/api/products/:id"),
+        ])
+    );
+}
+
+#[test]
+fn mount_resolves_index_js_for_directory_require() {
+    let project = TempProject::new("mount-index");
+    project.write(
+        "index.js",
+        "const users = require('./routes/users')\napp.use('/api/users', users)\n",
+    );
+    project.write(
+        "routes/users/index.js",
+        "router.get('/', list)\nrouter.delete('/:id', remove)\n",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("DELETE", "/api/users/:id"), ("GET", "/api/users")])
+    );
+}
+
+#[test]
+fn mount_resolves_typescript_source_for_js_specifier() {
+    let project = TempProject::new("mount-ts");
+    project.write(
+        "index.ts",
+        "import items from './routes/items.js'\napp.use('/api/items', items)\n",
+    );
+    project.write(
+        "routes/items.ts",
+        "router.get('/:id', show)\nexport default router\n",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/api/items/:id")])
+    );
+}
+
+#[test]
+fn nested_mount_joins_prefixes_transitively() {
+    let project = TempProject::new("mount-nested");
+    project.write(
+        "index.js",
+        "const apiRouter = require('./routes/api')\napp.use('/api', apiRouter)\n",
+    );
+    project.write(
+        "routes/api.js",
+        "\
+const products = require('./products')
+const router = express.Router()
+router.use('/products', products)
+module.exports = router
+",
+    );
+    project.write(
+        "routes/products.js",
+        "router.get('/', list)\nrouter.get('/:id', show)\n",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/api/products"), ("GET", "/api/products/:id")])
+    );
+    let show = intent
+        .server_routes
+        .iter()
+        .find(|e| e.path == "/api/products/:id")
+        .unwrap();
+    assert_eq!(
+        show,
+        &ep("GET", "/api/products/:id", "routes/products.js", 2)
+    );
+}
+
+#[test]
+fn file_mounted_at_two_prefixes_yields_routes_under_each() {
+    let project = TempProject::new("mount-twice");
+    project.write(
+        "index.js",
+        "\
+const productsApi = require('./routes/products/api')
+app.use('/v1/products', productsApi)
+app.use('/v2/products', productsApi)
+",
+    );
+    project.write("routes/products/api.js", PRODUCTS_API);
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[
+            ("GET", "/v1/products"),
+            ("GET", "/v2/products"),
+            ("POST", "/v1/products/:id"),
+            ("POST", "/v2/products/:id"),
+        ])
+    );
+    let v2 = intent
+        .server_routes
+        .iter()
+        .find(|e| e.path == "/v2/products")
+        .unwrap();
+    assert_eq!(v2.line, 3);
+}
+
+#[test]
+fn unmounted_router_keeps_literal_paths() {
+    let project = TempProject::new("mount-none");
+    project.write("index.js", "app.get('/api/health', health)\n");
+    project.write(
+        "routes/orphan.js",
+        "router.get('/', home)\nrouter.get('/stats', stats)\n",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/"), ("GET", "/api/health"), ("GET", "/stats")])
+    );
+}
+
+#[test]
+fn mount_cycle_terminates_and_applies_each_edge_once() {
+    let project = TempProject::new("mount-cycle");
+    project.write("index.js", "const a = require('./a')\napp.use('/api', a)\n");
+    project.write(
+        "a.js",
+        "\
+const b = require('./b')
+const router = express.Router()
+router.use('/b', b)
+router.get('/x', h)
+module.exports = router
+",
+    );
+    project.write(
+        "b.js",
+        "\
+const a = require('./a')
+const router = express.Router()
+router.use('/a', a)
+router.get('/y', h)
+module.exports = router
+",
+    );
+
+    let intent = extract_intent(&project.0);
+
+    assert_eq!(
+        pairs(&intent.server_routes),
+        expected(&[("GET", "/api/b/y"), ("GET", "/api/x")])
+    );
+}
+
+#[test]
+fn client_call_to_mounted_route_has_no_reconcile_gap() {
+    let project = TempProject::new("mount-reconcile");
+    project.write(
+        "index.js",
+        "const productsApi = require('./routes/products/api')\napp.use('/api/products', productsApi)\n",
+    );
+    project.write("routes/products/api.js", PRODUCTS_API);
+    project.write("public/app.js", "fetch('/api/products');\n");
+
+    let intent = extract_intent(&project.0);
+    let observed = vec![req("GET", "http://localhost:3000/api/products", 200)];
+    let gaps = reconcile(&intent, &observed);
+
+    assert!(
+        !gaps
+            .iter()
+            .any(|g| g.kind == GapKind::ClientCallWithoutRoute),
+        "unexpected gaps: {gaps:?}"
+    );
+    assert!(
+        !gaps.iter().any(|g| g.kind == GapKind::UnexpectedRequest),
+        "unexpected gaps: {gaps:?}"
+    );
+    assert!(gaps.is_empty(), "unexpected gaps: {gaps:?}");
+}
