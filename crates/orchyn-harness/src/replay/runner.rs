@@ -18,6 +18,7 @@ use orchyn_core::{ConsoleLog, NetworkRequest, PlatformAdapter, RawTelemetry};
 use serde::{Deserialize, Serialize};
 
 use super::manifest::{ReplayManifest, StepOp};
+use super::snapshot::PageSnapshot;
 
 /// Creates the adapter for one actor. Called once per distinct actor name.
 pub type AdapterFactoryFn = Arc<
@@ -55,6 +56,10 @@ pub struct ReplayReport {
     /// mine invariants from known-good runs.
     #[serde(default)]
     pub observed_exchanges: Vec<orchyn_core::Exchange>,
+    /// Page state after each successful step that can change the page, one per
+    /// actor-step, in run order. Snapshot failures are skipped silently.
+    #[serde(default)]
+    pub page_snapshots: Vec<PageSnapshot>,
 }
 
 pub struct ReplayRunner {
@@ -88,6 +93,7 @@ impl ReplayRunner {
             observed_requests: Vec::new(),
             console_errors: Vec::new(),
             observed_exchanges: Vec::new(),
+            page_snapshots: Vec::new(),
         };
 
         let mut steps = Vec::with_capacity(manifest.steps.len());
@@ -110,6 +116,16 @@ impl ReplayRunner {
                 Ok(detail) => (true, detail),
                 Err(detail) => (false, detail),
             };
+            if passed && records_page_snapshot(&step.op) {
+                let snap = take_page_snapshot(
+                    &mut *session.actors[i].adapter,
+                    &step.actor,
+                    index,
+                    step.op.name(),
+                )
+                .await;
+                session.page_snapshots.extend(snap);
+            }
             steps.push(StepResult {
                 index,
                 actor: step.actor.clone(),
@@ -138,6 +154,7 @@ impl ReplayRunner {
             observed_requests: session.observed_requests,
             console_errors: session.console_errors,
             observed_exchanges: session.observed_exchanges,
+            page_snapshots: session.page_snapshots,
         })
     }
 }
@@ -167,6 +184,7 @@ struct Session {
     observed_requests: Vec<NetworkRequest>,
     console_errors: Vec<String>,
     observed_exchanges: Vec<orchyn_core::Exchange>,
+    page_snapshots: Vec<PageSnapshot>,
 }
 
 impl Session {
@@ -265,6 +283,54 @@ impl Session {
                 expect_text_unchanged(&mut *self.actors[i].adapter, before, key).await
             }
             StepOp::ClickEach { selector } => self.click_each(i, selector.as_deref()).await,
+            StepOp::Hover { selector } => hover(&mut *self.actors[i].adapter, selector).await,
+            StepOp::Drag {
+                selector,
+                target,
+                position,
+            } => {
+                drag(
+                    &mut *self.actors[i].adapter,
+                    selector,
+                    target,
+                    position.as_deref(),
+                )
+                .await
+            }
+            StepOp::ExpectValue { selector, value } => {
+                expect_value(&mut *self.actors[i].adapter, selector, value).await
+            }
+            StepOp::ExpectCount { selector, count } => {
+                expect_count(&mut *self.actors[i].adapter, selector, *count).await
+            }
+            StepOp::ExpectStorage { key, contains } => {
+                expect_storage(&mut *self.actors[i].adapter, key, contains.as_deref()).await
+            }
+            StepOp::SetStorage { key, value } => {
+                set_storage(&mut *self.actors[i].adapter, key, value).await
+            }
+            StepOp::ExpectSameText { key, other_actor } => {
+                match lookup_snapshot(&self.actors, other_actor, key) {
+                    Ok(expected) => {
+                        expect_same_text(&mut *self.actors[i].adapter, &expected, other_actor, key)
+                            .await
+                    }
+                    Err(detail) => Err(detail),
+                }
+            }
+            StepOp::ExpectAttribute {
+                selector,
+                name,
+                value,
+            } => {
+                expect_attribute(
+                    &mut *self.actors[i].adapter,
+                    selector,
+                    name,
+                    value.as_deref(),
+                )
+                .await
+            }
         }
     }
 
@@ -1036,20 +1102,34 @@ async fn expect_text_unchanged(
 
 /// Names the first line that differs in each text, truncated for the report.
 fn text_change_detail(key: &str, before: &str, after: &str) -> String {
-    let before_lines: Vec<&str> = before.lines().collect();
-    let after_lines: Vec<&str> = after.lines().collect();
-    let first = (0..before_lines.len().max(after_lines.len()))
-        .find(|&n| before_lines.get(n) != after_lines.get(n))
+    format!(
+        "text changed since snapshot '{key}' {}",
+        describe_first_difference(before, after, "before", "after")
+    )
+}
+
+/// Names the first line at which two texts differ, with each side's line
+/// (truncated) under the given label.
+fn describe_first_difference(
+    first: &str,
+    second: &str,
+    first_label: &str,
+    second_label: &str,
+) -> String {
+    let first_lines: Vec<&str> = first.lines().collect();
+    let second_lines: Vec<&str> = second.lines().collect();
+    let at = (0..first_lines.len().max(second_lines.len()))
+        .find(|&n| first_lines.get(n) != second_lines.get(n))
         .unwrap_or(0);
     let show = |line: Option<&&str>| match line {
         Some(line) => truncate_chars(line, TEXT_LINE_MAX_CHARS),
         None => "<end of text>".to_string(),
     };
     format!(
-        "text changed since snapshot '{key}' at line {}: before: {} | after: {}",
-        first + 1,
-        show(before_lines.get(first)),
-        show(after_lines.get(first)),
+        "at line {}: {first_label}: {} | {second_label}: {}",
+        at + 1,
+        show(first_lines.get(at)),
+        show(second_lines.get(at)),
     )
 }
 
@@ -1059,6 +1139,423 @@ fn truncate_chars(s: &str, max: usize) -> String {
     }
     let head: String = s.chars().take(max - 3).collect();
     format!("{head}...")
+}
+
+// ---------------------------------------------------------------------------
+// Pointer, drag, form, storage and attribute steps
+// ---------------------------------------------------------------------------
+
+const HOVER_SETTLE_MS: u64 = 250;
+const DRAG_SETTLE_MS: u64 = 300;
+const SNAPSHOT_VISIBLE_CAP: usize = 500;
+
+/// Fails unless the element exists and has non-zero size. Covering is allowed.
+fn check_present_and_sized(label: &str, p: &Probe) -> Fallible<()> {
+    if !p.found {
+        return Err(format!("element {label} not found on the page"));
+    }
+    if !p.visible {
+        return Err(format!(
+            "element {label} is not visible (zero size, display:none or visibility:hidden)"
+        ));
+    }
+    Ok(())
+}
+
+/// Dispatches the pointer and mouse enter/over events on the element at its
+/// centre. Returns `missing` if the element has gone.
+fn hover_js(selector: &str) -> String {
+    format!(
+        r#"(() => {{
+  const el = document.querySelector({sel});
+  if (!el) return 'missing';
+  const r = el.getBoundingClientRect();
+  const opts = {{
+    bubbles: true, cancelable: true, view: window,
+    clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+  }};
+  const Pointer = typeof PointerEvent === 'function' ? PointerEvent : MouseEvent;
+  el.dispatchEvent(new Pointer('pointerover', opts));
+  el.dispatchEvent(new Pointer('pointerenter', {{ ...opts, bubbles: false }}));
+  el.dispatchEvent(new MouseEvent('mouseover', opts));
+  el.dispatchEvent(new MouseEvent('mouseenter', {{ ...opts, bubbles: false }}));
+  return 'ok';
+}})()"#,
+        sel = js_str(selector)
+    )
+}
+
+async fn hover(adapter: &mut dyn PlatformAdapter, selector: &str) -> StepOutcome {
+    let p = probe(adapter, selector).await?;
+    check_actionable(selector, &p)?;
+    let raw = adapter
+        .eval_js(&hover_js(selector))
+        .await
+        .map_err(|e| format!("hovering {selector} failed: {e}"))?;
+    if js_text(&raw) != "ok" {
+        return Err(format!("element {selector} disappeared before hovering"));
+    }
+    sleep_ms(HOVER_SETTLE_MS).await;
+    Ok(format!("hovered {selector} (JS hover events only)"))
+}
+
+/// Fraction of the target's height at which the drop lands.
+fn drop_fraction(position: Option<&str>) -> (f64, &'static str) {
+    match position {
+        Some("before") => (0.25, "before"),
+        Some("after") => (0.75, "after"),
+        _ => (0.5, "centre"),
+    }
+}
+
+/// Synthesises an HTML5 drag from `src` to `dst` with one shared DataTransfer.
+fn drag_js(selector: &str, target: &str, fraction: f64) -> String {
+    format!(
+        r#"(() => {{
+  const src = document.querySelector({src});
+  const dst = document.querySelector({dst});
+  if (!src || !dst) return 'missing';
+  const s = src.getBoundingClientRect();
+  const t = dst.getBoundingClientRect();
+  const sx = s.left + s.width / 2, sy = s.top + s.height / 2;
+  const tx = t.left + t.width / 2, ty = t.top + t.height * {fraction};
+  const dt = new DataTransfer();
+  const ev = (x, y) => ({{ bubbles: true, cancelable: true, view: window, clientX: x, clientY: y, dataTransfer: dt }});
+  src.dispatchEvent(new DragEvent('dragstart', ev(sx, sy)));
+  dst.dispatchEvent(new DragEvent('dragenter', ev(tx, ty)));
+  dst.dispatchEvent(new DragEvent('dragover', ev(tx, ty)));
+  dst.dispatchEvent(new DragEvent('drop', ev(tx, ty)));
+  src.dispatchEvent(new DragEvent('dragend', ev(sx, sy)));
+  return 'ok';
+}})()"#,
+        src = js_str(selector),
+        dst = js_str(target),
+    )
+}
+
+async fn drag(
+    adapter: &mut dyn PlatformAdapter,
+    selector: &str,
+    target: &str,
+    position: Option<&str>,
+) -> StepOutcome {
+    let src = probe(adapter, selector).await?;
+    check_present_and_sized(&format!("drag source {selector}"), &src)?;
+    let dst = probe(adapter, target).await?;
+    check_present_and_sized(&format!("drag target {target}"), &dst)?;
+    let (fraction, mode) = drop_fraction(position);
+    let raw = adapter
+        .eval_js(&drag_js(selector, target, fraction))
+        .await
+        .map_err(|e| format!("dragging {selector} onto {target} failed: {e}"))?;
+    if js_text(&raw) != "ok" {
+        return Err("drag source or target disappeared before dropping".to_string());
+    }
+    sleep_ms(DRAG_SETTLE_MS).await;
+    Ok(format!("dragged {selector} onto {target} ({mode})"))
+}
+
+/// Reads `.value` of the element, or of the checked member when the selector
+/// matches a radio/checkbox group. Checkboxes and radios with no group report
+/// `checked` as "true"/"false".
+fn value_js(selector: &str) -> String {
+    format!(
+        r#"(() => {{
+  const els = Array.from(document.querySelectorAll({sel}));
+  if (els.length === 0) return JSON.stringify({{ found: false }});
+  const isChoice = (e) => e.tagName === 'INPUT' && (e.type === 'radio' || e.type === 'checkbox');
+  let value = null;
+  if (els.length > 1 && els.every(isChoice)) {{
+    const on = els.find((e) => e.checked);
+    value = on ? on.value : '';
+  }} else if (isChoice(els[0])) {{
+    value = String(els[0].checked);
+  }} else if ('value' in els[0]) {{
+    value = String(els[0].value);
+  }}
+  return JSON.stringify({{ found: true, value }});
+}})()"#,
+        sel = js_str(selector)
+    )
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ValueRead {
+    found: bool,
+    value: Option<String>,
+}
+
+async fn expect_value(
+    adapter: &mut dyn PlatformAdapter,
+    selector: &str,
+    expected: &str,
+) -> StepOutcome {
+    let raw = adapter
+        .eval_js(&value_js(selector))
+        .await
+        .map_err(|e| format!("reading the value of {selector} failed: {e}"))?;
+    let read: ValueRead = serde_json::from_str(&js_text(&raw))
+        .map_err(|e| format!("unreadable value for {selector}: {e}"))?;
+    if !read.found {
+        return Err(format!("element {selector} not found on the page"));
+    }
+    let Some(actual) = read.value else {
+        return Err(format!("element {selector} has no value property"));
+    };
+    if actual == expected {
+        Ok(format!("{selector} has value {expected:?}"))
+    } else {
+        Err(format!(
+            "{selector} has value {actual:?}, expected {expected:?}"
+        ))
+    }
+}
+
+async fn expect_count(
+    adapter: &mut dyn PlatformAdapter,
+    selector: &str,
+    expected: usize,
+) -> StepOutcome {
+    let js = format!("document.querySelectorAll({}).length", js_str(selector));
+    let raw = adapter
+        .eval_js(&js)
+        .await
+        .map_err(|e| format!("counting {selector} failed: {e}"))?;
+    let actual: usize = js_text(&raw)
+        .trim()
+        .parse()
+        .map_err(|_| format!("unreadable element count for {selector}: {}", js_text(&raw)))?;
+    if actual == expected {
+        Ok(format!("{actual} element(s) match {selector}"))
+    } else {
+        Err(format!(
+            "{actual} element(s) match {selector}, expected {expected}"
+        ))
+    }
+}
+
+fn storage_get_js(key: &str) -> String {
+    format!(
+        "(() => {{ try {{ const v = localStorage.getItem({k}); \
+         return JSON.stringify({{ found: v !== null, value: v }}); }} \
+         catch (e) {{ return JSON.stringify({{ found: false, error: String(e) }}); }} }})()",
+        k = js_str(key)
+    )
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct StorageRead {
+    found: bool,
+    value: Option<String>,
+    error: Option<String>,
+}
+
+async fn expect_storage(
+    adapter: &mut dyn PlatformAdapter,
+    key: &str,
+    contains: Option<&str>,
+) -> StepOutcome {
+    let raw = adapter
+        .eval_js(&storage_get_js(key))
+        .await
+        .map_err(|e| format!("reading localStorage failed: {e}"))?;
+    let read: StorageRead = serde_json::from_str(&js_text(&raw))
+        .map_err(|e| format!("unreadable localStorage result: {e}"))?;
+    if let Some(error) = read.error {
+        return Err(format!("localStorage is not available: {error}"));
+    }
+    if !read.found {
+        return Err(format!("localStorage has no key {key:?}"));
+    }
+    let value = read.value.unwrap_or_default();
+    match contains {
+        Some(needle) if !value.contains(needle) => Err(format!(
+            "localStorage[{key:?}] is {}, expected it to contain {needle:?}",
+            truncate_chars(&value, TEXT_LINE_MAX_CHARS)
+        )),
+        _ => Ok(format!("localStorage has key {key:?}")),
+    }
+}
+
+async fn set_storage(adapter: &mut dyn PlatformAdapter, key: &str, value: &str) -> StepOutcome {
+    let js = format!(
+        "(() => {{ try {{ localStorage.setItem({k}, {v}); return 'ok'; }} \
+         catch (e) {{ return 'error: ' + String(e); }} }})()",
+        k = js_str(key),
+        v = js_str(value),
+    );
+    let raw = adapter
+        .eval_js(&js)
+        .await
+        .map_err(|e| format!("setting localStorage {key:?} failed: {e}"))?;
+    let reply = js_text(&raw);
+    if reply == "ok" {
+        Ok(format!("stored {key:?} in localStorage"))
+    } else {
+        Err(format!("could not set localStorage {key:?}: {reply}"))
+    }
+}
+
+/// The normalised text `owner` stored under `key`. Snapshots are kept per actor.
+fn lookup_snapshot(actors: &[Actor], owner: &str, key: &str) -> Fallible<String> {
+    let actor = actors.iter().find(|a| a.name == owner).ok_or_else(|| {
+        format!("no actor named '{owner}' has run a step, so there is no snapshot '{key}'")
+    })?;
+    actor.snapshots.get(key).cloned().ok_or_else(|| {
+        format!("actor '{owner}' took no snapshot '{key}' (its snapshot_text must come first)")
+    })
+}
+
+async fn expect_same_text(
+    adapter: &mut dyn PlatformAdapter,
+    expected: &str,
+    owner: &str,
+    key: &str,
+) -> StepOutcome {
+    let actual = read_body_text(adapter).await?;
+    if actual == expected {
+        return Ok(format!("text matches actor '{owner}'s snapshot '{key}'"));
+    }
+    Err(format!(
+        "text differs from actor '{owner}'s snapshot '{key}' {}",
+        describe_first_difference(expected, &actual, "expected", "actual")
+    ))
+}
+
+/// Reads the attribute's presence and value. `has` is false when absent.
+fn attribute_js(selector: &str, name: &str) -> String {
+    format!(
+        r#"(() => {{
+  const el = document.querySelector({sel});
+  if (!el) return JSON.stringify({{ found: false }});
+  const n = {name};
+  return JSON.stringify({{ found: true, has: el.hasAttribute(n), value: el.getAttribute(n) }});
+}})()"#,
+        sel = js_str(selector),
+        name = js_str(name),
+    )
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct AttributeRead {
+    found: bool,
+    has: bool,
+    value: Option<String>,
+}
+
+async fn expect_attribute(
+    adapter: &mut dyn PlatformAdapter,
+    selector: &str,
+    name: &str,
+    expected: Option<&str>,
+) -> StepOutcome {
+    let raw = adapter
+        .eval_js(&attribute_js(selector, name))
+        .await
+        .map_err(|e| format!("reading attributes of {selector} failed: {e}"))?;
+    let read: AttributeRead = serde_json::from_str(&js_text(&raw))
+        .map_err(|e| format!("unreadable attributes for {selector}: {e}"))?;
+    if !read.found {
+        return Err(format!("element {selector} not found on the page"));
+    }
+    if !read.has {
+        return Err(format!("element {selector} has no {name} attribute"));
+    }
+    match expected {
+        None => Ok(format!("{selector} has attribute {name}")),
+        Some(want) => {
+            let actual = read.value.unwrap_or_default();
+            if actual == want {
+                Ok(format!("{selector} has {name}={want:?}"))
+            } else {
+                Err(format!(
+                    "{selector} has {name}={actual:?}, expected {want:?}"
+                ))
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Page snapshots
+// ---------------------------------------------------------------------------
+
+/// Steps after which a page snapshot is recorded. Assertions never are.
+fn records_page_snapshot(op: &StepOp) -> bool {
+    matches!(
+        op,
+        StepOp::Goto { .. }
+            | StepOp::Click { .. }
+            | StepOp::ClickText { .. }
+            | StepOp::Fill { .. }
+            | StepOp::WaitMs { .. }
+            | StepOp::WaitForText { .. }
+            | StepOp::Reload
+            | StepOp::ClickEach { .. }
+            | StepOp::Drag { .. }
+            | StepOp::Hover { .. }
+            | StepOp::SetStorage { .. }
+    )
+}
+
+/// One round-trip: URL, visible text lines, and stable descriptions of the
+/// visible elements that have an id or a class. Plain string, no format braces.
+const PAGE_SNAPSHOT_JS: &str = r#"(() => {
+  const body = document.body ? document.body.innerText : '';
+  const lines = body.split('\n').map((s) => s.trim()).filter((s) => s.length > 0);
+  const seen = new Set();
+  for (const el of Array.from(document.querySelectorAll('[id], [class]'))) {
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const shown = r.width > 0 && r.height > 0 && cs.display !== 'none'
+      && cs.visibility !== 'hidden' && cs.opacity !== '0';
+    if (!shown) continue;
+    const tag = el.tagName.toLowerCase();
+    if (el.id) {
+      seen.add(tag + '#' + el.id);
+    } else {
+      const classes = Array.from(el.classList).sort();
+      if (classes.length > 0) seen.add(tag + '.' + classes.join('.'));
+    }
+  }
+  const visible = Array.from(seen).sort().slice(0, 500);
+  return JSON.stringify({
+    url: location.origin + location.pathname,
+    lines,
+    visible,
+  });
+})()"#;
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct RawPageSnapshot {
+    url: String,
+    lines: Vec<String>,
+    visible: Vec<String>,
+}
+
+/// Best effort: any failure yields `None` and the step is unaffected.
+async fn take_page_snapshot(
+    adapter: &mut dyn PlatformAdapter,
+    actor: &str,
+    step: usize,
+    op: &str,
+) -> Option<PageSnapshot> {
+    let raw = adapter.eval_js(PAGE_SNAPSHOT_JS).await.ok()?;
+    let parsed: RawPageSnapshot = serde_json::from_str(&js_text(&raw)).ok()?;
+    let mut visible = parsed.visible;
+    visible.truncate(SNAPSHOT_VISIBLE_CAP);
+    Some(PageSnapshot {
+        actor: actor.to_string(),
+        step,
+        op: op.to_string(),
+        url: parsed.url,
+        lines: parsed.lines,
+        visible,
+    })
 }
 
 #[cfg(test)]
@@ -1103,6 +1600,8 @@ mod tests {
         /// `"actor: <action>"` for each `execute_harness` call.
         actions: Vec<String>,
         shutdowns: Vec<String>,
+        /// Every JS string passed to `eval_js`, in order.
+        evals: Vec<String>,
     }
 
     #[derive(Debug)]
@@ -1165,6 +1664,7 @@ mod tests {
             async { Ok(()) }.boxed()
         }
         fn eval_js(&mut self, js: &str) -> BoxFuture<'_, orchyn_core::Result<String>> {
+            self.record.lock().unwrap().evals.push(js.to_string());
             if let Some((_, replies)) = self
                 .sequences
                 .iter_mut()
@@ -1669,5 +2169,566 @@ mod tests {
         );
         assert!(!detail.contains(&long), "{detail}");
         assert_eq!(truncate_chars("abcdef", 4), "a...");
+    }
+
+    /// Raw `eval_js` reply for a JS string result (JSON-encoded, as the adapter returns it).
+    fn js_plain_reply(text: &str) -> String {
+        serde_json::to_string(text).unwrap()
+    }
+
+    /// Raw `eval_js` reply for a probe of an element.
+    fn probe_reply(found: bool, visible: bool, covered: bool) -> String {
+        js_string_reply(serde_json::json!({
+            "found": found, "visible": visible, "covered": covered, "tag": "DIV",
+            "coverer": if covered { serde_json::json!("DIV.overlay") } else { serde_json::Value::Null },
+            "x": 10.0, "y": 10.0, "w": 80.0, "h": 30.0,
+        }))
+    }
+
+    /// Config whose probes all report the given state and whose `needle` JS
+    /// gets `reply`.
+    fn with_probe_and(needle: &str, reply: String, probe: String) -> FakeConfig {
+        FakeConfig {
+            eval: vec![
+                (needle.to_string(), reply),
+                ("elementFromPoint".to_string(), probe),
+            ],
+            ..Default::default()
+        }
+    }
+
+    fn evals_containing(record: &Arc<Mutex<Record>>, needle: &str) -> usize {
+        record
+            .lock()
+            .unwrap()
+            .evals
+            .iter()
+            .filter(|js| js.contains(needle))
+            .count()
+    }
+
+    #[tokio::test]
+    async fn hover_dispatches_enter_and_over_events_on_a_visible_element() {
+        let config = with_probe_and(
+            "mouseenter",
+            js_plain_reply("ok"),
+            probe_reply(true, true, false),
+        );
+        let (runner, record) = setup(config);
+        let report = runner
+            .run(&manifest(r##"{"op":"hover","selector":"#menu"}"##))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.steps[0].detail.contains("JS hover events only"));
+        let rec = record.lock().unwrap();
+        let dispatch = rec
+            .evals
+            .iter()
+            .find(|js| js.contains("mouseenter"))
+            .expect("hover script ran");
+        for event in ["pointerover", "pointerenter", "mouseover"] {
+            assert!(dispatch.contains(event), "{event} missing from {dispatch}");
+        }
+        // No real pointer input is sent for hover.
+        assert!(rec.actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn hover_fails_when_the_element_is_covered() {
+        let config = with_probe_and(
+            "mouseenter",
+            js_plain_reply("ok"),
+            probe_reply(true, true, true),
+        );
+        let (runner, record) = setup(config);
+        let report = runner
+            .run(&manifest(r##"{"op":"hover","selector":"#menu"}"##))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("covered by DIV.overlay"));
+        assert_eq!(evals_containing(&record, "mouseenter"), 0);
+    }
+
+    #[tokio::test]
+    async fn hover_fails_when_the_element_is_missing() {
+        let config = with_probe_and(
+            "mouseenter",
+            js_plain_reply("ok"),
+            probe_reply(false, false, false),
+        );
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(r##"{"op":"hover","selector":"#menu"}"##))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn drag_dispatches_the_html5_sequence_between_two_elements() {
+        let config = with_probe_and(
+            "DataTransfer",
+            js_plain_reply("ok"),
+            probe_reply(true, true, false),
+        );
+        let (runner, record) = setup(config);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"drag","selector":"#card","target":"#col"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.steps[0].detail.contains("centre"));
+        let rec = record.lock().unwrap();
+        let script = rec
+            .evals
+            .iter()
+            .find(|js| js.contains("DataTransfer"))
+            .expect("drag script ran");
+        let order: Vec<usize> = ["dragstart", "dragenter", "dragover", "'drop'", "dragend"]
+            .iter()
+            .map(|e| script.find(e).unwrap_or_else(|| panic!("{e} missing")))
+            .collect();
+        assert!(order.windows(2).all(|w| w[0] < w[1]), "{order:?}");
+        assert!(script.contains("* 0.5;"), "centre drop expected");
+        assert!(rec.actions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drag_before_and_after_aim_at_the_target_quarters() {
+        for (position, fraction) in [("before", "* 0.25;"), ("after", "* 0.75;")] {
+            let config = with_probe_and(
+                "DataTransfer",
+                js_plain_reply("ok"),
+                probe_reply(true, true, false),
+            );
+            let (runner, record) = setup(config);
+            let m = manifest(&format!(
+                r##"{{"op":"drag","selector":"#a","target":"#b","position":"{position}"}}"##
+            ));
+            let report = runner.run(&m).await.unwrap();
+            assert!(report.passed, "{position}: {:?}", report.steps);
+            let rec = record.lock().unwrap();
+            let script = rec
+                .evals
+                .iter()
+                .find(|js| js.contains("DataTransfer"))
+                .unwrap();
+            assert!(script.contains(fraction), "{position}: {script}");
+        }
+    }
+
+    #[tokio::test]
+    async fn drag_fails_when_source_or_target_is_missing_or_zero_size() {
+        let (runner, record) = setup(with_probe_and(
+            "DataTransfer",
+            js_plain_reply("ok"),
+            probe_reply(false, false, false),
+        ));
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"drag","selector":"#a","target":"#b"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("drag source #a not found"));
+        assert_eq!(evals_containing(&record, "DataTransfer"), 0);
+
+        let (runner, _) = setup(with_probe_and(
+            "DataTransfer",
+            js_plain_reply("ok"),
+            // Found, but zero-size: visible is false.
+            probe_reply(true, false, false),
+        ));
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"drag","selector":"#a","target":"#b"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(
+            report.steps[0]
+                .detail
+                .contains("drag source #a is not visible")
+        );
+    }
+
+    fn value_config(reply: serde_json::Value) -> FakeConfig {
+        FakeConfig {
+            eval: vec![("isChoice".to_string(), js_string_reply(reply))],
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn expect_value_compares_the_element_value() {
+        let pass = value_config(serde_json::json!({ "found": true, "value": "alice" }));
+        let (runner, _) = setup(pass);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"#name","value":"alice"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+
+        let fail = value_config(serde_json::json!({ "found": true, "value": "bob" }));
+        let (runner, _) = setup(fail);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"#name","value":"alice"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[0].detail;
+        assert!(
+            detail.contains("\"bob\"") && detail.contains("\"alice\""),
+            "{detail}"
+        );
+    }
+
+    #[tokio::test]
+    async fn expect_value_reads_checked_state_and_group_values() {
+        // Single checkbox: "true" / "false".
+        let checked = value_config(serde_json::json!({ "found": true, "value": "true" }));
+        let (runner, _) = setup(checked);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"#agree","value":"true"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+
+        // Radio group with nothing checked: "".
+        let none = value_config(serde_json::json!({ "found": true, "value": "" }));
+        let (runner, _) = setup(none);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"input[name=size]","value":""}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+    }
+
+    #[tokio::test]
+    async fn expect_value_fails_for_missing_or_valueless_elements() {
+        let missing = value_config(serde_json::json!({ "found": false }));
+        let (runner, _) = setup(missing);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"#x","value":""}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("not found"));
+
+        let valueless = value_config(serde_json::json!({ "found": true, "value": null }));
+        let (runner, _) = setup(valueless);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_value","selector":"#x","value":""}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no value property"));
+    }
+
+    #[tokio::test]
+    async fn expect_count_matches_query_selector_all_length() {
+        let config = |n: &str| FakeConfig {
+            eval: vec![("querySelectorAll(".to_string(), n.to_string())],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config("3"));
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"expect_count","selector":"li","count":3}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+
+        let (runner, _) = setup(config("3"));
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"expect_count","selector":"li","count":2}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(
+            report.steps[0]
+                .detail
+                .contains("3 element(s) match li, expected 2")
+        );
+    }
+
+    #[tokio::test]
+    async fn expect_storage_checks_key_and_contained_value() {
+        let config = FakeConfig {
+            eval: vec![(
+                "localStorage.getItem".to_string(),
+                js_string_reply(serde_json::json!({ "found": true, "value": "hello world" })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config.clone());
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"expect_storage","key":"token"},
+                   {"op":"expect_storage","key":"token","contains":"world"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"expect_storage","key":"token","contains":"xyz"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("hello world"));
+
+        let absent = FakeConfig {
+            eval: vec![(
+                "localStorage.getItem".to_string(),
+                js_string_reply(serde_json::json!({ "found": false, "value": null })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(absent);
+        let report = runner
+            .run(&manifest(r#"{"op":"expect_storage","key":"token"}"#))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no key \"token\""));
+    }
+
+    #[tokio::test]
+    async fn set_storage_writes_the_key_and_reports_failures() {
+        let ok = FakeConfig {
+            eval: vec![("localStorage.setItem".to_string(), js_plain_reply("ok"))],
+            ..Default::default()
+        };
+        let (runner, record) = setup(ok);
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"set_storage","key":"theme","value":"dark"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        let rec = record.lock().unwrap();
+        let js = rec.evals.iter().find(|j| j.contains("setItem")).unwrap();
+        assert!(js.contains("\"theme\"") && js.contains("\"dark\""), "{js}");
+        drop(rec);
+
+        let broken = FakeConfig {
+            eval: vec![(
+                "localStorage.setItem".to_string(),
+                js_plain_reply("error: QuotaExceededError"),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(broken);
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"set_storage","key":"theme","value":"dark"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("QuotaExceededError"));
+    }
+
+    fn text_steps_config(alice_then_bob: Vec<&str>) -> FakeConfig {
+        FakeConfig {
+            sequences: vec![(
+                "innerText".to_string(),
+                alice_then_bob.iter().map(|t| js_plain_reply(t)).collect(),
+            )],
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn expect_same_text_compares_against_another_actors_snapshot() {
+        // Each actor's adapter gets its own copy of the sequence, so both see
+        // the same text on their first read.
+        let config = text_steps_config(vec!["Hi\nFeed item", "unused"]);
+        let (runner, _) = setup(config);
+        let m = manifest(
+            r#"{"actor":"alice","op":"snapshot_text","key":"feed"},
+               {"actor":"bob","op":"expect_same_text","key":"feed","other_actor":"alice"}"#,
+        );
+        let report = runner.run(&m).await.unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.steps[1].detail.contains("matches actor 'alice'"));
+    }
+
+    #[tokio::test]
+    async fn expect_same_text_names_the_first_differing_line() {
+        // Bob's first read is the second entry, after `expect_no_text` has
+        // consumed the first.
+        let config = text_steps_config(vec!["Hi\nFeed item", "Hi\nEmpty"]);
+        let (runner, _) = setup(config);
+        let m = manifest(
+            r#"{"actor":"alice","op":"snapshot_text","key":"feed"},
+               {"actor":"bob","op":"expect_no_text","text":"zzz"},
+               {"actor":"bob","op":"expect_same_text","key":"feed","other_actor":"alice"}"#,
+        );
+        let report = runner.run(&m).await.unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[2].detail;
+        assert!(detail.contains("line 2"), "{detail}");
+        assert!(
+            detail.contains("Feed item") && detail.contains("Empty"),
+            "{detail}"
+        );
+    }
+
+    #[tokio::test]
+    async fn expect_same_text_fails_without_the_other_actor_or_snapshot() {
+        let (runner, _) = setup(FakeConfig::default());
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"expect_same_text","key":"feed","other_actor":"nobody"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no actor named 'nobody'"));
+
+        let (runner, _) = setup(FakeConfig::default());
+        let report = runner
+            .run(&manifest(
+                r#"{"actor":"alice","op":"expect_no_text","text":"x"},
+                   {"op":"expect_same_text","key":"feed","other_actor":"alice"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[1].detail.contains("took no snapshot 'feed'"));
+    }
+
+    #[tokio::test]
+    async fn expect_attribute_checks_presence_and_value() {
+        let config = FakeConfig {
+            eval: vec![(
+                "hasAttribute".to_string(),
+                js_string_reply(serde_json::json!({ "found": true, "has": true, "value": "" })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config.clone());
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_attribute","selector":"#email","name":"required"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_attribute","selector":"#email","name":"required","value":"yes"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("expected \"yes\""));
+
+        let absent = FakeConfig {
+            eval: vec![(
+                "hasAttribute".to_string(),
+                js_string_reply(serde_json::json!({ "found": true, "has": false, "value": null })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(absent);
+        let report = runner
+            .run(&manifest(
+                r##"{"op":"expect_attribute","selector":"#email","name":"required"}"##,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no required attribute"));
+    }
+
+    fn page_snapshot_config() -> FakeConfig {
+        FakeConfig {
+            eval: vec![
+                (
+                    "location.origin".to_string(),
+                    js_string_reply(serde_json::json!({
+                        "url": "http://h/",
+                        "lines": ["Hello", "World"],
+                        "visible": ["div#app", "button.primary"],
+                    })),
+                ),
+                (
+                    "elementFromPoint".to_string(),
+                    probe_reply(true, true, false),
+                ),
+            ],
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn page_snapshots_follow_actions_and_not_assertions() {
+        let (runner, _) = setup(page_snapshot_config());
+        let m = manifest(
+            r##"{"op":"goto","path":"/"},
+               {"op":"expect_no_text","text":"zzz"},
+               {"op":"click","selector":"#go"},
+               {"actor":"bob","op":"expect_no_text","text":"zzz"}"##,
+        );
+        let report = runner.run(&m).await.unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        let snaps = &report.page_snapshots;
+        let shape: Vec<(&str, usize, &str)> = snaps
+            .iter()
+            .map(|s| (s.actor.as_str(), s.step, s.op.as_str()))
+            .collect();
+        assert_eq!(shape, vec![("default", 0, "goto"), ("default", 2, "click")]);
+        assert_eq!(snaps[1].url, "http://h/");
+        assert_eq!(
+            snaps[1].lines,
+            vec!["Hello".to_string(), "World".to_string()]
+        );
+        assert_eq!(
+            snaps[1].visible,
+            vec!["div#app".to_string(), "button.primary".to_string()]
+        );
+    }
+
+    #[tokio::test]
+    async fn page_snapshot_failure_does_not_fail_the_step() {
+        // No snapshot reply configured: the JS returns `null`, which is unreadable.
+        let (runner, _) = setup(FakeConfig::default());
+        let report = runner
+            .run(&manifest(r#"{"op":"goto","path":"/"}"#))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.page_snapshots.is_empty());
     }
 }

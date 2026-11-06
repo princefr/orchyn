@@ -191,6 +191,11 @@ fn actions_only(m: &ReplayManifest) -> ReplayManifest {
                 | StepOp::ExpectNoFailedRequests
                 | StepOp::ExpectTextUnchanged { .. }
                 | StepOp::ExpectDialog { .. }
+                | StepOp::ExpectValue { .. }
+                | StepOp::ExpectCount { .. }
+                | StepOp::ExpectStorage { .. }
+                | StepOp::ExpectSameText { .. }
+                | StepOp::ExpectAttribute { .. }
                 | StepOp::SnapshotText { .. } => return None,
                 other => other.clone(),
             };

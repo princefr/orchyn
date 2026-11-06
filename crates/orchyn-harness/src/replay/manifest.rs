@@ -124,6 +124,50 @@ pub enum StepOp {
         #[serde(default)]
         selector: Option<String>,
     },
+    /// Locates `selector` like `click` (scroll into view; fails if missing,
+    /// zero-size or covered), then dispatches `pointerover`, `pointerenter`,
+    /// `mouseover` and `mouseenter` on it. This is a JS event dispatch, not a
+    /// real pointer move: CSS-only `:hover` menus are NOT supported, but JS
+    /// hover handlers are triggered. Settles 250 ms.
+    Hover { selector: String },
+    /// HTML5 drag-and-drop from `selector` onto `target` via synthetic
+    /// `DragEvent`s (`dragstart`, `dragenter`, `dragover`, `drop`, `dragend`).
+    /// `position` is `"before"` (top quarter of the target), `"after"` (bottom
+    /// quarter) or anything else for the centre. Both elements must exist and
+    /// have non-zero size. Settles 300 ms.
+    Drag {
+        selector: String,
+        target: String,
+        #[serde(default)]
+        position: Option<String>,
+    },
+    /// The element's `.value` equals `value`. A checkbox or radio reports
+    /// `"true"`/`"false"` for `checked`. When `selector` matches several
+    /// radios or checkboxes (a group), the value of the checked one is used,
+    /// or `""` if none is checked.
+    ExpectValue { selector: String, value: String },
+    /// `document.querySelectorAll(selector).length == count`.
+    ExpectCount { selector: String, count: usize },
+    /// `localStorage` has `key`, and its value contains `contains` if given.
+    ExpectStorage {
+        key: String,
+        #[serde(default)]
+        contains: Option<String>,
+    },
+    /// `localStorage.setItem(key, value)`.
+    SetStorage { key: String, value: String },
+    /// This actor's current normalised text equals the text that `other_actor`
+    /// stored under `key` with `snapshot_text`. Failure names the first
+    /// differing line.
+    ExpectSameText { key: String, other_actor: String },
+    /// The element has attribute `name` (and, if `value` is given, its value
+    /// equals `value`). Covers `required`, `contenteditable`, and so on.
+    ExpectAttribute {
+        selector: String,
+        name: String,
+        #[serde(default)]
+        value: Option<String>,
+    },
 }
 
 impl StepOp {
@@ -150,6 +194,14 @@ impl StepOp {
             StepOp::SnapshotText { .. } => "snapshot_text",
             StepOp::ExpectTextUnchanged { .. } => "expect_text_unchanged",
             StepOp::ClickEach { .. } => "click_each",
+            StepOp::Hover { .. } => "hover",
+            StepOp::Drag { .. } => "drag",
+            StepOp::ExpectValue { .. } => "expect_value",
+            StepOp::ExpectCount { .. } => "expect_count",
+            StepOp::ExpectStorage { .. } => "expect_storage",
+            StepOp::SetStorage { .. } => "set_storage",
+            StepOp::ExpectSameText { .. } => "expect_same_text",
+            StepOp::ExpectAttribute { .. } => "expect_attribute",
         }
     }
 }
@@ -226,6 +278,65 @@ mod tests {
             m.steps[5].op,
             StepOp::ClickEach {
                 selector: Some("a.nav".to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn parses_new_ops() {
+        let m = ReplayManifest::from_json(
+            r##"{"name":"n","steps":[
+                {"op":"hover","selector":"#menu"},
+                {"op":"drag","selector":"#a","target":"#b"},
+                {"op":"drag","selector":"#a","target":"#b","position":"before"},
+                {"op":"expect_value","selector":"#e","value":"x"},
+                {"op":"expect_count","selector":"li","count":3},
+                {"op":"expect_storage","key":"k"},
+                {"op":"expect_storage","key":"k","contains":"v"},
+                {"op":"set_storage","key":"k","value":"v"},
+                {"actor":"bob","op":"expect_same_text","key":"feed","other_actor":"alice"},
+                {"op":"expect_attribute","selector":"#e","name":"required"},
+                {"op":"expect_attribute","selector":"#e","name":"aria-label","value":"Go"}]}"##,
+        )
+        .unwrap();
+        let names: Vec<&str> = m.steps.iter().map(|s| s.op.name()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "hover",
+                "drag",
+                "drag",
+                "expect_value",
+                "expect_count",
+                "expect_storage",
+                "expect_storage",
+                "set_storage",
+                "expect_same_text",
+                "expect_attribute",
+                "expect_attribute",
+            ]
+        );
+        assert_eq!(
+            m.steps[1].op,
+            StepOp::Drag {
+                selector: "#a".into(),
+                target: "#b".into(),
+                position: None
+            }
+        );
+        assert_eq!(
+            m.steps[6].op,
+            StepOp::ExpectStorage {
+                key: "k".into(),
+                contains: Some("v".into())
+            }
+        );
+        assert_eq!(
+            m.steps[10].op,
+            StepOp::ExpectAttribute {
+                selector: "#e".into(),
+                name: "aria-label".into(),
+                value: Some("Go".into())
             }
         );
     }
