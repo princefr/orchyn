@@ -29,21 +29,23 @@ cargo test -p orchyn-integration-tests                       # e2e: needs node, 
 
 cargo run -p orchyn-cli -- --app <url-or-path> [--max-turns 40] [--project-root .] [--diff FROM TO]
 cargo run -p orchyn-check -- --url <http://...> [--project .] [--manifest FILE ...] [--universal] [--contracts]
+cargo run -p orchyn-check -- --lint-spec TASKS.md [--lint-spec MORE.md]    # no --url needed
+cargo run -p orchyn-check -- --url <http://...> --manifest FILE ... --record DIR [--runs 3]
+cargo run -p orchyn-check -- --url <http://...> --manifest FILE ... --baseline DIR
 cargo run -p orchyn-bench -- --runs 3 [--mode manifest|universal|mined|invariants] [--suite bench/suite.json] [--manifests DIR] [--label L] [--out FILE] [--only NAME]
 cargo run -p orchyn-server                                   # serves 127.0.0.1:3000
 cargo run -p orchyn-worker
 ```
 
-- `cargo test -p orchyn-harness` without `--lib` does not compile: `crates/orchyn-harness/tests/harness_tests.rs` builds a `HarnessConfig` without the `phases` field. Use `--lib` until that is fixed.
 - `orchyn-cli` has no `run`, `agent`, `validate` or `diff` subcommands. Replay is reached through `orchyn-check` (one app, one run) and `orchyn-bench` (scored fixtures).
-- `orchyn-check` exits 0 only if every `--manifest` passes and no `--universal` candidate with confidence >= 0.9 fails. Reality gaps are printed but do not change the exit code.
+- `orchyn-check` exits 0 only if every `--manifest` passes, no `--universal` candidate with confidence >= 0.9 fails, and (with `--baseline`) no recorded invariant is broken. Reality gaps and `--lint-spec` findings do not change the exit code. `--baseline` replays each manifest's actions only, so its assertions are not checked in that mode.
 - `orchyn-bench --mode mined` needs `--manifests DIR` (driver manifests). In `--mode invariants`, `--out` is a directory.
 - Prefer `-p <crate>` over workspace-wide builds; the workspace is heavy.
 
 ## Runtime requirements
 
 - **Model.** `QwenClient` (`crates/model-client`) serves Qwen 3.5 0.8B: Hugging Face repo `bartowski/Qwen_Qwen3.5-0.8B-GGUF`, file `Qwen_Qwen3.5-0.8B-Q4_K_M.gguf`, run through `llama-cpp-2`. It is loaded lazily on the first model call (`LlamaEngine::load` via `hf-hub`), not at construction. The model is text-only: `QwenClient::observe` returns an error. All model calls route through this one client; do not add alternate model backends (see `ARCHITECTURE.md`, "Single Model Policy"). Replay, reconciliation and invariants need no model.
-- **Browser.** `WebAdapter` (`crates/platform-web`) uses `headless_chrome`, not Playwright. It uses the binary named by `CHROME=<path>` when set, otherwise one `headless_chrome` finds. Set `ORCHYN_NO_SANDBOX=1` when running as root or in a container.
+- **Browser.** `WebAdapter` (`crates/platform-web`) uses `headless_chrome`, not Playwright. It uses the binary named by `CHROME=<path>` when set, otherwise one `headless_chrome` finds. Set `ORCHYN_NO_SANDBOX=1` when running as root or in a container. `ORCHYN_BROWSER_PER_ADAPTER=1` restores one Chromium per adapter (the default is one shared Chromium, with an incognito context per adapter).
 - **PostgreSQL** is required by `orchyn-server` and `orchyn-worker`; both read `DATABASE_URL` and fail without it. `Storage::new` creates its tables on startup (`CREATE TABLE IF NOT EXISTS`); `migrations/0001_init.sql` is not run by the code. The storage config defaults `DATABASE_URL` to `postgres://localhost/orchyn`. The CLI and bench do not use storage.
 - **orchyn-server** also requires `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`, `FRONTEND_URL` and `STRIPE_WEBHOOK_SECRET`. `ARTIFACT_ROOT` (default `./storage/artifacts`) only sets where artifacts are stored; no route in this repo serves it.
 - **Benchmark.** `bench/` needs `npm install` (express). `orchyn-bench` starts each fixture with `node server.js`, setting `PORT` to a free port and `BUG` to `0` or `1`.

@@ -126,9 +126,9 @@ pub enum StepOp {
     },
     /// Locates `selector` like `click` (scroll into view; fails if missing,
     /// zero-size or covered), then dispatches `pointerover`, `pointerenter`,
-    /// `mouseover` and `mouseenter` on it. This is a JS event dispatch, not a
-    /// real pointer move: CSS-only `:hover` menus are NOT supported, but JS
-    /// hover handlers are triggered. Settles 250 ms.
+    /// `mouseover` and `mouseenter` on it, then moves the real pointer to its
+    /// centre (when the adapter supports `mouse_move`), so both JS hover
+    /// handlers and CSS-only `:hover` rules apply. Settles 250 ms.
     Hover { selector: String },
     /// HTML5 drag-and-drop from `selector` onto `target` via synthetic
     /// `DragEvent`s (`dragstart`, `dragenter`, `dragover`, `drop`, `dragend`).

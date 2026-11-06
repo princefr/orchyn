@@ -112,7 +112,7 @@ orchyn/
 │   ├── orchyn-cli/            # explorer: agent mode, optional --diff
 │   ├── orchyn-server/         # axum + GraphQL API on 127.0.0.1:3000
 │   ├── orchyn-worker/         # scheduler worker
-│   ├── orchyn-check/          # grounded checks of a running app: manifests, --universal, --contracts
+│   ├── orchyn-check/          # grounded checks of a running app: manifests, --universal, --contracts, --lint-spec, --record, --baseline
 │   └── orchyn-bench/          # scores replay manifests against bug-seeded fixtures (--mode)
 ├── bench/                     # suite.json, fixtures/<name>/ (clean and BUG=1, PROMPTS.md), manifests/, results/, webbench/
 ├── tests/
@@ -191,6 +191,18 @@ pub trait ModelClient: Send + Sync + Debug {
 - JavaScript dialogs (`alert`, `confirm`, `prompt`) are accepted as soon as they
   open, and recorded as console entries prefixed `[dialog] `. `expect_dialog`
   reads them.
+- **Shared browser.** By default one Chromium serves every `WebAdapter` in the
+  process, and each adapter gets its own incognito context in it, so cookies and
+  storage stay isolated. The shared browser is relaunched after 8 adapters (its
+  incognito contexts cannot be disposed through the public API) and is killed by
+  PID at process exit. `ORCHYN_BROWSER_PER_ADAPTER=1` restores one Chromium per
+  adapter.
+- `mouse_move(x, y)` moves the real pointer. Adapters that do not implement it
+  return an error.
+- **Popups.** Every tab, including popups, gets the same instrumentation.
+  `switch_to_new_tab(timeout)` waits for a tab whose opener is one of this
+  adapter's tabs and makes it active. `switch_to_tab(index)` activates a tab the
+  adapter already has (0 is the original tab).
 - `take_exchanges` returns XHR and fetch exchanges only. A response body is kept
   when it is non-empty, not base64 and at most 16 KiB.
 
@@ -274,10 +286,6 @@ enum (`Ingest`, `Observation`, `GapDetection`, `FixLoop`, `Ship` and the
 **`lib.rs`** also exposes `LlmClient`, `RealLlm` and `MockLlm`, thin wrappers
 around `Arc<dyn ModelClient>`.
 
-**Known build break.** `crates/orchyn-harness/tests/harness_tests.rs` builds a
-`HarnessConfig` without the `phases` field, so that integration-test target
-does not compile. Run harness unit tests with `cargo test -p orchyn-harness --lib`.
-
 ### `bin/orchyn-cli`
 
 A single command with flags, no subcommands. The clap name is `orchyn`; the
@@ -303,9 +311,13 @@ Grounded checks for a running app, for a coding agent or a person. No model.
 
 ```text
 orchyn-check --url <base-url> [--project .] [--manifest FILE ...] [--universal] [--contracts]
+orchyn-check --lint-spec FILE ...                        # no --url needed
+orchyn-check --url <base-url> --manifest FILE ... --record DIR [--runs 3]
+orchyn-check --url <base-url> --manifest FILE ... --baseline DIR
 ```
 
 - `--url`: the running app. A manifest's relative `goto` paths resolve against it.
+  Required unless only `--lint-spec` is given.
 - `--project` (default `.`): the source tree for code intent and contracts.
 - `--manifest` (repeatable): each manifest is replayed, and each failing step is
   printed. A halted run says so.
@@ -314,12 +326,27 @@ orchyn-check --url <base-url> [--project .] [--manifest FILE ...] [--universal] 
   fails the run. Lower-confidence failures print as advisory.
 - `--contracts`: prints the statements of the invariants the code declares. It
   does not run them.
+- `--lint-spec FILE` (repeatable): runs first. Prints the spec ambiguities found
+  by the linter (see [Spec ambiguity lint](#spec-ambiguity-lint-ambiguityrs)).
+  Informational only.
+- `--record DIR`: for each `--manifest`, replays its actions only (see
+  `ReplayManifest::actions_only`) `--runs` times (default 3, at least 2). It
+  writes `DIR/<manifest-stem>.baseline.json` with the API invariants (`mined`)
+  and page invariants (`pages`) that held in every run. It returns before the
+  manifest, universal and reconciliation output, and exits 0 when it succeeds.
+  Conflicts with `--baseline`.
+- `--baseline DIR`: for each `--manifest`, loads its baseline and replays the
+  manifest's actions once. Each recorded invariant that no longer holds is
+  printed. In this mode the manifest's own assertions are not evaluated, and
+  the manifest is not run as a manifest. `--universal` and reconciliation still
+  run afterwards.
 - Always: prints reality gaps (`reconcile`), leaving out `UnexercisedClientCall`.
   Gaps do not affect the exit status.
 
-Exit status is 0 when every manifest passes and no universal candidate with
-confidence 0.9 or more fails. It is 1 otherwise, including when a manifest file
-cannot be read or parsed.
+Exit status is 0 when every manifest passes, no universal candidate with
+confidence 0.9 or more fails, and (with `--baseline`) no recorded invariant is
+broken. It is 1 otherwise, including when a manifest or baseline file cannot be
+read or parsed. `--record` exits 0 when it writes its baselines.
 
 ### `bin/orchyn-bench`
 
@@ -363,7 +390,7 @@ Ops, from `crates/orchyn-harness/src/replay/manifest.rs`:
 | Op | Fields | Behaviour |
 |---|---|---|
 | `goto` | `path` | Navigates to `base_url` + `path` (or `path` if absolute) |
-| `click` | `selector` | Probe, then real mouse click at centre. Fails if missing, zero-size, or covered |
+| `click` | `selector` | Probe, then real mouse click at centre. Fails if missing, zero-size, or covered. Waits (up to 5 s) for a navigation the click starts |
 | `click_text` | `text` | As `click`, on the first visible button, link or `[role=button]` with that trimmed text |
 | `fill` | `selector`, `value` | Real click to focus, clear, type |
 | `wait_ms` | `ms` | Sleep |
@@ -382,6 +409,21 @@ Ops, from `crates/orchyn-harness/src/replay/manifest.rs`:
 | `snapshot_text` | `key` | Store this actor's normalised `document.body.innerText` under `key` |
 | `expect_text_unchanged` | `key` | This actor's normalised text must equal the snapshot under `key`. Fails if no snapshot was taken |
 | `click_each` | `selector?` (default `button, input[type=submit], [role=button]`) | Really click each visible, enabled match in DOM order, at most 20. A covered match is skipped. Fails on a console error or failed request caused by a click. A navigation caused by a click is undone before the next click |
+| `hover` | `selector` | Probe as `click` (fails if missing or covered). Dispatches `pointerover`, `pointerenter`, `mouseover` and `mouseenter` at the centre, then moves the real pointer there with `mouse_move`, so CSS `:hover` applies. Adapters without `mouse_move` get the JS events only. Settles 250 ms |
+| `drag` | `selector`, `target`, `position?` | HTML5 drag from `selector` onto `target` by synthetic `DragEvent`s (`dragstart`, `dragenter`, `dragover`, `drop`, `dragend`). `position` is `before` (top quarter of the target), `after` (bottom quarter) or the centre. Both elements must exist with non-zero size. Settles 300 ms |
+| `expect_value` | `selector`, `value` | The element's `.value` equals `value`. A checkbox or radio reports `"true"`/`"false"` for `checked`. For a radio or checkbox group, the checked member's value, or `""` if none is checked |
+| `expect_count` | `selector`, `count` | `document.querySelectorAll(selector).length` equals `count` |
+| `expect_storage` | `key`, `contains?` | `localStorage` has `key`, and its value contains `contains` when given |
+| `set_storage` | `key`, `value` | `localStorage.setItem(key, value)` |
+| `expect_same_text` | `key`, `other_actor` | This actor's normalised text equals the text `other_actor` stored under `key` with `snapshot_text`. Fails, naming the first differing line, if the text differs. Fails if that actor has no such snapshot |
+| `expect_attribute` | `selector`, `name`, `value?` | The element has attribute `name`. If `value` is given, the attribute equals it |
+| `switch_to_popup` | `timeout_ms` (3000) | Waits for a new window opened by this actor's pages, then makes it the active tab, so later steps act on it. Fails with "no new window was opened" if none appears in time. Settles 300 ms |
+| `switch_tab` | `index` | Makes tab `index` active for this actor: 0 is the original tab, 1.. are new windows in opening order. Settles 300 ms |
+
+`StepOp::is_assertion()` classifies every op, and the match is exhaustive, so a
+new op must be classified. `ReplayManifest::actions_only()` drops the assertions
+and turns `wait_for_text` into a plain wait of at most 1.5 s. The `orchyn-check`
+baseline modes and `orchyn-bench --mode mined` use it.
 
 Runner behaviour (`replay/runner.rs`):
 
@@ -394,6 +436,14 @@ Runner behaviour (`replay/runner.rs`):
 - `ReplayReport.observed_exchanges` holds the XHR and fetch exchanges with bodies,
   all actors, in order. The runner drains them whenever it collects telemetry and
   at the end of the run. The `mined` bench mode reads them.
+- `ReplayReport.page_snapshots` holds a `PageSnapshot` (`replay/snapshot.rs`) per
+  actor after each step that passed and can change the page: `goto`, `click`,
+  `click_text`, `fill`, `wait_ms`, `wait_for_text`, `reload`, `click_each`,
+  `drag`, `hover`, `set_storage`, `switch_to_popup` and `switch_tab`. Assertions
+  never record one. A snapshot holds the URL without query or fragment, the
+  visible text lines, and the visible elements (`tag#id`, or `tag.class...` when
+  there is no id). A snapshot that cannot be read is skipped without failing the
+  step.
 
 ---
 
@@ -536,15 +586,47 @@ also reports "endpoint never called" once for each mined endpoint that is absent
 from the trace. `to_candidates` turns the mined facts into candidates at
 confidence 0.8, with no `check`.
 
+### Page invariants from replay snapshots (`pages.rs`)
+
+Mined from the `PageSnapshot`s of known-good runs of one driver manifest (see
+[Replay manifests](#replay-manifests)). `mine(traces)` needs at least two runs
+and keeps a key `(actor, step)` only when every run has it. It keeps:
+
+- `TextAlways`: a line the actor saw after that step in every run. Lines over
+  200 characters are skipped.
+- `VisibleAlways`: an element that was visible in every run.
+- `UrlAlways`: the URL path, when every run shares it.
+
+Text and elements are reduced to first appearances. One already shown on the same
+page at the actor's previous common step is dropped, unless the step was a
+`reload` or `goto`, which restate the page.
+
+`check(invariants, trace)` reports each broken observation, and one "step not
+reached" for each `(actor, step)` the run lacks. `to_candidates` gives `Mined`
+candidates at confidence 0.75, with no `check`. These cover what API mining does
+not, such as a greeting that stops showing or a post one actor never sees.
+
+### Spec ambiguity lint (`ambiguity.rs`)
+
+Not an invariant source. `lint(text)` is a regex-based, model-free linter for task
+specs. It returns an `Ambiguity` for each phrase a coding agent could read in more
+than one way: its line, an excerpt, one question to settle it, and two to four
+readings. It has ten rule kinds: `value_range`, `removal`, `visibility_scope`,
+`vague_quality`, `unspecified_value`, `persistence`, `error_feedback`,
+`status_code`, `position` and `naming_variant`. A line that already settles the
+question (a unit, a storage place, a status code, a visibility qualifier or a
+default) is not flagged. It is used by `orchyn-check --lint-spec`.
+
 ### Where the sources are used
 
 - `orchyn-check --universal` runs the universal candidates. `--contracts` prints
-  the contract candidates.
+  the contract candidates. `--record` and `--baseline` mine and check API and page
+  invariants for one manifest's actions. `--lint-spec` runs the ambiguity lint.
 - `orchyn-bench --mode universal` runs the universal candidates against the clean
-  and buggy fixtures. `--mode mined` mines and checks traces. `--mode invariants`
-  writes every source per fixture, reading `PROMPTS.md` and `production.ndjson`
-  where they exist. No fixture has a `production.ndjson` yet, so the production
-  source has no benchmark coverage.
+  and buggy fixtures. `--mode mined` mines and checks traces and reports API, page
+  and combined detection. `--mode invariants` writes every source per fixture,
+  reading `PROMPTS.md` and `production.ndjson` where they exist. No fixture has a
+  `production.ndjson` yet, so the production source has no benchmark coverage.
 
 ---
 
@@ -576,10 +658,11 @@ cargo run -p orchyn-bench -- --runs 3 [--suite bench/suite.json] [--manifests DI
   entry's `manifest`, which lets you score other authors' manifests. `--out`
   writes full JSON results.
 
-The suite currently has eight fixtures: login-session, counter, create-500,
-route-mismatch, console-crash, covered-button, realtime-sync and hidden-error.
-The reference manifests are in `bench/manifests/`. Results are written to
-`bench/results/` when `--out` is given.
+The suite has eight fixtures under neutral names: login, counter, todos, shop,
+profile, newsletter, notes and signup. `bench/results/NAMES.md` maps the older
+names (for example `create-500` is now `todos`) for result files written before
+the rename. The reference manifests are in `bench/manifests/`. Results are written
+to `bench/results/` when `--out` is given.
 
 `--mode` selects what is scored (`manifest` is the default and the one described
 above):
@@ -593,7 +676,8 @@ above):
   removed, so the app is driven through the same actions without verdicts. Its
   `max(--runs, 2)` clean traces are mined, and one further clean trace is held
   out. The held-out trace is checked for false positives, and each of the
-  `--runs` buggy traces is checked against the mined invariants.
+  `--runs` buggy traces is checked against the mined invariants. API and page
+  invariants (see [Invariants](#invariants)) are reported separately and combined.
 - `invariants`: writes every candidate from every source for each fixture. `--out`
   is a directory here (default `bench/results/invariants/`), and each fixture gets
   `<fixture>.json`.
@@ -609,6 +693,14 @@ attributes this to checks an agent writes for itself, which share its reading of
 the spec. It argues that the value must come from invariants with an independent
 source, such as the transcript, code contracts, or mined or production traffic.
 See [RESULTS.md](bench/webbench/RESULTS.md).
+
+`bench/mutation/` generates single-edit mutants of Web-Bench reference projects
+(`mutate.js`; its README lists the operators). `score.sh` scores three detectors
+on each mutant: independent checks, invariants recorded on the unmutated control,
+and universal rules. A mutant is relevant only when the official Web-Bench tests
+fail on it. `bench/webbench/indep-checks/` holds checks written from the task
+text, with validation against the reference solutions. `bench/webbench/lint/`
+holds `--lint-spec` output for the task specs.
 
 ---
 
