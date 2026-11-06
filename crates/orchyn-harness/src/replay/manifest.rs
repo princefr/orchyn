@@ -102,6 +102,24 @@ pub enum StepOp {
     ExpectNoFailedRequests,
     /// Forget telemetry collected so far for this actor.
     ResetTelemetry,
+    /// Every visible, enabled interactive element (`button, a[href], input`,
+    /// `select`, `textarea`, `[role=button]`) must be the hit target at its
+    /// centre. Each is scrolled into view first.
+    ExpectAllClickable,
+    /// `location.reload()`, then wait for the page to load and settle.
+    Reload,
+    /// Store this actor's normalised `document.body.innerText` under `key`.
+    SnapshotText { key: String },
+    /// This actor's current normalised text must equal the snapshot under `key`.
+    ExpectTextUnchanged { key: String },
+    /// Monkey pass: really click each visible, enabled element matching
+    /// `selector` (default `button, input[type=submit], [role=button]`), in DOM
+    /// order, at most 20. Fails if a click produces a console error or a failed
+    /// request. Navigation caused by a click is undone before the next click.
+    ClickEach {
+        #[serde(default)]
+        selector: Option<String>,
+    },
 }
 
 impl StepOp {
@@ -122,6 +140,11 @@ impl StepOp {
             StepOp::ExpectRequest { .. } => "expect_request",
             StepOp::ExpectNoFailedRequests => "expect_no_failed_requests",
             StepOp::ResetTelemetry => "reset_telemetry",
+            StepOp::ExpectAllClickable => "expect_all_clickable",
+            StepOp::Reload => "reload",
+            StepOp::SnapshotText { .. } => "snapshot_text",
+            StepOp::ExpectTextUnchanged { .. } => "expect_text_unchanged",
+            StepOp::ClickEach { .. } => "click_each",
         }
     }
 }
@@ -160,6 +183,45 @@ mod tests {
         assert_eq!(m.steps.len(), 4);
         assert_eq!(m.steps[0].actor, DEFAULT_ACTOR);
         assert_eq!(m.actors(), vec!["default".to_string(), "bob".to_string()]);
-        assert!(matches!(m.steps[1].op, StepOp::ExpectText { timeout_ms: 3000, .. }));
+        assert!(matches!(
+            m.steps[1].op,
+            StepOp::ExpectText {
+                timeout_ms: 3000,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn parses_universal_ops() {
+        let m = ReplayManifest::from_json(
+            r#"{"name":"u","steps":[
+                {"op":"expect_all_clickable"},
+                {"op":"reload"},
+                {"op":"snapshot_text","key":"before"},
+                {"op":"expect_text_unchanged","key":"before"},
+                {"op":"click_each"},
+                {"op":"click_each","selector":"a.nav"}]}"#,
+        )
+        .unwrap();
+        let names: Vec<&str> = m.steps.iter().map(|s| s.op.name()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "expect_all_clickable",
+                "reload",
+                "snapshot_text",
+                "expect_text_unchanged",
+                "click_each",
+                "click_each",
+            ]
+        );
+        assert_eq!(m.steps[4].op, StepOp::ClickEach { selector: None });
+        assert_eq!(
+            m.steps[5].op,
+            StepOp::ClickEach {
+                selector: Some("a.nav".to_string())
+            }
+        );
     }
 }

@@ -8,6 +8,7 @@
 //! Failures are recorded in the report and halt the run. Only a factory failure
 //! makes [`ReplayRunner::run`] return `Err`.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -146,6 +147,8 @@ struct Actor {
     requests: Vec<NetworkRequest>,
     /// Console error messages since the start of the run or the last reset.
     errors: Vec<String>,
+    /// Normalised page text saved by `snapshot_text`, keyed by its `key`.
+    snapshots: HashMap<String, String>,
 }
 
 /// Run-wide state. Lives for one `run` call.
@@ -169,6 +172,7 @@ impl Session {
             adapter,
             requests: Vec::new(),
             errors: Vec::new(),
+            snapshots: HashMap::new(),
         });
         Ok(self.actors.len() - 1)
     }
@@ -223,7 +227,106 @@ impl Session {
                 self.actors[i].errors.clear();
                 Ok("telemetry reset".to_string())
             }
+            StepOp::ExpectAllClickable => expect_all_clickable(&mut *self.actors[i].adapter).await,
+            StepOp::Reload => reload(&mut *self.actors[i].adapter).await,
+            StepOp::SnapshotText { key } => {
+                let text = read_body_text(&mut *self.actors[i].adapter).await?;
+                let lines = text.lines().count();
+                self.actors[i].snapshots.insert(key.clone(), text);
+                Ok(format!("stored {lines} line(s) of text under '{key}'"))
+            }
+            StepOp::ExpectTextUnchanged { key } => {
+                let before = self.actors[i].snapshots.get(key).cloned();
+                expect_text_unchanged(&mut *self.actors[i].adapter, before, key).await
+            }
+            StepOp::ClickEach { selector } => self.click_each(i, selector.as_deref()).await,
         }
+    }
+
+    /// Monkey pass: really clicks each candidate in DOM order. Each candidate is
+    /// re-located by index before its click, so a page that changed under us is
+    /// handled. Telemetry is pulled after every click, and only what that click
+    /// produced is judged. A click that moved the page is undone before the next.
+    async fn click_each(&mut self, i: usize, selector: Option<&str>) -> StepOutcome {
+        let selector = selector.unwrap_or(DEFAULT_CLICK_EACH_SELECTOR);
+        let origin = current_url(&mut *self.actors[i].adapter).await?;
+        let mut total = 0;
+        let mut clicked = 0;
+        let mut skipped: Vec<String> = Vec::new();
+        let mut problems: Vec<String> = Vec::new();
+
+        for k in 0..MAX_CLICK_EACH {
+            let mark = mark_nth(&mut *self.actors[i].adapter, selector, k).await?;
+            if k == 0 {
+                total = mark.total;
+            }
+            if !mark.found {
+                break;
+            }
+            let p = probe(&mut *self.actors[i].adapter, MARKER_SELECTOR).await?;
+            if !p.found || !p.visible {
+                skipped.push(format!("{} (not visible)", mark.label));
+                continue;
+            }
+            if p.covered {
+                let by = p
+                    .coverer
+                    .as_deref()
+                    .unwrap_or("something outside the viewport");
+                skipped.push(format!("{} covered by {by}", mark.label));
+                continue;
+            }
+
+            let requests_before = self.actors[i].requests.len();
+            let errors_before = self.actors[i].errors.len();
+            self.actors[i]
+                .adapter
+                .execute_harness(&HarnessAction::Click { target: 0 }, &[annotate(&p)])
+                .await
+                .map_err(|e| format!("mouse click on {} failed: {e}", mark.label))?;
+            sleep_ms(CLICK_EACH_SETTLE_MS).await;
+            self.pull(i).await?;
+            clicked += 1;
+
+            let actor = &self.actors[i];
+            for message in &actor.errors[errors_before..] {
+                problems.push(format!("{} logged a console error: {message}", mark.label));
+            }
+            for request in &actor.requests[requests_before..] {
+                if is_failed_request(request) {
+                    problems.push(format!(
+                        "{} caused {} {} {}",
+                        mark.label, request.method, request.url, request.status
+                    ));
+                }
+            }
+
+            let now = current_url(&mut *self.actors[i].adapter).await?;
+            if now != origin {
+                goto(&mut *self.actors[i].adapter, &origin).await?;
+            }
+        }
+        // Best effort: the marker is only a way to address the element.
+        let _ = self.actors[i].adapter.eval_js(CLEAR_MARKER_JS).await;
+
+        if !problems.is_empty() {
+            let listed: Vec<&str> = problems
+                .iter()
+                .take(MAX_LISTED)
+                .map(String::as_str)
+                .collect();
+            return Err(format!(
+                "{} problem(s) while clicking each element on {origin}: {}",
+                problems.len(),
+                listed.join(" | ")
+            ));
+        }
+        let considered = total.min(MAX_CLICK_EACH);
+        let mut detail = format!("clicked {clicked} of {considered} element(s) on {origin}");
+        if !skipped.is_empty() {
+            detail.push_str(&format!("; skipped: {}", skipped.join(", ")));
+        }
+        Ok(detail)
     }
 
     /// Drains the adapter's buffered telemetry into the actor's buffer and the
@@ -691,6 +794,234 @@ fn describe_requests(reqs: &[NetworkRequest]) -> String {
     parts.join("; ")
 }
 
+// ---------------------------------------------------------------------------
+// Universal checks: clickability, reload stability, monkey clicking
+// ---------------------------------------------------------------------------
+
+const DEFAULT_CLICK_EACH_SELECTOR: &str = "button, input[type=submit], [role=button]";
+const CLICKABLE_SELECTOR: &str =
+    "button, a[href], input:not([type=hidden]), select, textarea, [role=button]";
+const MAX_CLICK_EACH: usize = 20;
+const CLICK_EACH_SETTLE_MS: u64 = 300;
+const RELOAD_START_MS: u64 = 100;
+const RELOAD_TIMEOUT_MS: u64 = 5000;
+const RELOAD_SETTLE_MS: u64 = 300;
+const MAX_OFFENDERS: usize = 5;
+const TEXT_LINE_MAX_CHARS: usize = 120;
+const BODY_TEXT_JS: &str = "(document.body ? document.body.innerText : '')";
+
+/// Shared JS helpers, spliced into probe scripts. Plain strings: no format braces.
+const VISIBLE_JS: &str = r#"const visible = (e) => {
+    const r = e.getBoundingClientRect();
+    const cs = getComputedStyle(e);
+    return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden';
+  };"#;
+const DESCRIBE_JS: &str = r#"const describe = (n) => {
+    let s = n.tagName;
+    if (n.id) s += '#' + n.id;
+    const cls = (typeof n.className === 'string' ? n.className : '').trim().split(/\s+/).filter(Boolean);
+    if (cls.length) s += '.' + cls.join('.');
+    return s;
+  };"#;
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ClickableReport {
+    checked: usize,
+    offenders: Vec<String>,
+}
+
+/// One candidate for `click_each`, as located by [`mark_nth_js`].
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct Marked {
+    total: usize,
+    found: bool,
+    label: String,
+}
+
+/// Scrolls each visible, enabled interactive element into view and checks that
+/// `elementFromPoint` at its centre is the element or one of its descendants.
+fn all_clickable_js() -> String {
+    let sel = js_str(CLICKABLE_SELECTOR);
+    let visible = VISIBLE_JS;
+    let describe = DESCRIBE_JS;
+    format!(
+        r#"(() => {{
+  const selector = {sel};
+  {visible}
+  {describe}
+  const elements = Array.from(document.querySelectorAll(selector)).filter((e) => visible(e) && !e.disabled);
+  const offenders = [];
+  for (const el of elements) {{
+    el.scrollIntoView({{ block: 'center', inline: 'center' }});
+    const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (top === null || !el.contains(top)) {{
+      offenders.push(describe(el) + ' covered by ' + (top ? describe(top) : 'nothing (outside the viewport)'));
+    }}
+  }}
+  return JSON.stringify({{ checked: elements.length, offenders }});
+}})()"#
+    )
+}
+
+/// Marks the `k`th visible, enabled element matching `selector` with the marker
+/// attribute and reports how many there are in total.
+fn mark_nth_js(selector: &str, k: usize) -> String {
+    let attr = MARKER_ATTR;
+    let sel = js_str(selector);
+    let visible = VISIBLE_JS;
+    let describe = DESCRIBE_JS;
+    format!(
+        r#"(() => {{
+  const attr = '{attr}';
+  document.querySelectorAll('[' + attr + ']').forEach((e) => e.removeAttribute(attr));
+  {visible}
+  {describe}
+  const candidates = Array.from(document.querySelectorAll({sel})).filter((e) => visible(e) && !e.disabled);
+  const hit = candidates[{k}];
+  if (!hit) return JSON.stringify({{ total: candidates.length, found: false }});
+  hit.setAttribute(attr, '');
+  return JSON.stringify({{ total: candidates.length, found: true, label: describe(hit) }});
+}})()"#
+    )
+}
+
+async fn mark_nth(adapter: &mut dyn PlatformAdapter, selector: &str, k: usize) -> Fallible<Marked> {
+    let raw = adapter
+        .eval_js(&mark_nth_js(selector, k))
+        .await
+        .map_err(|e| format!("locating {selector} failed: {e}"))?;
+    serde_json::from_str(&js_text(&raw))
+        .map_err(|e| format!("unreadable element list for {selector}: {e}"))
+}
+
+async fn current_url(adapter: &mut dyn PlatformAdapter) -> Fallible<String> {
+    let raw = adapter
+        .eval_js("location.href")
+        .await
+        .map_err(|e| format!("reading location failed: {e}"))?;
+    Ok(js_text(&raw))
+}
+
+async fn expect_all_clickable(adapter: &mut dyn PlatformAdapter) -> StepOutcome {
+    let raw = adapter
+        .eval_js(&all_clickable_js())
+        .await
+        .map_err(|e| format!("checking clickable elements failed: {e}"))?;
+    let report: ClickableReport = serde_json::from_str(&js_text(&raw))
+        .map_err(|e| format!("unreadable clickability report: {e}"))?;
+    if report.offenders.is_empty() {
+        return Ok(format!(
+            "all {} interactive element(s) can be clicked",
+            report.checked
+        ));
+    }
+    let listed: Vec<&str> = report
+        .offenders
+        .iter()
+        .take(MAX_OFFENDERS)
+        .map(String::as_str)
+        .collect();
+    Err(format!(
+        "{} of {} interactive element(s) cannot be clicked: {}",
+        report.offenders.len(),
+        report.checked,
+        listed.join("; ")
+    ))
+}
+
+async fn reload(adapter: &mut dyn PlatformAdapter) -> StepOutcome {
+    // Reload on a later tick so this eval returns before the page unloads.
+    adapter
+        .eval_js("setTimeout(() => location.reload(), 0); 'reloading'")
+        .await
+        .map_err(|e| format!("reload failed: {e}"))?;
+    sleep_ms(RELOAD_START_MS).await;
+    let started = Instant::now();
+    loop {
+        // Evals can fail while the page is unloading; that just means not ready.
+        let ready = adapter
+            .eval_js("document.readyState === 'complete'")
+            .await
+            .map(|raw| js_text(&raw) == "true")
+            .unwrap_or(false);
+        if ready {
+            break;
+        }
+        if started.elapsed() >= Duration::from_millis(RELOAD_TIMEOUT_MS) {
+            return Err(format!(
+                "page did not finish loading within {RELOAD_TIMEOUT_MS} ms of reload"
+            ));
+        }
+        sleep_ms(POLL_MS).await;
+    }
+    sleep_ms(RELOAD_SETTLE_MS).await;
+    Ok("reloaded and loaded".to_string())
+}
+
+/// Trims each line, collapses whitespace runs inside it and drops blank lines.
+fn normalise_text(raw: &str) -> String {
+    raw.lines()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+async fn read_body_text(adapter: &mut dyn PlatformAdapter) -> Fallible<String> {
+    let raw = adapter
+        .eval_js(BODY_TEXT_JS)
+        .await
+        .map_err(|e| format!("reading page text failed: {e}"))?;
+    Ok(normalise_text(&js_text(&raw)))
+}
+
+async fn expect_text_unchanged(
+    adapter: &mut dyn PlatformAdapter,
+    before: Option<String>,
+    key: &str,
+) -> StepOutcome {
+    let Some(before) = before else {
+        return Err(format!(
+            "no snapshot '{key}' was taken for this actor (snapshot_text must come first)"
+        ));
+    };
+    let after = read_body_text(adapter).await?;
+    if after == before {
+        return Ok(format!("text unchanged since snapshot '{key}'"));
+    }
+    Err(text_change_detail(key, &before, &after))
+}
+
+/// Names the first line that differs in each text, truncated for the report.
+fn text_change_detail(key: &str, before: &str, after: &str) -> String {
+    let before_lines: Vec<&str> = before.lines().collect();
+    let after_lines: Vec<&str> = after.lines().collect();
+    let first = (0..before_lines.len().max(after_lines.len()))
+        .find(|&n| before_lines.get(n) != after_lines.get(n))
+        .unwrap_or(0);
+    let show = |line: Option<&&str>| match line {
+        Some(line) => truncate_chars(line, TEXT_LINE_MAX_CHARS),
+        None => "<end of text>".to_string(),
+    };
+    format!(
+        "text changed since snapshot '{key}' at line {}: before: {} | after: {}",
+        first + 1,
+        show(before_lines.get(first)),
+        show(after_lines.get(first)),
+    )
+}
+
+fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    let head: String = s.chars().take(max - 3).collect();
+    format!("{head}...")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -711,6 +1042,10 @@ mod tests {
         eval: Vec<(String, String)>,
         /// One batch handed out per `collect_telemetry` call.
         telemetry: Vec<RawTelemetry>,
+        /// `(substring, replies)`: while replies remain, each matching eval
+        /// gets the next one. Checked before `eval`, so page state can change
+        /// between reads.
+        sequences: Vec<(String, Vec<String>)>,
     }
 
     #[derive(Default, Debug)]
@@ -726,6 +1061,7 @@ mod tests {
         actor: String,
         config: FakeConfig,
         telemetry: VecDeque<RawTelemetry>,
+        sequences: Vec<(String, VecDeque<String>)>,
         record: Arc<Mutex<Record>>,
     }
 
@@ -780,6 +1116,14 @@ mod tests {
             async { Ok(()) }.boxed()
         }
         fn eval_js(&mut self, js: &str) -> BoxFuture<'_, orchyn_core::Result<String>> {
+            if let Some((_, replies)) = self
+                .sequences
+                .iter_mut()
+                .find(|(needle, replies)| !replies.is_empty() && js.contains(needle.as_str()))
+            {
+                let reply = replies.pop_front().unwrap_or_default();
+                return async move { Ok(reply) }.boxed();
+            }
             let reply = self
                 .config
                 .eval
@@ -798,6 +1142,11 @@ mod tests {
                 actor,
                 config: config.clone(),
                 telemetry: config.telemetry.iter().cloned().collect(),
+                sequences: config
+                    .sequences
+                    .iter()
+                    .map(|(needle, replies)| (needle.clone(), replies.iter().cloned().collect()))
+                    .collect(),
                 record: record.clone(),
             });
             async move { Ok::<_, OrchynError>(adapter) }.boxed()
@@ -1016,5 +1365,260 @@ mod tests {
         });
         let m = manifest(r#"{"op":"expect_no_text","text":"x"}"#);
         assert!(ReplayRunner::new(factory).run(&m).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn expect_all_clickable_passes_when_nothing_is_covered() {
+        let config = FakeConfig {
+            eval: vec![(
+                "offenders".to_string(),
+                js_string_reply(serde_json::json!({ "checked": 3, "offenders": [] })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"expect_all_clickable"}"#))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.steps[0].detail.contains("3 interactive"));
+    }
+
+    #[tokio::test]
+    async fn expect_all_clickable_lists_at_most_five_offenders() {
+        let offenders: Vec<String> = (0..6)
+            .map(|i| format!("BUTTON#b{i}.btn covered by DIV.overlay"))
+            .collect();
+        let config = FakeConfig {
+            eval: vec![(
+                "offenders".to_string(),
+                js_string_reply(serde_json::json!({ "checked": 9, "offenders": offenders })),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"expect_all_clickable"}"#))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[0].detail;
+        assert!(detail.contains("6 of 9"), "{detail}");
+        assert!(
+            detail.contains("BUTTON#b4.btn covered by DIV.overlay"),
+            "{detail}"
+        );
+        assert!(!detail.contains("BUTTON#b5"), "{detail}");
+    }
+
+    #[tokio::test]
+    async fn reload_triggers_reload_and_waits_for_load() {
+        let config = FakeConfig {
+            eval: vec![
+                (
+                    "location.reload".to_string(),
+                    js_string_reply(serde_json::json!("reloading")),
+                ),
+                ("readyState".to_string(), "true".to_string()),
+            ],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config);
+        let report = runner.run(&manifest(r#"{"op":"reload"}"#)).await.unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+    }
+
+    #[tokio::test]
+    async fn snapshot_then_expect_text_unchanged_passes_on_same_text() {
+        let config = FakeConfig {
+            eval: vec![(
+                "innerText".to_string(),
+                js_string_reply(serde_json::json!("  Count:   0 \n\n  Add  ")),
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config);
+        let m = manifest(
+            r#"{"op":"snapshot_text","key":"before"},
+               {"op":"expect_text_unchanged","key":"before"}"#,
+        );
+        let report = runner.run(&m).await.unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+    }
+
+    #[tokio::test]
+    async fn expect_text_unchanged_reports_the_first_changed_line() {
+        let config = FakeConfig {
+            sequences: vec![(
+                "innerText".to_string(),
+                vec![
+                    js_string_reply(serde_json::json!("Count: 0\nAdd")),
+                    js_string_reply(serde_json::json!("Count: 1\nAdd")),
+                ],
+            )],
+            ..Default::default()
+        };
+        let (runner, _) = setup(config);
+        let m = manifest(
+            r#"{"op":"snapshot_text","key":"before"},
+               {"op":"expect_text_unchanged","key":"before"}"#,
+        );
+        let report = runner.run(&m).await.unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[1].detail;
+        assert!(
+            detail.contains("Count: 0") && detail.contains("Count: 1"),
+            "{detail}"
+        );
+    }
+
+    #[tokio::test]
+    async fn expect_text_unchanged_needs_a_snapshot_first() {
+        let (runner, _) = setup(FakeConfig::default());
+        let m = manifest(r#"{"op":"expect_text_unchanged","key":"before"}"#);
+        let report = runner.run(&m).await.unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no snapshot 'before'"));
+    }
+
+    /// Two candidates, `#a` then `#b`, neither covered. `hrefs` gives the page
+    /// URL read at the start and after each click.
+    fn two_buttons(telemetry: Vec<RawTelemetry>, hrefs: &[&str]) -> FakeConfig {
+        let mark = |label: &str| {
+            js_string_reply(serde_json::json!({ "total": 2, "found": true, "label": label }))
+        };
+        FakeConfig {
+            eval: vec![
+                ("candidates[0]".to_string(), mark("BUTTON#a")),
+                ("candidates[1]".to_string(), mark("BUTTON#b")),
+                (
+                    "candidates[2]".to_string(),
+                    js_string_reply(serde_json::json!({ "total": 2, "found": false })),
+                ),
+                (
+                    "elementFromPoint".to_string(),
+                    js_string_reply(serde_json::json!({
+                        "found": true, "visible": true, "covered": false, "tag": "BUTTON",
+                        "x": 10.0, "y": 10.0, "w": 80.0, "h": 30.0,
+                    })),
+                ),
+            ],
+            sequences: vec![(
+                "location.href".to_string(),
+                hrefs
+                    .iter()
+                    .map(|h| serde_json::to_string(*h).unwrap())
+                    .collect(),
+            )],
+            telemetry,
+        }
+    }
+
+    #[tokio::test]
+    async fn click_each_clicks_every_candidate_when_telemetry_is_clean() {
+        let config = two_buttons(
+            vec![RawTelemetry::default(), RawTelemetry::default()],
+            &["http://h/", "http://h/", "http://h/"],
+        );
+        let (runner, record) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"click_each"}"#))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        let clicks = record
+            .lock()
+            .unwrap()
+            .actions
+            .iter()
+            .filter(|a| a.contains("Click"))
+            .count();
+        assert_eq!(clicks, 2);
+        assert!(report.steps[0].detail.contains("clicked 2 of 2"));
+    }
+
+    #[tokio::test]
+    async fn click_each_fails_naming_the_element_that_logged_an_error() {
+        let boom = RawTelemetry {
+            console_logs: vec![ConsoleLog {
+                level: "error".to_string(),
+                message: "boom".to_string(),
+            }],
+            ..Default::default()
+        };
+        let config = two_buttons(
+            vec![RawTelemetry::default(), boom],
+            &["http://h/", "http://h/", "http://h/"],
+        );
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"click_each"}"#))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[0].detail;
+        assert!(
+            detail.contains("BUTTON#b") && detail.contains("boom"),
+            "{detail}"
+        );
+        assert!(!detail.contains("BUTTON#a"), "{detail}");
+    }
+
+    #[tokio::test]
+    async fn click_each_fails_on_a_failed_request_caused_by_a_click() {
+        let failing = RawTelemetry {
+            network_requests: vec![request("POST", "http://h/api/save", 500)],
+            ..Default::default()
+        };
+        let config = two_buttons(vec![failing], &["http://h/", "http://h/", "http://h/"]);
+        let (runner, _) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"click_each"}"#))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        let detail = &report.steps[0].detail;
+        assert!(
+            detail.contains("BUTTON#a") && detail.contains("/api/save"),
+            "{detail}"
+        );
+    }
+
+    #[tokio::test]
+    async fn click_each_navigates_back_when_a_click_moves_the_page() {
+        let config = two_buttons(vec![], &["http://h/", "http://h/other", "http://h/"]);
+        let (runner, record) = setup(config);
+        let report = runner
+            .run(&manifest(r#"{"op":"click_each"}"#))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        let actions = record.lock().unwrap().actions.clone();
+        assert!(
+            actions
+                .iter()
+                .any(|a| a.contains("Navigate") && a.contains("http://h/\"")),
+            "{actions:?}"
+        );
+        assert_eq!(actions.iter().filter(|a| a.contains("Click")).count(), 2);
+    }
+
+    #[test]
+    fn normalise_text_collapses_whitespace_and_drops_blank_lines() {
+        assert_eq!(normalise_text("  Count:   0 \n\n\t Add  "), "Count: 0\nAdd");
+    }
+
+    #[test]
+    fn text_change_detail_truncates_long_lines() {
+        let long = "x".repeat(200);
+        let detail = text_change_detail("before", "Count: 0\nHello", &format!("Count: 1\n{long}"));
+        assert!(detail.contains("line 1"), "{detail}");
+        assert!(
+            detail.contains("Count: 0") && detail.contains("Count: 1"),
+            "{detail}"
+        );
+        assert!(!detail.contains(&long), "{detail}");
+        assert_eq!(truncate_chars("abcdef", 4), "a...");
     }
 }
