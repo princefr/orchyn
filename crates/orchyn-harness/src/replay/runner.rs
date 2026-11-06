@@ -331,6 +331,10 @@ impl Session {
                 )
                 .await
             }
+            StepOp::SwitchToPopup { timeout_ms } => {
+                switch_to_popup(&mut *self.actors[i].adapter, *timeout_ms).await
+            }
+            StepOp::SwitchTab { index } => switch_tab(&mut *self.actors[i].adapter, *index).await,
         }
     }
 
@@ -1489,6 +1493,28 @@ async fn expect_attribute(
     }
 }
 
+/// Settle time after a tab switch, so the newly active page can paint before
+/// the next step reads it.
+const TAB_SWITCH_SETTLE_MS: u64 = 300;
+
+async fn switch_to_popup(adapter: &mut dyn PlatformAdapter, timeout_ms: u64) -> StepOutcome {
+    let url = adapter
+        .switch_to_new_tab(timeout_ms)
+        .await
+        .map_err(|e| e.to_string())?;
+    sleep_ms(TAB_SWITCH_SETTLE_MS).await;
+    Ok(format!("switched to new window at {url}"))
+}
+
+async fn switch_tab(adapter: &mut dyn PlatformAdapter, index: usize) -> StepOutcome {
+    let url = adapter
+        .switch_to_tab(index)
+        .await
+        .map_err(|e| e.to_string())?;
+    sleep_ms(TAB_SWITCH_SETTLE_MS).await;
+    Ok(format!("switched to tab {index} at {url}"))
+}
+
 // ---------------------------------------------------------------------------
 // Page snapshots
 // ---------------------------------------------------------------------------
@@ -1508,6 +1534,8 @@ fn records_page_snapshot(op: &StepOp) -> bool {
             | StepOp::Drag { .. }
             | StepOp::Hover { .. }
             | StepOp::SetStorage { .. }
+            | StepOp::SwitchToPopup { .. }
+            | StepOp::SwitchTab { .. }
     )
 }
 
@@ -1602,6 +1630,9 @@ mod tests {
         /// gets the next one. Checked before `eval`, so page state can change
         /// between reads.
         sequences: Vec<(String, Vec<String>)>,
+        /// URLs of the windows `switch_to_new_tab` finds, one per call, in
+        /// opening order. Once they run out, no window opens.
+        popups: Vec<String>,
     }
 
     #[derive(Default, Debug)]
@@ -1612,6 +1643,8 @@ mod tests {
         shutdowns: Vec<String>,
         /// Every JS string passed to `eval_js`, in order.
         evals: Vec<String>,
+        /// `"actor: <tab switch>"` for each `switch_to_new_tab` / `switch_to_tab`.
+        switches: Vec<String>,
     }
 
     #[derive(Debug)]
@@ -1620,6 +1653,11 @@ mod tests {
         config: FakeConfig,
         telemetry: VecDeque<RawTelemetry>,
         sequences: Vec<(String, VecDeque<String>)>,
+        /// Windows still to be found by `switch_to_new_tab`.
+        popups: VecDeque<String>,
+        /// URL of each tab: index 0 is the original tab, then the popups.
+        tab_urls: Vec<String>,
+        active: usize,
         record: Arc<Mutex<Record>>,
     }
 
@@ -1673,6 +1711,45 @@ mod tests {
                 .push(self.actor.clone());
             async { Ok(()) }.boxed()
         }
+        fn switch_to_new_tab(
+            &mut self,
+            timeout_ms: u64,
+        ) -> BoxFuture<'_, orchyn_core::Result<String>> {
+            let reply = match self.popups.pop_front() {
+                Some(url) => {
+                    self.tab_urls.push(url.clone());
+                    self.active = self.tab_urls.len() - 1;
+                    self.record
+                        .lock()
+                        .unwrap()
+                        .switches
+                        .push(format!("{}: popup {} active", self.actor, self.active));
+                    Ok(url)
+                }
+                None => Err(OrchynError::Platform(format!(
+                    "no new window was opened within {timeout_ms} ms"
+                ))),
+            };
+            async move { reply }.boxed()
+        }
+        fn switch_to_tab(&mut self, index: usize) -> BoxFuture<'_, orchyn_core::Result<String>> {
+            let reply = match self.tab_urls.get(index).cloned() {
+                Some(url) => {
+                    self.active = index;
+                    self.record
+                        .lock()
+                        .unwrap()
+                        .switches
+                        .push(format!("{}: tab {index} active", self.actor));
+                    Ok(url)
+                }
+                None => Err(OrchynError::Validation(format!(
+                    "no tab {index}: this adapter has {} tab(s)",
+                    self.tab_urls.len()
+                ))),
+            };
+            async move { reply }.boxed()
+        }
         fn eval_js(&mut self, js: &str) -> BoxFuture<'_, orchyn_core::Result<String>> {
             self.record.lock().unwrap().evals.push(js.to_string());
             if let Some((_, replies)) = self
@@ -1706,6 +1783,9 @@ mod tests {
                     .iter()
                     .map(|(needle, replies)| (needle.clone(), replies.iter().cloned().collect()))
                     .collect(),
+                popups: config.popups.iter().cloned().collect(),
+                tab_urls: vec!["http://h/design.html".to_string()],
+                active: 0,
                 record: record.clone(),
             });
             async move { Ok::<_, OrchynError>(adapter) }.boxed()
@@ -2071,6 +2151,7 @@ mod tests {
                     .collect(),
             )],
             telemetry,
+            popups: Vec::new(),
         }
     }
 
@@ -2740,5 +2821,86 @@ mod tests {
             .unwrap();
         assert!(report.passed, "{:?}", report.steps);
         assert!(report.page_snapshots.is_empty());
+    }
+
+    fn popup_config(popups: &[&str]) -> FakeConfig {
+        FakeConfig {
+            popups: popups.iter().map(|u| u.to_string()).collect(),
+            ..FakeConfig::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn switch_to_popup_then_switch_tab_moves_the_active_tab() {
+        let (runner, record) = setup(popup_config(&["http://h/preview.html"]));
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"switch_to_popup"},
+                   {"op":"switch_tab","index":0},
+                   {"op":"switch_tab","index":1}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert_eq!(report.steps.len(), 3);
+        assert!(report.steps[0].detail.contains("http://h/preview.html"));
+        assert!(report.steps[0].duration_ms >= TAB_SWITCH_SETTLE_MS);
+        assert_eq!(
+            record.lock().unwrap().switches,
+            vec![
+                "default: popup 1 active".to_string(),
+                "default: tab 0 active".to_string(),
+                "default: tab 1 active".to_string(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn switch_to_popup_fails_when_no_window_opens() {
+        let (runner, record) = setup(popup_config(&[]));
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"switch_to_popup","timeout_ms":50},
+                   {"op":"goto","path":"/"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert_eq!(report.first_failure, Some(0));
+        assert_eq!(report.steps.len(), 1, "the run halts at the failed switch");
+        assert!(report.steps[0].detail.contains("no new window was opened"));
+        assert!(record.lock().unwrap().switches.is_empty());
+    }
+
+    #[tokio::test]
+    async fn switch_tab_to_an_unknown_index_fails() {
+        let (runner, _) = setup(popup_config(&["http://h/preview.html"]));
+        let report = runner
+            .run(&manifest(r#"{"op":"switch_tab","index":3}"#))
+            .await
+            .unwrap();
+        assert!(!report.passed);
+        assert!(report.steps[0].detail.contains("no tab 3"));
+    }
+
+    #[tokio::test]
+    async fn second_popup_is_found_by_a_second_switch_to_popup() {
+        let (runner, _) = setup(popup_config(&["http://h/a.html", "http://h/b.html"]));
+        let report = runner
+            .run(&manifest(
+                r#"{"op":"switch_to_popup"},{"op":"switch_to_popup"}"#,
+            ))
+            .await
+            .unwrap();
+        assert!(report.passed, "{:?}", report.steps);
+        assert!(report.steps[1].detail.contains("http://h/b.html"));
+    }
+
+    #[test]
+    fn tab_switches_are_page_snapshot_steps() {
+        assert!(records_page_snapshot(&StepOp::SwitchToPopup {
+            timeout_ms: 1
+        }));
+        assert!(records_page_snapshot(&StepOp::SwitchTab { index: 0 }));
     }
 }

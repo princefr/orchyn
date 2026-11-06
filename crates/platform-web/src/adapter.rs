@@ -12,6 +12,7 @@ use orchyn_core::{
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Once, OnceLock};
+use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
 /// Process-wide Chromium shared by every `WebAdapter` (unless
@@ -72,11 +73,11 @@ fn shared_slot() -> std::sync::MutexGuard<'static, Option<Arc<Browser>>> {
 }
 
 /// Escape hatch: `ORCHYN_BROWSER_PER_ADAPTER=1` restores one Chromium per adapter.
-fn per_adapter_browser() -> bool {
+fn per_adapterbrowser() -> bool {
     std::env::var("ORCHYN_BROWSER_PER_ADAPTER").is_ok_and(|v| v == "1")
 }
 
-fn launch_browser() -> Result<Browser> {
+fn launchbrowser() -> Result<Browser> {
     Browser::new(
         LaunchOptions::default_builder()
             .headless(true)
@@ -97,7 +98,7 @@ fn launch_browser() -> Result<Browser> {
 /// Returns the shared Chromium, launching it (or relaunching it if it no longer
 /// answers) when needed. Holding the slot lock across the launch keeps
 /// concurrent adapters from starting several browsers.
-fn acquire_shared_browser() -> Result<Arc<Browser>> {
+fn acquire_sharedbrowser() -> Result<Arc<Browser>> {
     let mut slot = shared_slot();
     if let Some(browser) = slot.as_ref() {
         if SHARED_ADAPTERS.load(Ordering::SeqCst) >= MAX_ADAPTERS_PER_SHARED_BROWSER {
@@ -109,7 +110,7 @@ fn acquire_shared_browser() -> Result<Arc<Browser>> {
             warn!("shared Chromium is not responding; relaunching");
         }
     }
-    let browser = Arc::new(launch_browser()?);
+    let browser = Arc::new(launchbrowser()?);
     EXIT_HOOK.call_once(exit_hook::install);
     SHARED_PID.store(browser.get_process_id().unwrap_or(0), Ordering::SeqCst);
     SHARED_ADAPTERS.store(1, Ordering::SeqCst);
@@ -118,7 +119,7 @@ fn acquire_shared_browser() -> Result<Arc<Browser>> {
 }
 
 /// Forgets `dead` if it is still the shared browser, so the next acquire relaunches.
-fn discard_shared_browser(dead: &Arc<Browser>) {
+fn discard_sharedbrowser(dead: &Arc<Browser>) {
     let mut slot = shared_slot();
     if slot.as_ref().is_some_and(|b| Arc::ptr_eq(b, dead)) {
         SHARED_PID.store(0, Ordering::SeqCst);
@@ -140,7 +141,7 @@ fn open_isolated_tab(browser: &Browser) -> Result<Arc<Tab>> {
 /// shared browser process. Dropping it releases with `fire_unload = false`.
 struct TabLease {
     /// Keeps the Chromium process alive for as long as this tab exists.
-    _browser: Arc<Browser>,
+    browser: Arc<Browser>,
     tab: Arc<Tab>,
     released: bool,
 }
@@ -163,16 +164,358 @@ impl Drop for TabLease {
     }
 }
 
-pub struct WebAdapter {
-    lease: TabLease,
-    tab: Arc<headless_chrome::Tab>,
-    device_info: DeviceInfo,
+/// Buffers shared by every tab this adapter owns (the original tab and its
+/// popups). Each tab's instrumentation writes into them and the trait methods
+/// drain them.
+struct Telemetry {
     diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>>,
     network_events: Arc<Mutex<Vec<NetworkEvent>>>,
     ws_messages: Arc<Mutex<Vec<String>>>,
     /// XHR/fetch exchanges with bodies, filled by the response handler and
     /// drained by `take_exchanges`. Separate from `network_events`.
     exchanges: Arc<Mutex<Vec<Exchange>>>,
+    /// request_id → (method, post_data) from RequestWillBeSent so we can attach them to the
+    /// response. Shared between the event listener and the response handler.
+    pending: Arc<Mutex<HashMap<String, (String, Option<String>)>>>,
+    /// request_id → index into `network_events` once response headers arrived.
+    /// Recording at ResponseReceived (not LoadingFinished) means requests whose
+    /// body never finishes loading — e.g. the page navigates away right after
+    /// `await fetch()` resolves — are still observed with their real status.
+    recorded: Arc<Mutex<HashMap<String, usize>>>,
+}
+
+impl Telemetry {
+    fn new() -> Self {
+        Self {
+            diagnostics: Arc::new(Mutex::new(Vec::new())),
+            network_events: Arc::new(Mutex::new(Vec::new())),
+            ws_messages: Arc::new(Mutex::new(Vec::new())),
+            exchanges: Arc::new(Mutex::new(Vec::new())),
+            pending: Arc::new(Mutex::new(HashMap::new())),
+            recorded: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+/// Installs this adapter's instrumentation (log, runtime, network, dialogs and
+/// the response handler) on one tab. Every tab writes into the same `telemetry`.
+fn instrument(tab: &Tab, telemetry: &Telemetry) -> Result<()> {
+    let diagnostics = Arc::clone(&telemetry.diagnostics);
+    let network_events = Arc::clone(&telemetry.network_events);
+    let ws_messages = Arc::clone(&telemetry.ws_messages);
+    let exchanges = Arc::clone(&telemetry.exchanges);
+    let pending = Arc::clone(&telemetry.pending);
+    let recorded = Arc::clone(&telemetry.recorded);
+
+    // Enable Log + Runtime domains before registering the listener.
+    tab.enable_log()
+        .map_err(|e| OrchynError::Internal(e.to_string()))?
+        .enable_runtime()
+        .map_err(|e| OrchynError::Internal(e.to_string()))?;
+
+    // Enable Network domain (idempotent; also called internally by register_response_handling).
+    tab.call_method(Network::Enable {
+        max_total_buffer_size: None,
+        max_resource_buffer_size: None,
+        max_post_data_size: None,
+        report_direct_socket_traffic: None,
+        enable_durable_messages: None,
+    })
+    .map_err(|e| OrchynError::Internal(format!("Network.enable: {e}")))?;
+
+    // ── event listener: console, WS frames, request capture, network failures ──────────────
+    {
+        let diag_l = Arc::clone(&diagnostics);
+        let rec_l = Arc::clone(&recorded);
+        let net_l = Arc::clone(&network_events);
+        let ws_l = Arc::clone(&ws_messages);
+        let pending_l = Arc::clone(&pending);
+
+        tab.add_event_listener(Arc::new(move |event: &Event| {
+            match event {
+                // Log-domain console messages (console.log/warn/error → Log.entryAdded).
+                Event::LogEntryAdded(ev) => {
+                    let level = match ev.params.entry.level {
+                        Log::LogEntryLevel::Error => LogLevel::Error,
+                        Log::LogEntryLevel::Warning => LogLevel::Warn,
+                        _ => LogLevel::Info,
+                    };
+                    diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                        level,
+                        message: ev.params.entry.text.clone(),
+                        timestamp: Utc::now(),
+                    });
+                }
+
+                // Uncaught JS exceptions — include file + line + first stack frame.
+                Event::RuntimeExceptionThrown(ev) => {
+                    let details = &ev.params.exception_details;
+                    let base_msg = details
+                        .exception
+                        .as_ref()
+                        .and_then(|e| e.description.clone())
+                        .unwrap_or_else(|| details.text.clone());
+
+                    // Attach file:line if available.
+                    let location = if let Some(url) = &details.url {
+                        format!(" ({}:{}:{})", url, details.line_number, details.column_number)
+                    } else {
+                        String::new()
+                    };
+
+                    // Append first few call frames so the model knows where to look.
+                    let frames = details
+                        .stack_trace
+                        .as_ref()
+                        .map(|st| {
+                            st.call_frames
+                                .iter()
+                                .take(3)
+                                .map(|f| {
+                                    format!(
+                                        "\n    at {}{}:{}:{}",
+                                        if f.function_name.is_empty() {
+                                            "<anonymous>".to_string()
+                                        } else {
+                                            f.function_name.clone()
+                                        },
+                                        if f.url.is_empty() {
+                                            String::new()
+                                        } else {
+                                            format!(" ({})", f.url)
+                                        },
+                                        f.line_number,
+                                        f.column_number,
+                                    )
+                                })
+                                .collect::<String>()
+                        })
+                        .unwrap_or_default();
+
+                    diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                        level: LogLevel::Error,
+                        message: format!("Uncaught: {base_msg}{location}{frames}"),
+                        timestamp: Utc::now(),
+                    });
+                }
+
+                // Direct console API calls via the Runtime domain (distinct from Log domain).
+                // Only capture warn/error to avoid noise.
+                Event::RuntimeConsoleAPICalled(ev) => {
+                    use headless_chrome::protocol::cdp::Runtime::ConsoleAPICalledEventTypeOption;
+                    let level = match ev.params.Type {
+                        ConsoleAPICalledEventTypeOption::Error => LogLevel::Error,
+                        ConsoleAPICalledEventTypeOption::Warning => LogLevel::Warn,
+                        _ => return,
+                    };
+                    let msg = ev
+                        .params
+                        .args
+                        .iter()
+                        .filter_map(|a| {
+                            a.value
+                                .as_ref()
+                                .map(|v| v.to_string())
+                                .or_else(|| a.description.clone())
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    diag_l.lock().unwrap().push(DiagnosticEvent::Console {
+                        level,
+                        message: msg,
+                        timestamp: Utc::now(),
+                    });
+                }
+
+                // Store request metadata so the response handler can join it.
+                Event::NetworkRequestWillBeSent(ev) => {
+                    pending_l.lock().unwrap().insert(
+                        ev.params.request_id.clone(),
+                        (
+                            ev.params.request.method.clone(),
+                            ev.params.request.post_data.clone(),
+                        ),
+                    );
+                }
+
+                Event::NetworkResponseReceived(ev) => {
+                    let (method, req_body) = pending_l
+                        .lock()
+                        .unwrap()
+                        .get(&ev.params.request_id)
+                        .cloned()
+                        .unwrap_or_default();
+                    let mut net = net_l.lock().unwrap();
+                    net.push(NetworkEvent {
+                        method,
+                        url: ev.params.response.url.clone(),
+                        status: ev.params.response.status as u16,
+                        request_body: req_body,
+                        response_body: None,
+                        timestamp: Utc::now(),
+                    });
+                    rec_l
+                        .lock()
+                        .unwrap()
+                        .insert(ev.params.request_id.clone(), net.len() - 1);
+                }
+
+                // Network-level failures (DNS, CORS, connection refused) — no HTTP status.
+                // A request that already got a response and was then cancelled
+                // (navigation) is not a failure.
+                Event::NetworkLoadingFailed(ev)
+                    if rec_l.lock().unwrap().contains_key(&ev.params.request_id) => {}
+                Event::NetworkLoadingFailed(ev) => {
+                    let (method, req_body) = pending_l
+                        .lock()
+                        .unwrap()
+                        .remove(&ev.params.request_id)
+                        .unwrap_or_default();
+                    net_l.lock().unwrap().push(NetworkEvent {
+                        method,
+                        url: String::new(),
+                        status: 0,
+                        request_body: req_body,
+                        response_body: Some(ev.params.error_text.clone()),
+                        timestamp: Utc::now(),
+                    });
+                }
+
+                // WebSocket frames (text frames only; opcode 1 = text, 2 = binary).
+                Event::NetworkWebSocketFrameReceived(ev) => {
+                    if ev.params.response.opcode as u8 == 1 {
+                        let payload = ev.params.response.payload_data.clone();
+                        if payload.len() <= 2048 {
+                            ws_l.lock().unwrap().push(format!("← {payload}"));
+                        } else {
+                            ws_l.lock().unwrap().push(format!("← {}…", &payload[..2048]));
+                        }
+                    }
+                }
+                Event::NetworkWebSocketFrameSent(ev) => {
+                    if ev.params.response.opcode as u8 == 1 {
+                        let payload = ev.params.response.payload_data.clone();
+                        if payload.len() <= 2048 {
+                            ws_l.lock().unwrap().push(format!("→ {payload}"));
+                        } else {
+                            ws_l.lock().unwrap().push(format!("→ {}…", &payload[..2048]));
+                        }
+                    }
+                }
+
+                _ => {}
+            }
+        }))
+        .map_err(|e| OrchynError::Internal(format!("event_listener: {e}")))?;
+    }
+
+    // ── dialogs: alert/confirm/prompt block the page (and every CDP call that
+    // waits on it) until handled. Accept them immediately, like a user
+    // clicking OK, and record them so manifests can assert on them.
+    {
+        let diag_d = Arc::clone(&diagnostics);
+        let dialog = tab.get_dialog();
+        tab.add_event_listener(Arc::new(move |event: &Event| {
+            if let Event::PageJavascriptDialogOpening(ev) = event {
+                diag_d.lock().unwrap().push(DiagnosticEvent::Console {
+                    level: LogLevel::Info,
+                    message: format!("[dialog] {}", ev.params.message),
+                    timestamp: Utc::now(),
+                });
+                let _ = dialog.accept(None);
+            }
+        }))
+        .map_err(|e| OrchynError::Internal(format!("dialog_listener: {e}")))?;
+    }
+
+    // ── response handler: fires on loadingFinished, gives us status + optional body ────────
+    {
+        let net_l = Arc::clone(&network_events);
+        let pending_l = Arc::clone(&pending);
+        let rec_h = Arc::clone(&recorded);
+        let exch_h = Arc::clone(&exchanges);
+
+        tab.register_response_handling(
+            "orchyn",
+            Box::new(move |params, fetch_body| {
+                let (method, req_body) = pending_l
+                    .lock()
+                    .unwrap()
+                    .remove(&params.request_id)
+                    .unwrap_or_default();
+
+                // Only fetch body for API calls; skip images, fonts, CSS, scripts.
+                let resp_body = match params.Type {
+                    Network::ResourceType::Xhr
+                    | Network::ResourceType::Fetch
+                    | Network::ResourceType::Document => fetch_body()
+                        .ok()
+                        .filter(|r| !r.base_64_encoded)
+                        .map(|r| r.body)
+                        .filter(|b| !b.is_empty() && b.len() <= 16_384),
+                    _ => None,
+                };
+
+                if matches!(
+                    params.Type,
+                    Network::ResourceType::Xhr | Network::ResourceType::Fetch
+                ) {
+                    exch_h.lock().unwrap().push(Exchange {
+                        method: method.clone(),
+                        url: params.response.url.clone(),
+                        status: params.response.status as u16,
+                        request_body: req_body.clone(),
+                        response_body: resp_body.clone(),
+                    });
+                }
+
+                let idx = rec_h.lock().unwrap().get(&params.request_id).copied();
+                let mut net = net_l.lock().unwrap();
+                // The buffer is drained by collect_telemetry, so the stored
+                // index may be stale: only attach when it still points at
+                // the same request.
+                match idx.and_then(|i| net.get_mut(i)) {
+                    Some(ev) if ev.url == params.response.url => {
+                        ev.response_body = resp_body;
+                    }
+                    Some(_) => {}
+                    None if idx.is_none() => net.push(NetworkEvent {
+                        method,
+                        url: params.response.url.clone(),
+                        status: params.response.status as u16,
+                        request_body: req_body,
+                        response_body: resp_body,
+                        timestamp: Utc::now(),
+                    }),
+                    None => {}
+                }
+            }),
+        )
+        .map_err(|e| OrchynError::Internal(format!("response_handler: {e}")))?;
+    }
+    Ok(())
+}
+
+/// How often `switch_to_new_tab` looks for a new popup.
+const POPUP_POLL: Duration = Duration::from_millis(100);
+/// Longest wait, after a popup appears, for its URL to leave `about:blank`.
+const POPUP_URL_WAIT: Duration = Duration::from_millis(2000);
+
+pub struct WebAdapter {
+    lease: TabLease,
+    /// This adapter's tabs: index 0 is the original tab (also `lease.tab`),
+    /// then popups in opening order.
+    tabs: Vec<Arc<Tab>>,
+    /// Index into `tabs` of the tab that every call acts on.
+    active: usize,
+    device_info: DeviceInfo,
+    telemetry: Telemetry,
+}
+
+impl Drop for WebAdapter {
+    fn drop(&mut self) {
+        self.close_popups(false);
+    }
 }
 
 impl std::fmt::Debug for WebAdapter {
@@ -190,8 +533,8 @@ impl WebAdapter {
         // Shared mode: one long-lived Chromium, a fresh incognito context per
         // adapter. If the shared browser stopped serving tabs (e.g. its event loop
         // timed out while idle), relaunch it and retry once.
-        let (browser, tab) = if per_adapter_browser() {
-            let browser = Arc::new(launch_browser()?);
+        let (browser, tab) = if per_adapterbrowser() {
+            let browser = Arc::new(launchbrowser()?);
             let tab = browser
                 .new_tab()
                 .map_err(|e| OrchynError::Internal(e.to_string()))?;
@@ -199,12 +542,12 @@ impl WebAdapter {
         } else {
             let mut attempt = 0;
             loop {
-                let browser = acquire_shared_browser()?;
+                let browser = acquire_sharedbrowser()?;
                 match open_isolated_tab(&browser) {
                     Ok(tab) => break (browser, tab),
                     Err(e) if attempt == 0 => {
                         warn!("opening isolated tab failed ({e}); relaunching shared Chromium");
-                        discard_shared_browser(&browser);
+                        discard_sharedbrowser(&browser);
                         attempt += 1;
                     }
                     Err(e) => return Err(e),
@@ -214,312 +557,13 @@ impl WebAdapter {
 
         // From here on, any early return drops `lease`, which closes the tab.
         let lease = TabLease {
-            _browser: browser,
+            browser,
             tab: Arc::clone(&tab),
             released: false,
         };
 
-        let diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>> = Arc::new(Mutex::new(Vec::new()));
-        let network_events: Arc<Mutex<Vec<NetworkEvent>>> = Arc::new(Mutex::new(Vec::new()));
-        let exchanges: Arc<Mutex<Vec<Exchange>>> = Arc::new(Mutex::new(Vec::new()));
-        let ws_messages: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-
-        // Enable Log + Runtime domains before registering the listener.
-        tab.enable_log()
-            .map_err(|e| OrchynError::Internal(e.to_string()))?
-            .enable_runtime()
-            .map_err(|e| OrchynError::Internal(e.to_string()))?;
-
-        // Enable Network domain (idempotent; also called internally by register_response_handling).
-        tab.call_method(Network::Enable {
-            max_total_buffer_size: None,
-            max_resource_buffer_size: None,
-            max_post_data_size: None,
-            report_direct_socket_traffic: None,
-            enable_durable_messages: None,
-        })
-        .map_err(|e| OrchynError::Internal(format!("Network.enable: {e}")))?;
-
-        // request_id → (method, post_data) from RequestWillBeSent so we can attach them to the
-        // response. Shared between the event listener and the response handler.
-        let pending: Arc<Mutex<HashMap<String, (String, Option<String>)>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        // request_id → index into `network_events` once response headers arrived.
-        // Recording at ResponseReceived (not LoadingFinished) means requests whose
-        // body never finishes loading — e.g. the page navigates away right after
-        // `await fetch()` resolves — are still observed with their real status.
-        let recorded: Arc<Mutex<HashMap<String, usize>>> = Arc::new(Mutex::new(HashMap::new()));
-
-        // ── event listener: console, WS frames, request capture, network failures ──────────────
-        {
-            let diag_l = Arc::clone(&diagnostics);
-            let rec_l = Arc::clone(&recorded);
-            let net_l = Arc::clone(&network_events);
-            let ws_l = Arc::clone(&ws_messages);
-            let pending_l = Arc::clone(&pending);
-
-            tab.add_event_listener(Arc::new(move |event: &Event| {
-                match event {
-                    // Log-domain console messages (console.log/warn/error → Log.entryAdded).
-                    Event::LogEntryAdded(ev) => {
-                        let level = match ev.params.entry.level {
-                            Log::LogEntryLevel::Error => LogLevel::Error,
-                            Log::LogEntryLevel::Warning => LogLevel::Warn,
-                            _ => LogLevel::Info,
-                        };
-                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
-                            level,
-                            message: ev.params.entry.text.clone(),
-                            timestamp: Utc::now(),
-                        });
-                    }
-
-                    // Uncaught JS exceptions — include file + line + first stack frame.
-                    Event::RuntimeExceptionThrown(ev) => {
-                        let details = &ev.params.exception_details;
-                        let base_msg = details
-                            .exception
-                            .as_ref()
-                            .and_then(|e| e.description.clone())
-                            .unwrap_or_else(|| details.text.clone());
-
-                        // Attach file:line if available.
-                        let location = if let Some(url) = &details.url {
-                            format!(" ({}:{}:{})", url, details.line_number, details.column_number)
-                        } else {
-                            String::new()
-                        };
-
-                        // Append first few call frames so the model knows where to look.
-                        let frames = details
-                            .stack_trace
-                            .as_ref()
-                            .map(|st| {
-                                st.call_frames
-                                    .iter()
-                                    .take(3)
-                                    .map(|f| {
-                                        format!(
-                                            "\n    at {}{}:{}:{}",
-                                            if f.function_name.is_empty() {
-                                                "<anonymous>".to_string()
-                                            } else {
-                                                f.function_name.clone()
-                                            },
-                                            if f.url.is_empty() {
-                                                String::new()
-                                            } else {
-                                                format!(" ({})", f.url)
-                                            },
-                                            f.line_number,
-                                            f.column_number,
-                                        )
-                                    })
-                                    .collect::<String>()
-                            })
-                            .unwrap_or_default();
-
-                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
-                            level: LogLevel::Error,
-                            message: format!("Uncaught: {base_msg}{location}{frames}"),
-                            timestamp: Utc::now(),
-                        });
-                    }
-
-                    // Direct console API calls via the Runtime domain (distinct from Log domain).
-                    // Only capture warn/error to avoid noise.
-                    Event::RuntimeConsoleAPICalled(ev) => {
-                        use headless_chrome::protocol::cdp::Runtime::ConsoleAPICalledEventTypeOption;
-                        let level = match ev.params.Type {
-                            ConsoleAPICalledEventTypeOption::Error => LogLevel::Error,
-                            ConsoleAPICalledEventTypeOption::Warning => LogLevel::Warn,
-                            _ => return,
-                        };
-                        let msg = ev
-                            .params
-                            .args
-                            .iter()
-                            .filter_map(|a| {
-                                a.value
-                                    .as_ref()
-                                    .map(|v| v.to_string())
-                                    .or_else(|| a.description.clone())
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" ");
-                        diag_l.lock().unwrap().push(DiagnosticEvent::Console {
-                            level,
-                            message: msg,
-                            timestamp: Utc::now(),
-                        });
-                    }
-
-                    // Store request metadata so the response handler can join it.
-                    Event::NetworkRequestWillBeSent(ev) => {
-                        pending_l.lock().unwrap().insert(
-                            ev.params.request_id.clone(),
-                            (
-                                ev.params.request.method.clone(),
-                                ev.params.request.post_data.clone(),
-                            ),
-                        );
-                    }
-
-                    Event::NetworkResponseReceived(ev) => {
-                        let (method, req_body) = pending_l
-                            .lock()
-                            .unwrap()
-                            .get(&ev.params.request_id)
-                            .cloned()
-                            .unwrap_or_default();
-                        let mut net = net_l.lock().unwrap();
-                        net.push(NetworkEvent {
-                            method,
-                            url: ev.params.response.url.clone(),
-                            status: ev.params.response.status as u16,
-                            request_body: req_body,
-                            response_body: None,
-                            timestamp: Utc::now(),
-                        });
-                        rec_l
-                            .lock()
-                            .unwrap()
-                            .insert(ev.params.request_id.clone(), net.len() - 1);
-                    }
-
-                    // Network-level failures (DNS, CORS, connection refused) — no HTTP status.
-                    // A request that already got a response and was then cancelled
-                    // (navigation) is not a failure.
-                    Event::NetworkLoadingFailed(ev)
-                        if rec_l.lock().unwrap().contains_key(&ev.params.request_id) => {}
-                    Event::NetworkLoadingFailed(ev) => {
-                        let (method, req_body) = pending_l
-                            .lock()
-                            .unwrap()
-                            .remove(&ev.params.request_id)
-                            .unwrap_or_default();
-                        net_l.lock().unwrap().push(NetworkEvent {
-                            method,
-                            url: String::new(),
-                            status: 0,
-                            request_body: req_body,
-                            response_body: Some(ev.params.error_text.clone()),
-                            timestamp: Utc::now(),
-                        });
-                    }
-
-                    // WebSocket frames (text frames only; opcode 1 = text, 2 = binary).
-                    Event::NetworkWebSocketFrameReceived(ev) => {
-                        if ev.params.response.opcode as u8 == 1 {
-                            let payload = ev.params.response.payload_data.clone();
-                            if payload.len() <= 2048 {
-                                ws_l.lock().unwrap().push(format!("← {payload}"));
-                            } else {
-                                ws_l.lock().unwrap().push(format!("← {}…", &payload[..2048]));
-                            }
-                        }
-                    }
-                    Event::NetworkWebSocketFrameSent(ev) => {
-                        if ev.params.response.opcode as u8 == 1 {
-                            let payload = ev.params.response.payload_data.clone();
-                            if payload.len() <= 2048 {
-                                ws_l.lock().unwrap().push(format!("→ {payload}"));
-                            } else {
-                                ws_l.lock().unwrap().push(format!("→ {}…", &payload[..2048]));
-                            }
-                        }
-                    }
-
-                    _ => {}
-                }
-            }))
-            .map_err(|e| OrchynError::Internal(format!("event_listener: {e}")))?;
-        }
-
-        // ── dialogs: alert/confirm/prompt block the page (and every CDP call that
-        // waits on it) until handled. Accept them immediately, like a user
-        // clicking OK, and record them so manifests can assert on them.
-        {
-            let diag_d = Arc::clone(&diagnostics);
-            let dialog = tab.get_dialog();
-            tab.add_event_listener(Arc::new(move |event: &Event| {
-                if let Event::PageJavascriptDialogOpening(ev) = event {
-                    diag_d.lock().unwrap().push(DiagnosticEvent::Console {
-                        level: LogLevel::Info,
-                        message: format!("[dialog] {}", ev.params.message),
-                        timestamp: Utc::now(),
-                    });
-                    let _ = dialog.accept(None);
-                }
-            }))
-            .map_err(|e| OrchynError::Internal(format!("dialog_listener: {e}")))?;
-        }
-
-        // ── response handler: fires on loadingFinished, gives us status + optional body ────────
-        {
-            let net_l = Arc::clone(&network_events);
-            let pending_l = Arc::clone(&pending);
-            let rec_h = Arc::clone(&recorded);
-            let exch_h = Arc::clone(&exchanges);
-
-            tab.register_response_handling(
-                "orchyn",
-                Box::new(move |params, fetch_body| {
-                    let (method, req_body) = pending_l
-                        .lock()
-                        .unwrap()
-                        .remove(&params.request_id)
-                        .unwrap_or_default();
-
-                    // Only fetch body for API calls; skip images, fonts, CSS, scripts.
-                    let resp_body = match params.Type {
-                        Network::ResourceType::Xhr
-                        | Network::ResourceType::Fetch
-                        | Network::ResourceType::Document => fetch_body()
-                            .ok()
-                            .filter(|r| !r.base_64_encoded)
-                            .map(|r| r.body)
-                            .filter(|b| !b.is_empty() && b.len() <= 16_384),
-                        _ => None,
-                    };
-
-                    if matches!(
-                        params.Type,
-                        Network::ResourceType::Xhr | Network::ResourceType::Fetch
-                    ) {
-                        exch_h.lock().unwrap().push(Exchange {
-                            method: method.clone(),
-                            url: params.response.url.clone(),
-                            status: params.response.status as u16,
-                            request_body: req_body.clone(),
-                            response_body: resp_body.clone(),
-                        });
-                    }
-
-                    let idx = rec_h.lock().unwrap().get(&params.request_id).copied();
-                    let mut net = net_l.lock().unwrap();
-                    // The buffer is drained by collect_telemetry, so the stored
-                    // index may be stale: only attach when it still points at
-                    // the same request.
-                    match idx.and_then(|i| net.get_mut(i)) {
-                        Some(ev) if ev.url == params.response.url => {
-                            ev.response_body = resp_body;
-                        }
-                        Some(_) => {}
-                        None if idx.is_none() => net.push(NetworkEvent {
-                            method,
-                            url: params.response.url.clone(),
-                            status: params.response.status as u16,
-                            request_body: req_body,
-                            response_body: resp_body,
-                            timestamp: Utc::now(),
-                        }),
-                        None => {}
-                    }
-                }),
-            )
-            .map_err(|e| OrchynError::Internal(format!("response_handler: {e}")))?;
-        }
+        let telemetry = Telemetry::new();
+        instrument(&tab, &telemetry)?;
 
         tab.navigate_to(url)
             .map_err(|e| OrchynError::Internal(e.to_string()))?;
@@ -528,22 +572,57 @@ impl WebAdapter {
 
         Ok(Self {
             lease,
-            tab,
+            tabs: vec![tab],
+            active: 0,
             device_info: DeviceInfo {
                 platform: Platform::Web,
                 screen_width: 1280,
                 screen_height: 800,
             },
-            diagnostics,
-            network_events,
-            ws_messages,
-            exchanges,
+            telemetry,
         })
+    }
+
+    /// The tab every call acts on.
+    fn active_tab(&self) -> Arc<Tab> {
+        Arc::clone(&self.tabs[self.active])
+    }
+
+    /// A tab of this adapter's browser that is not yet one of this adapter's
+    /// tabs and whose opener is one of them. Other adapters' tabs never qualify:
+    /// they live in their own browser context and their openers are not ours.
+    fn find_new_popup(&self) -> Option<Arc<Tab>> {
+        let candidates: Vec<Arc<Tab>> = (*self.lease.browser.get_tabs().lock().unwrap()).clone();
+        let known: Vec<_> = self
+            .tabs
+            .iter()
+            .map(|t| t.get_target_id().clone())
+            .collect();
+        candidates.into_iter().find(|tab| {
+            if known.contains(tab.get_target_id()) {
+                return false;
+            }
+            tab.get_target_info()
+                .ok()
+                .and_then(|info| info.opener_id)
+                .is_some_and(|opener| known.contains(&opener))
+        })
+    }
+
+    /// Closes every popup this adapter opened. The original tab is left alone,
+    /// and the original becomes the active tab again.
+    fn close_popups(&mut self, fire_unload: bool) {
+        for tab in self.tabs.drain(1..) {
+            if let Err(e) = tab.close(fire_unload) {
+                warn!("closing popup failed: {e}");
+            }
+        }
+        self.active = 0;
     }
 
     /// Change the browser viewport. Affects both screenshot dimensions and responsive CSS.
     pub fn set_viewport(&self, width: u32, height: u32) -> Result<()> {
-        self.tab
+        self.active_tab()
             .call_method(Emulation::SetDeviceMetricsOverride {
                 width,
                 height,
@@ -567,7 +646,7 @@ impl WebAdapter {
     /// Evaluate an arbitrary JS expression and return the JSON result string.
     pub fn eval_json(&self, js: &str) -> Result<String> {
         let remote = self
-            .tab
+            .active_tab()
             .evaluate(js, false)
             .map_err(|e| OrchynError::Platform(format!("eval: {e}")))?;
         Ok(remote
@@ -584,7 +663,7 @@ impl PlatformAdapter for WebAdapter {
 
     #[tracing::instrument(skip(self))]
     fn screenshot(&mut self) -> BoxFuture<'_, Result<Vec<u8>>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move {
             use headless_chrome::protocol::cdp::Page;
             let png = tab
@@ -597,7 +676,7 @@ impl PlatformAdapter for WebAdapter {
 
     #[tracing::instrument(skip(self))]
     fn execute(&mut self, action: &Action) -> BoxFuture<'_, Result<()>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         let action = action.clone();
         async move {
             info!("Executing web action: {:?}", action);
@@ -628,7 +707,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn diagnostics(&mut self) -> BoxFuture<'_, Result<Vec<DiagnosticEvent>>> {
-        let diags = self.diagnostics.clone();
+        let diags = self.telemetry.diagnostics.clone();
         async move {
             let mut lock = diags.lock().unwrap();
             let current = lock.clone();
@@ -639,7 +718,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn network_events(&mut self) -> BoxFuture<'_, Result<Vec<NetworkEvent>>> {
-        let net = self.network_events.clone();
+        let net = self.telemetry.network_events.clone();
         async move {
             let mut lock = net.lock().unwrap();
             let current = lock.clone();
@@ -650,7 +729,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn take_exchanges(&mut self) -> BoxFuture<'_, Result<Vec<Exchange>>> {
-        let exch = self.exchanges.clone();
+        let exch = self.telemetry.exchanges.clone();
         async move { Ok(std::mem::take(&mut *exch.lock().unwrap())) }.boxed()
     }
 
@@ -659,7 +738,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn reset(&mut self) -> BoxFuture<'_, Result<()>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move {
             tab.navigate_to("about:blank")
                 .map_err(|e| OrchynError::Internal(e.to_string()))?;
@@ -669,7 +748,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn scrape_elements(&mut self) -> BoxFuture<'_, Result<Vec<UiElement>>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move {
             let remote = tab
                 .evaluate(SCRAPE_ELEMENTS_JS, false)
@@ -688,15 +767,15 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn current_url(&mut self) -> BoxFuture<'_, Result<String>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move { Ok(tab.get_url()) }.boxed()
     }
 
     fn collect_telemetry(&mut self) -> BoxFuture<'_, Result<RawTelemetry>> {
-        let tab = self.tab.clone();
-        let diags = self.diagnostics.clone();
-        let nets = self.network_events.clone();
-        let ws = self.ws_messages.clone();
+        let tab = self.active_tab();
+        let diags = self.telemetry.diagnostics.clone();
+        let nets = self.telemetry.network_events.clone();
+        let ws = self.telemetry.ws_messages.clone();
         async move {
             let console_logs: Vec<ConsoleLog> = {
                 let mut lock = diags.lock().unwrap();
@@ -725,7 +804,7 @@ impl PlatformAdapter for WebAdapter {
         action: &HarnessAction,
         element_map: &[AnnotatedElement],
     ) -> BoxFuture<'_, Result<()>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         let action = action.clone();
         let element_map: Vec<AnnotatedElement> = element_map.to_vec();
         async move {
@@ -773,13 +852,62 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn shutdown(&mut self) -> BoxFuture<'_, Result<()>> {
-        // Closes this adapter's tab and context only; the shared browser stays up.
+        // Closes this adapter's popups and tab only; the shared browser stays up.
+        self.close_popups(true);
         self.lease.release(true);
         async move { Ok(()) }.boxed()
     }
 
+    fn switch_to_new_tab(&mut self, timeout_ms: u64) -> BoxFuture<'_, Result<String>> {
+        async move {
+            let deadline = Instant::now() + Duration::from_millis(timeout_ms);
+            let popup = loop {
+                if let Some(tab) = self.find_new_popup() {
+                    break tab;
+                }
+                if Instant::now() >= deadline {
+                    return Err(OrchynError::Platform(format!(
+                        "no new window was opened within {timeout_ms} ms"
+                    )));
+                }
+                tokio::time::sleep(POPUP_POLL).await;
+            };
+            if let Err(e) = instrument(&popup, &self.telemetry) {
+                let _ = popup.close(false);
+                return Err(e);
+            }
+            let _ = popup.wait_until_navigated();
+            // A popup usually starts on about:blank and navigates right away.
+            // Wait for the real URL, but a popup that stays blank is still a popup.
+            let url_deadline = Instant::now() + POPUP_URL_WAIT;
+            while popup.get_url() == "about:blank" && Instant::now() < url_deadline {
+                tokio::time::sleep(POPUP_POLL).await;
+            }
+            self.tabs.push(Arc::clone(&popup));
+            self.active = self.tabs.len() - 1;
+            let _ = popup.activate();
+            Ok(popup.get_url())
+        }
+        .boxed()
+    }
+
+    fn switch_to_tab(&mut self, index: usize) -> BoxFuture<'_, Result<String>> {
+        async move {
+            let tab = self.tabs.get(index).cloned().ok_or_else(|| {
+                OrchynError::Validation(format!(
+                    "no tab {index}: this adapter has {} tab(s)",
+                    self.tabs.len()
+                ))
+            })?;
+            self.active = index;
+            let _ = tab.activate();
+            Ok(tab.get_url())
+        }
+        .boxed()
+    }
+
     fn mouse_move(&mut self, x: f64, y: f64) -> BoxFuture<'_, Result<()>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move {
             tab.move_mouse_to_point(headless_chrome::browser::tab::point::Point { x, y })
                 .map_err(|e| OrchynError::Platform(format!("mouse_move: {e}")))?;
@@ -789,7 +917,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn eval_js(&mut self, js: &str) -> BoxFuture<'_, Result<String>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         let js = js.to_string();
         async move {
             let remote = tab
@@ -804,7 +932,7 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn set_viewport(&mut self, width: u32, height: u32) -> BoxFuture<'_, Result<()>> {
-        let tab = self.tab.clone();
+        let tab = self.active_tab();
         async move {
             tab.call_method(Emulation::SetDeviceMetricsOverride {
                 width,

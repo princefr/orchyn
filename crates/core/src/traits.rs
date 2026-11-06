@@ -105,6 +105,31 @@ pub trait PlatformAdapter: Send + Sync + Debug {
         }
         .boxed()
     }
+
+    /// Wait up to `timeout_ms` for a new tab opened by this adapter's pages
+    /// (for example `window.open`), make it the active tab for all later calls,
+    /// and return its URL.
+    fn switch_to_new_tab(&mut self, timeout_ms: u64) -> BoxFuture<'_, Result<String>> {
+        let _ = timeout_ms;
+        async move {
+            Err(OrchynError::Platform(
+                "switch_to_new_tab not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
+
+    /// Make tab `index` the active tab and return its URL. Index 0 is the
+    /// adapter's original tab; 1.. are the new tabs in opening order.
+    fn switch_to_tab(&mut self, index: usize) -> BoxFuture<'_, Result<String>> {
+        let _ = index;
+        async move {
+            Err(OrchynError::Platform(
+                "switch_to_tab not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
 }
 
 pub type Result<T> = std::result::Result<T, OrchynError>;

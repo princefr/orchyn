@@ -168,6 +168,17 @@ pub enum StepOp {
         #[serde(default)]
         value: Option<String>,
     },
+    /// Waits up to `timeout_ms` for a new window opened by this actor's pages
+    /// (for example `window.open('preview.html')`), then makes it the active
+    /// tab: later steps act on it. Fails with "no new window was opened" if
+    /// none appears in time. Settles 300 ms.
+    SwitchToPopup {
+        #[serde(default = "default_timeout_ms")]
+        timeout_ms: u64,
+    },
+    /// Makes tab `index` the active tab for this actor: 0 is the original tab,
+    /// 1.. are the new windows in opening order. Settles 300 ms.
+    SwitchTab { index: usize },
 }
 
 impl StepOp {
@@ -202,6 +213,8 @@ impl StepOp {
             StepOp::SetStorage { .. } => "set_storage",
             StepOp::ExpectSameText { .. } => "expect_same_text",
             StepOp::ExpectAttribute { .. } => "expect_attribute",
+            StepOp::SwitchToPopup { .. } => "switch_to_popup",
+            StepOp::SwitchTab { .. } => "switch_tab",
         }
     }
 }
@@ -239,7 +252,9 @@ impl StepOp {
             | StepOp::ClickEach { .. }
             | StepOp::Hover { .. }
             | StepOp::Drag { .. }
-            | StepOp::SetStorage { .. } => false,
+            | StepOp::SetStorage { .. }
+            | StepOp::SwitchToPopup { .. }
+            | StepOp::SwitchTab { .. } => false,
         }
     }
 }
@@ -343,6 +358,27 @@ mod tests {
                 selector: Some("a.nav".to_string())
             }
         );
+    }
+
+    #[test]
+    fn parses_tab_switching_ops() {
+        let m = ReplayManifest::from_json(
+            r#"{"name":"t","steps":[
+                {"op":"switch_to_popup"},
+                {"op":"switch_to_popup","timeout_ms":500},
+                {"op":"switch_tab","index":0}]}"#,
+        )
+        .unwrap();
+        assert_eq!(m.steps[0].op, StepOp::SwitchToPopup { timeout_ms: 3000 });
+        assert_eq!(m.steps[1].op, StepOp::SwitchToPopup { timeout_ms: 500 });
+        assert_eq!(m.steps[2].op, StepOp::SwitchTab { index: 0 });
+        let names: Vec<&str> = m.steps.iter().map(|s| s.op.name()).collect();
+        assert_eq!(
+            names,
+            vec!["switch_to_popup", "switch_to_popup", "switch_tab"]
+        );
+        // Tab switches change which page later steps act on, so they are actions.
+        assert!(m.steps.iter().all(|s| !s.op.is_assertion()));
     }
 
     #[test]
