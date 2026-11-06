@@ -84,6 +84,17 @@ pub trait PlatformAdapter: Send + Sync + Debug {
         async move { Ok(vec![]) }.boxed()
     }
 
+    /// Move the real pointer to viewport coordinates (CSS `:hover` follows it).
+    fn mouse_move(&mut self, x: f64, y: f64) -> BoxFuture<'_, Result<()>> {
+        let _ = (x, y);
+        async move {
+            Err(OrchynError::Platform(
+                "mouse_move not implemented for this adapter".to_string(),
+            ))
+        }
+        .boxed()
+    }
+
     /// Resize the browser viewport (for responsive testing).
     fn set_viewport(&mut self, width: u32, height: u32) -> BoxFuture<'_, Result<()>> {
         let _ = (width, height);

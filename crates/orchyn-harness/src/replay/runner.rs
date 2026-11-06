@@ -1195,8 +1195,18 @@ async fn hover(adapter: &mut dyn PlatformAdapter, selector: &str) -> StepOutcome
     if js_text(&raw) != "ok" {
         return Err(format!("element {selector} disappeared before hovering"));
     }
+    // Move the real pointer too, so CSS-only `:hover` rules apply. Adapters
+    // without pointer support still get the JS events above.
+    let real = adapter
+        .mouse_move(p.x + p.w / 2.0, p.y + p.h / 2.0)
+        .await
+        .is_ok();
     sleep_ms(HOVER_SETTLE_MS).await;
-    Ok(format!("hovered {selector} (JS hover events only)"))
+    Ok(if real {
+        format!("hovered {selector}")
+    } else {
+        format!("hovered {selector} (JS hover events only)")
+    })
 }
 
 /// Fraction of the target's height at which the drop lands.

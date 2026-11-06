@@ -778,6 +778,16 @@ impl PlatformAdapter for WebAdapter {
         async move { Ok(()) }.boxed()
     }
 
+    fn mouse_move(&mut self, x: f64, y: f64) -> BoxFuture<'_, Result<()>> {
+        let tab = self.tab.clone();
+        async move {
+            tab.move_mouse_to_point(headless_chrome::browser::tab::point::Point { x, y })
+                .map_err(|e| OrchynError::Platform(format!("mouse_move: {e}")))?;
+            Ok(())
+        }
+        .boxed()
+    }
+
     fn eval_js(&mut self, js: &str) -> BoxFuture<'_, Result<String>> {
         let tab = self.tab.clone();
         let js = js.to_string();
