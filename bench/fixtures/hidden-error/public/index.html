@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign up</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f6f7f9; color: #1d1f23; }
+  form { max-width: 340px; background: #fff; border: 1px solid #d9dce1; border-radius: 10px; padding: 20px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  label { display: block; font-size: 14px; margin-bottom: 4px; }
+  input { box-sizing: border-box; width: 100%; padding: 8px; font-size: 15px; border: 1px solid #b8bec6; border-radius: 6px; }
+  #email-error { margin-top: 6px; font-size: 13px; color: #b00020; }
+  button { margin-top: 16px; width: 100%; padding: 10px; font-size: 15px; border: 0; border-radius: 6px; background: #2d5be3; color: #fff; cursor: pointer; }
+  #result { margin-top: 12px; color: #1a7f37; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<form id="signup-form" novalidate>
+  <h1>Create account</h1>
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" placeholder="you@example.com">
+  <div id="email-error" role="alert" style="display: none;"></div>
+  <button id="submit-btn" type="submit">Sign up</button>
+  <div id="result" role="status"></div>
+</form>
+<!--BUG_CSS-->
+<script src="/app.js"></script>
+</body>
+</html>

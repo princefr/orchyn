@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes board</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f6f7f9; color: #1d1f23; }
+  .panel { max-width: 420px; background: #fff; border: 1px solid #d9dce1; border-radius: 10px; padding: 20px; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; }
+  input { flex: 1; padding: 8px; font-size: 15px; border: 1px solid #b8bec6; border-radius: 6px; }
+  button { padding: 8px 14px; font-size: 15px; border: 0; border-radius: 6px; background: #2d5be3; color: #fff; cursor: pointer; }
+  #board { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .note { padding: 10px; background: #fff8c5; border: 1px solid #e6d36b; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Team notes</h1>
+  <div class="row">
+    <input id="note" type="text" placeholder="Write a note">
+    <button id="post-btn" type="button">Post</button>
+  </div>
+  <div id="board"></div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

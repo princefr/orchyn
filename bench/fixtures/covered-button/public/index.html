@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletter</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f6f7f9; color: #1d1f23; }
+  .card { position: relative; max-width: 360px; background: #fff; border: 1px solid #d9dce1; border-radius: 10px; padding: 20px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: #555; }
+  #subscribe { display: block; width: 100%; padding: 12px; font-size: 16px; border: 0; border-radius: 8px; background: #2d5be3; color: #fff; cursor: pointer; }
+  #status { margin-top: 12px; min-height: 1.2em; font-weight: 600; color: #1a7f37; }
+  .scrim { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; background: #000; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Weekly newsletter</h1>
+  <p>Get one email a week with the best links.</p>
+  <button id="subscribe" type="button">Subscribe</button>
+  <div id="status" role="status"></div>
+  <!--OVERLAY-->
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

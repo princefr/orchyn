@@ -1,0 +1,11 @@
+{
+  "name": "hidden-error",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "click", "selector": "#submit-btn"},
+    {"op": "expect_text", "text": "Email is required", "timeout_ms": 3000},
+    {"op": "expect_visible", "selector": "#email-error"},
+    {"op": "expect_console_clean"}
+  ]
+}

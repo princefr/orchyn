@@ -1,0 +1,15 @@
+{
+  "name": "counter",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "wait_ms", "ms": 150},
+    {"op": "click", "selector": "#inc"},
+    {"op": "wait_ms", "ms": 150},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 3"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/counter/inc", "status": 200},
+    {"op": "expect_console_clean"}
+  ]
+}

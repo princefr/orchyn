@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f6f7f9; color: #1d1f23; }
+  .panel { max-width: 320px; background: #fff; border: 1px solid #d9dce1; border-radius: 10px; padding: 20px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  label { display: block; font-size: 14px; margin-top: 12px; }
+  input { box-sizing: border-box; width: 100%; padding: 8px; margin-top: 4px; font-size: 15px; border: 1px solid #b8bec6; border-radius: 6px; }
+  button { margin-top: 16px; width: 100%; padding: 10px; font-size: 15px; border: 0; border-radius: 6px; background: #2d5be3; color: #fff; cursor: pointer; }
+  #error { margin-top: 12px; color: #b00020; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Sign in</h1>
+  <label for="email">Email</label>
+  <input id="email" type="text" autocomplete="username">
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password">
+  <button id="login-btn" type="button">Log in</button>
+  <div id="error" role="alert"></div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
