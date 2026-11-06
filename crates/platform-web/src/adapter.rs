@@ -77,6 +77,36 @@ fn per_adapterbrowser() -> bool {
     std::env::var("ORCHYN_BROWSER_PER_ADAPTER").is_ok_and(|v| v == "1")
 }
 
+/// Chrome keeps its profile in TMPDIR; with a long TMPDIR (unix socket paths
+/// are limited to ~108 bytes) it hangs at startup. In that case use a short
+/// per-launch profile directory under /tmp.
+fn short_profile_dir() -> Option<std::path::PathBuf> {
+    if std::env::temp_dir().as_os_str().len() <= 60 {
+        return None;
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let dir = std::path::PathBuf::from(format!(
+        "/tmp/orchyn-chrome-{}-{nanos}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).ok()?;
+    Some(dir)
+}
+
+/// Chrome also creates its singleton socket in a temp dir under TMPDIR; give
+/// the browser process a short TMPDIR when ours is long.
+fn short_tmpdir_env() -> Option<std::collections::HashMap<String, String>> {
+    if std::env::temp_dir().as_os_str().len() <= 60 {
+        return None;
+    }
+    let mut env = std::collections::HashMap::new();
+    env.insert("TMPDIR".to_string(), "/tmp".to_string());
+    Some(env)
+}
+
 fn launchbrowser() -> Result<Browser> {
     Browser::new(
         LaunchOptions::default_builder()
@@ -89,6 +119,8 @@ fn launchbrowser() -> Result<Browser> {
             // Default idle_browser_timeout is 30s — too short when LLM inference
             // takes 15-40s per turn. Set to 10 minutes to outlast any turn.
             .idle_browser_timeout(std::time::Duration::from_secs(600))
+            .user_data_dir(short_profile_dir())
+            .process_envs(short_tmpdir_env())
             .build()
             .map_err(|e| OrchynError::Internal(e.to_string()))?,
     )
