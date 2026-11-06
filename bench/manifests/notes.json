@@ -1,0 +1,13 @@
+{
+  "name": "notes",
+  "base_url": "",
+  "steps": [
+    {"actor": "alice", "op": "goto", "path": "/"},
+    {"actor": "alice", "op": "fill", "selector": "#note", "value": "Buy milk"},
+    {"actor": "alice", "op": "click", "selector": "#post-btn"},
+    {"actor": "alice", "op": "expect_text", "text": "Buy milk", "timeout_ms": 3000},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "Buy milk", "timeout_ms": 3000},
+    {"actor": "bob", "op": "expect_console_clean"}
+  ]
+}

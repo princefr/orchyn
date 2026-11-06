@@ -1,0 +1,14 @@
+{
+  "name": "shop",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "Shop items"},
+    {"op": "expect_request", "method": "GET", "path_contains": "/api/items", "status": 200},
+    {"op": "expect_text", "text": "Apples\nBread"},
+    {"op": "expect_visible", "selector": "#items"},
+    {"op": "expect_no_text", "text": "No items"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"}
+  ]
+}

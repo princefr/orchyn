@@ -1,0 +1,13 @@
+{
+  "name": "newsletter",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#subscribe"},
+    {"op": "click", "selector": "#subscribe"},
+    {"op": "expect_text", "text": "Subscribed!"},
+    {"op": "expect_visible", "selector": "#status"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_console_clean"}
+  ]
+}

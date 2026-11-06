@@ -1,0 +1,10 @@
+{
+  "name": "profile",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "Alice Chen", "timeout_ms": 3000},
+    {"op": "expect_text", "text": "admin", "timeout_ms": 3000},
+    {"op": "expect_console_clean"}
+  ]
+}

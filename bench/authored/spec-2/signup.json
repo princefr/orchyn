@@ -1,0 +1,19 @@
+{
+  "name": "signup",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#submit-btn"},
+    {"op": "click", "selector": "#submit-btn"},
+    {"op": "expect_visible", "selector": "#email-error"},
+    {"op": "expect_text", "text": "Email is required"},
+    {"op": "fill", "selector": "#email", "value": "alice@test.com"},
+    {"op": "click", "selector": "#submit-btn"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/signup"},
+    {"op": "expect_text", "text": "Check your inbox to confirm."},
+    {"op": "expect_visible", "selector": "#result"},
+    {"op": "expect_no_text", "text": "Email is required"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_console_clean"}
+  ]
+}

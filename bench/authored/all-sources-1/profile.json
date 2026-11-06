@@ -1,0 +1,24 @@
+{
+  "name": "profile",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "wait_for_text", "text": "Alice Chen", "timeout_ms": 5000},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_visible", "selector": "#name"},
+    {"op": "expect_text", "text": "Alice Chen"},
+    {"op": "expect_text", "text": "TAGS"},
+    {"op": "expect_visible", "selector": "#tags"},
+    {"op": "expect_text", "text": "admin"},
+    {"op": "expect_text", "text": "beta"},
+    {"op": "expect_request", "method": "GET", "path_contains": "/api/profile"},
+    {"op": "expect_all_clickable"},
+    {"op": "snapshot_text", "key": "profile"},
+    {"op": "reload"},
+    {"op": "wait_for_text", "text": "Alice Chen", "timeout_ms": 5000},
+    {"op": "expect_text_unchanged", "key": "profile"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"}
+  ]
+}

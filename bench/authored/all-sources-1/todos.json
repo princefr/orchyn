@@ -1,0 +1,31 @@
+{
+  "name": "todos",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "wait_ms", "ms": 800},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_all_clickable"},
+    {"op": "fill", "selector": "#title", "value": "buy milk"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "buy milk"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/todos", "status": 201},
+    {"op": "snapshot_text", "key": "one"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "wait_ms", "ms": 800},
+    {"op": "expect_text_unchanged", "key": "one"},
+    {"op": "fill", "selector": "#title", "value": "   "},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "wait_ms", "ms": 800},
+    {"op": "expect_text_unchanged", "key": "one"},
+    {"op": "fill", "selector": "#title", "value": "call mom"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "call mom"},
+    {"op": "reload"},
+    {"op": "wait_for_text", "text": "call mom", "timeout_ms": 5000},
+    {"op": "expect_text", "text": "buy milk"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "call mom", "timeout_ms": 5000}
+  ]
+}

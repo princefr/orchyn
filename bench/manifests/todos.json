@@ -1,0 +1,13 @@
+{
+  "name": "todos",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "fill", "selector": "#title", "value": "Buy milk"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "Buy milk", "timeout_ms": 3000},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/todos", "status": 201},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_console_clean"}
+  ]
+}

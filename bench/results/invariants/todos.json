@@ -1,0 +1,322 @@
+{
+  "name": "todos",
+  "counts": {
+    "code_contract": 2,
+    "transcript": 7,
+    "universal": 6
+  },
+  "candidates": [
+    {
+      "id": "universal:console-clean:/",
+      "source": "universal",
+      "statement": "Loading / logs no console errors or uncaught exceptions.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_console_clean"
+        }
+      ]
+    },
+    {
+      "id": "universal:no-failed-requests:/",
+      "source": "universal",
+      "statement": "Every network request made while loading / succeeds.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_no_failed_requests"
+        }
+      ]
+    },
+    {
+      "id": "universal:all-clickable:/",
+      "source": "universal",
+      "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_all_clickable"
+        }
+      ]
+    },
+    {
+      "id": "universal:reload-stable:/",
+      "source": "universal",
+      "statement": "Reloading / leaves its visible text unchanged.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.6,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "default",
+          "op": "snapshot_text",
+          "key": "before"
+        },
+        {
+          "actor": "default",
+          "op": "reload"
+        },
+        {
+          "actor": "default",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "default",
+          "op": "expect_text_unchanged",
+          "key": "before"
+        }
+      ]
+    },
+    {
+      "id": "universal:interactions-clean:/",
+      "source": "universal",
+      "statement": "Clicking each button on / produces no console errors and no failed requests.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.7,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "reset_telemetry"
+        },
+        {
+          "actor": "default",
+          "op": "click_each",
+          "selector": null
+        },
+        {
+          "actor": "default",
+          "op": "expect_console_clean"
+        },
+        {
+          "actor": "default",
+          "op": "expect_no_failed_requests"
+        }
+      ]
+    },
+    {
+      "id": "universal:actors-agree:/",
+      "source": "universal",
+      "statement": "What one user changes on / stays visible to another user across reloads.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.5,
+      "check": [
+        {
+          "actor": "a",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "a",
+          "op": "click_each",
+          "selector": null
+        },
+        {
+          "actor": "b",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "b",
+          "op": "wait_ms",
+          "ms": 1500
+        },
+        {
+          "actor": "b",
+          "op": "snapshot_text",
+          "key": "b"
+        },
+        {
+          "actor": "b",
+          "op": "reload"
+        },
+        {
+          "actor": "b",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "b",
+          "op": "expect_text_unchanged",
+          "key": "b"
+        }
+      ]
+    },
+    {
+      "id": "contract:status:POST /api/todos",
+      "source": "code_contract",
+      "statement": "POST /api/todos responds 201 on success",
+      "evidence": [
+        {
+          "file": "server.js",
+          "line": 31,
+          "note": "\"res.status(201).json(todo);\""
+        }
+      ],
+      "confidence": 0.6
+    },
+    {
+      "id": "contract:validate:POST /api/todos:title",
+      "source": "code_contract",
+      "statement": "POST /api/todos: missing title is rejected with 4xx",
+      "evidence": [
+        {
+          "file": "server.js",
+          "line": 26,
+          "note": "\"if (!title) {\""
+        }
+      ],
+      "confidence": 0.7
+    },
+    {
+      "id": "transcript:1:2",
+      "source": "transcript",
+      "statement": "A text box with the id title, and it should say \"What needs doing?\" as the placeholder.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 3,
+          "note": "\"A text box with the id title, and it should say \"What needs doing?\" as the placeholder.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:2:1",
+      "source": "transcript",
+      "statement": "When I click Add, save whatever I typed as a new todo on the server, using /api/todos.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 7,
+          "note": "\"When I click Add, save whatever I typed as a new todo on the server, using /api/todos.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:3:1",
+      "source": "transcript",
+      "statement": "Below the box, show a list with id list with every todo the server has.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 11,
+          "note": "\"Below the box, show a list with id list with every todo the server has.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:3:2",
+      "source": "transcript",
+      "statement": "They should show up in the order I added them.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 11,
+          "note": "\"They should show up in the order I added them.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:4:1",
+      "source": "transcript",
+      "statement": "If I click Add with the box empty or only spaces, do nothing at all.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 15,
+          "note": "\"If I click Add with the box empty or only spaces, do nothing at all.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:4:2",
+      "source": "transcript",
+      "statement": "Don't send anything to the server.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 15,
+          "note": "\"Don't send anything to the server.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:5:1",
+      "source": "transcript",
+      "statement": "Clear the text box after every Add so I can type the next one right away.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/create-500/PROMPTS.md",
+          "line": 19,
+          "note": "\"Clear the text box after every Add so I can type the next one right away.\""
+        }
+      ],
+      "confidence": 0.5
+    }
+  ]
+}

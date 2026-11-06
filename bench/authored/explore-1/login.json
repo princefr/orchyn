@@ -1,0 +1,25 @@
+{
+  "name": "login",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#login-btn"},
+    {"op": "fill", "selector": "#email", "value": "alice@test.com"},
+    {"op": "fill", "selector": "#password", "value": "wrong-password"},
+    {"op": "click", "selector": "#login-btn"},
+    {"op": "expect_text", "text": "Invalid credentials"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/login", "status": 401},
+    {"op": "expect_visible", "selector": "#email"},
+    {"op": "reset_telemetry"},
+    {"op": "fill", "selector": "#password", "value": "password123"},
+    {"op": "click", "selector": "#login-btn"},
+    {"op": "expect_text", "text": "Welcome, alice@test.com"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/login", "status": 200},
+    {"op": "expect_url", "contains": "/dashboard"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"actor": "visitor", "op": "goto", "path": "/dashboard"},
+    {"actor": "visitor", "op": "expect_text", "text": "Please sign in"},
+    {"actor": "visitor", "op": "expect_no_text", "text": "Welcome, alice@test.com"}
+  ]
+}

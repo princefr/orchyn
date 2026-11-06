@@ -1,10 +1,10 @@
 [
   {
-    "name": "login-session",
-    "dir": "fixtures/login-session",
+    "name": "login",
+    "dir": "fixtures/login",
     "bug_class": "logic",
     "bug_description": "The dashboard ignores the session cookie, so a signed-in user is always shown 'Please sign in' after a successful login.",
-    "manifest": "manifests/login-session.json"
+    "manifest": "manifests/login.json"
   },
   {
     "name": "counter",
@@ -14,45 +14,45 @@
     "manifest": "manifests/counter.json"
   },
   {
-    "name": "create-500",
-    "dir": "fixtures/create-500",
+    "name": "todos",
+    "dir": "fixtures/todos",
     "bug_class": "network",
     "bug_description": "POST /api/todos always returns HTTP 500 and the UI silently drops the new todo without showing any error message.",
-    "manifest": "manifests/create-500.json"
+    "manifest": "manifests/todos.json"
   },
   {
-    "name": "route-mismatch",
-    "dir": "fixtures/route-mismatch",
+    "name": "shop",
+    "dir": "fixtures/shop",
     "bug_class": "network/static",
     "bug_description": "The server only serves /api/item (singular), so the page's request to /api/items gets a 404 and the list silently shows 'No items'.",
-    "manifest": "manifests/route-mismatch.json"
+    "manifest": "manifests/shop.json"
   },
   {
-    "name": "console-crash",
-    "dir": "fixtures/console-crash",
+    "name": "profile",
+    "dir": "fixtures/profile",
     "bug_class": "console",
     "bug_description": "The profile API returns tags as null, so the client's tags.map call throws an uncaught TypeError and the tag list never renders.",
-    "manifest": "manifests/console-crash.json"
+    "manifest": "manifests/profile.json"
   },
   {
-    "name": "covered-button",
-    "dir": "fixtures/covered-button",
+    "name": "newsletter",
+    "dir": "fixtures/newsletter",
     "bug_class": "visual/pixel",
     "bug_description": "An invisible full-size overlay (opacity 0, z-index 10) sits over the Subscribe button, so a real mouse click never reaches it even though the DOM button still works when clicked from script.",
-    "manifest": "manifests/covered-button.json"
+    "manifest": "manifests/newsletter.json"
   },
   {
-    "name": "realtime-sync",
-    "dir": "fixtures/realtime-sync",
+    "name": "notes",
+    "dir": "fixtures/notes",
     "bug_class": "multi_actor",
     "bug_description": "Notes are stored per session cookie, so each browser only sees its own notes and Bob never sees the note Alice posted.",
-    "manifest": "manifests/realtime-sync.json"
+    "manifest": "manifests/notes.json"
   },
   {
-    "name": "hidden-error",
-    "dir": "fixtures/hidden-error",
+    "name": "signup",
+    "dir": "fixtures/signup",
     "bug_class": "visual",
     "bug_description": "The empty-email validation message is written into #email-error but that element stays display:none, so the message is never visible to the user.",
-    "manifest": "manifests/hidden-error.json"
+    "manifest": "manifests/signup.json"
   }
 ]

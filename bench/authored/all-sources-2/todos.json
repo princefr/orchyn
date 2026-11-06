@@ -1,0 +1,31 @@
+{
+  "name": "todos",
+  "base_url": "",
+  "steps": [
+    {"actor": "default", "op": "goto", "path": "/"},
+    {"actor": "default", "op": "expect_visible", "selector": "#title"},
+    {"actor": "default", "op": "expect_text", "text": "My todos"},
+    {"actor": "default", "op": "expect_all_clickable"},
+    {"actor": "default", "op": "expect_console_clean"},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "click", "selector": "#add-btn"},
+    {"actor": "default", "op": "wait_ms", "ms": 800},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "fill", "selector": "#title", "value": "   "},
+    {"actor": "default", "op": "click", "selector": "#add-btn"},
+    {"actor": "default", "op": "wait_ms", "ms": 800},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "fill", "selector": "#title", "value": "Buy milk"},
+    {"actor": "default", "op": "click", "selector": "#add-btn"},
+    {"actor": "default", "op": "expect_request", "method": "POST", "path_contains": "/api/todos", "status": 201},
+    {"actor": "default", "op": "fill", "selector": "#title", "value": "Walk dog"},
+    {"actor": "default", "op": "click", "selector": "#add-btn"},
+    {"actor": "default", "op": "expect_text", "text": "Buy milk\nWalk dog"},
+    {"actor": "default", "op": "click", "selector": "#add-btn"},
+    {"actor": "default", "op": "wait_ms", "ms": 800},
+    {"actor": "default", "op": "expect_no_text", "text": "Walk dog\nWalk dog"},
+    {"actor": "viewer", "op": "goto", "path": "/"},
+    {"actor": "viewer", "op": "wait_for_text", "text": "Buy milk\nWalk dog"},
+    {"actor": "viewer", "op": "expect_console_clean"}
+  ]
+}

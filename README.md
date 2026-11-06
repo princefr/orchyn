@@ -219,14 +219,14 @@ every buggy run *and* passes on every clean run.
 
 | fixture | class | reference | haiku-spec-1 | haiku-spec-2 | haiku-explore-1 | haiku-explore-2 | haiku-all-sources-1 | haiku-all-sources-2 |
 |---|---|---|---|---|---|---|---|---|
-| login-session | logic | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| login | logic | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | counter | logic/state | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| create-500 | network | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| route-mismatch | network/static | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| console-crash | console | ✓ | ✗ clean fails | ✗ clean fails | ✓ | ✓ | ✓ | ✓ |
-| covered-button | visual/pixel | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| realtime-sync | multi_actor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| hidden-error | visual | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| todos | network | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| shop | network/static | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| profile | console | ✓ | ✗ clean fails | ✗ clean fails | ✓ | ✓ | ✓ | ✓ |
+| newsletter | visual/pixel | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| notes | multi_actor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| signup | visual | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | **valid catches** | | **8/8** | **7/8** | **7/8** | **8/8** | **8/8** | **8/8** | **8/8** |
 | false positives | | 0 | 1 | 1 | 0 | 0 | 0 | 0 |
 | flaky | | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -275,8 +275,9 @@ checks were green), plus two benchmark text/test mismatches that cap
 ### Threats to validity
 
 Toy fixtures with one planted bug each, written by the same team as the
-harness; fixture names hint at the bug class (`create-500`, `covered-button`,
-…), which the authoring models could see; small n everywhere (2 replicates on
+harness; the fixtures were originally named after their bug class
+(`create-500`, `covered-button`, …) and the authoring models could see those
+names — they are now neutral (`bench/results/NAMES.md`); small n everywhere (2 replicates on
 Web-Bench). Treat these as a sanity check of the pipeline, not as recall
 numbers.
 
