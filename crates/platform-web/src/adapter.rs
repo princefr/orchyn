@@ -10,7 +10,7 @@ use orchyn_core::{
     Platform, RawTelemetry, Result, UiElement,
 };
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Once, OnceLock};
 use tracing::{info, warn};
 
@@ -21,6 +21,10 @@ static SHARED_BROWSER: OnceLock<Mutex<Option<Arc<Browser>>>> = OnceLock::new();
 
 /// PID of the shared Chromium (0 = none). Read by the exit hook below.
 static SHARED_PID: AtomicU32 = AtomicU32::new(0);
+/// Adapters handed the current shared browser. Its incognito contexts cannot be
+/// disposed through the public API, so the browser is recycled after this many.
+static SHARED_ADAPTERS: AtomicUsize = AtomicUsize::new(0);
+const MAX_ADAPTERS_PER_SHARED_BROWSER: usize = 8;
 static EXIT_HOOK: Once = Once::new();
 
 /// Statics are never dropped, and binaries end with `process::exit`, so the
@@ -96,14 +100,19 @@ fn launch_browser() -> Result<Browser> {
 fn acquire_shared_browser() -> Result<Arc<Browser>> {
     let mut slot = shared_slot();
     if let Some(browser) = slot.as_ref() {
-        if browser.get_version().is_ok() {
+        if SHARED_ADAPTERS.load(Ordering::SeqCst) >= MAX_ADAPTERS_PER_SHARED_BROWSER {
+            info!("recycling shared Chromium after {MAX_ADAPTERS_PER_SHARED_BROWSER} adapters");
+        } else if browser.get_version().is_ok() {
+            SHARED_ADAPTERS.fetch_add(1, Ordering::SeqCst);
             return Ok(Arc::clone(browser));
+        } else {
+            warn!("shared Chromium is not responding; relaunching");
         }
-        warn!("shared Chromium is not responding; relaunching");
     }
     let browser = Arc::new(launch_browser()?);
     EXIT_HOOK.call_once(exit_hook::install);
     SHARED_PID.store(browser.get_process_id().unwrap_or(0), Ordering::SeqCst);
+    SHARED_ADAPTERS.store(1, Ordering::SeqCst);
     *slot = Some(Arc::clone(&browser));
     Ok(browser)
 }
