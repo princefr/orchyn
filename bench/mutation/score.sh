@@ -12,7 +12,8 @@
 # Each detector is judged per mutant: detected = it reports a failure the control
 # did not have.
 #
-# Env: ORCHYN_CHECK (binary), WB (web-bench checkout), WBENV (node_modules dir),
+# Env: DRIVERS (task numbers used to drive the baseline, default "5 10 14 15"),
+#      ORCHYN_CHECK (binary), WB (web-bench checkout), WBENV (node_modules dir),
 #      SCORE (bench/webbench/score.sh), CHROME, ORCHYN_NO_SANDBOX.
 set -u
 P=$1; MUT=$(cd "$2" && pwd); CHECKS=$(cd "$3" && pwd); OUT=$4; MAX=${5:-999}
@@ -50,7 +51,10 @@ log "valid checks on control: ${#VALID[@]}"
 MARGS=(); for f in "${VALID[@]}"; do MARGS+=(--manifest "$f"); done
 # The baseline only replays actions (assertions are dropped), so every check can
 # drive it, valid or not.
-ALL=(); for f in "$CHECKS"/task-*.json; do ALL+=(--manifest "$f"); done
+# DRIVERS (task numbers) bounds the cost: each driver is replayed on every
+# mutant.
+DRIVERS=${DRIVERS:-"5 10 14 15"}
+ALL=(); for n in $DRIVERS; do [ -f "$CHECKS/task-$n.json" ] && ALL+=(--manifest "$CHECKS/task-$n.json"); done
 
 start_app "$CTRL"; check "$CTRL" "${ALL[@]}" --record "$WORK/baseline" --runs 2 >/dev/null 2>&1; stop_app
 start_app "$CTRL"; check "$CTRL" --universal 2>/dev/null | grep '^FAIL' | sort > "$WORK/u0"; stop_app
