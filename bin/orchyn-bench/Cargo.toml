@@ -1,0 +1,16 @@
+[package]
+name = "orchyn-bench"
+version.workspace = true
+edition.workspace = true
+description = "Runs replay manifests against bug-seeded fixtures and scores detection, false positives and determinism."
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-harness = { workspace = true }
+orchyn-platform-web = { workspace = true }
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+anyhow.workspace = true

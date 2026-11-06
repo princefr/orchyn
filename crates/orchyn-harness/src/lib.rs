@@ -2,6 +2,8 @@ pub mod agent;
 pub mod diff_engine;
 pub mod events;
 pub mod harness;
+pub mod intent;
+pub mod replay;
 pub mod types;
 
 pub use agent::AgentProgressEvent;

@@ -3900,6 +3900,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "orchyn-bench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "futures",
+ "orchyn-core",
+ "orchyn-harness",
+ "orchyn-platform-web",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "orchyn-cli"
 version = "0.1.0"
 dependencies = [
@@ -3966,6 +3981,7 @@ dependencies = [
  "orchyn-storage",
  "orchyn-toolkit",
  "path-clean",
+ "regex",
  "serde",
  "serde_json",
  "sqlx",
@@ -3973,6 +3989,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid 1.23.1",
+ "walkdir",
 ]
 
 [[package]]
