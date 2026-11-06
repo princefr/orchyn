@@ -380,6 +380,12 @@ impl Session {
 }
 
 fn is_console_error(level: &str, message: &str) -> bool {
+    // Chrome logs every 4xx/5xx response as "Failed to load resource". Those
+    // are network outcomes, judged by `expect_no_failed_requests` (which knows
+    // to ignore the browser's automatic /favicon.ico probe), not script errors.
+    if message.starts_with("Failed to load resource") {
+        return false;
+    }
     level.eq_ignore_ascii_case("error") || message.contains("Uncaught")
 }
 
@@ -1036,6 +1042,16 @@ fn truncate_chars(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resource_load_failures_are_not_console_errors() {
+        assert!(!is_console_error(
+            "error",
+            "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        ));
+        assert!(is_console_error("error", "TypeError: x is null"));
+        assert!(is_console_error("log", "Uncaught (in promise) TypeError"));
+    }
     use futures::future::FutureExt;
     use orchyn_core::OrchynError;
     use std::collections::VecDeque;

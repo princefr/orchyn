@@ -3915,6 +3915,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "orchyn-check"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "futures",
+ "orchyn-core",
+ "orchyn-harness",
+ "orchyn-platform-web",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "orchyn-cli"
 version = "0.1.0"
 dependencies = [

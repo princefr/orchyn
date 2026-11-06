@@ -1,0 +1,15 @@
+[package]
+name = "orchyn-check"
+version.workspace = true
+edition.workspace = true
+description = "Check a running web app: replay manifests, universal invariants, and reality gaps."
+
+[dependencies]
+orchyn-core = { workspace = true }
+orchyn-harness = { workspace = true }
+orchyn-platform-web = { workspace = true }
+futures.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+anyhow.workspace = true
