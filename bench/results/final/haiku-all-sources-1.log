@@ -1,0 +1,55 @@
+[login-session] clean run 0: PASS 20486ms 
+[login-session] bug   run 0: FAIL 19920ms #17 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 1: PASS 20654ms 
+[login-session] bug   run 1: FAIL 19640ms #17 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 2: PASS 21594ms 
+[login-session] bug   run 2: FAIL 19833ms #17 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[counter] clean run 0: PASS 14054ms 
+[counter] bug   run 0: FAIL 10244ms #10 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 1: PASS 13854ms 
+[counter] bug   run 1: FAIL 9611ms #10 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 2: PASS 14821ms 
+[counter] bug   run 2: FAIL 10324ms #10 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[create-500] clean run 0: PASS 20393ms 
+[create-500] bug   run 0: FAIL 10814ms #7 expect_text [default]: text "buy milk" not found in document.body.innerText after 3000 ms
+[create-500] clean run 1: PASS 20540ms 
+[create-500] bug   run 1: FAIL 10746ms #7 expect_text [default]: text "buy milk" not found in document.body.innerText after 3000 ms
+[create-500] clean run 2: PASS 21076ms 
+[create-500] bug   run 2: FAIL 10797ms #7 expect_text [default]: text "buy milk" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 0: PASS 5390ms 
+[route-mismatch] bug   run 0: FAIL 9136ms #1 wait_for_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[route-mismatch] clean run 1: PASS 5554ms 
+[route-mismatch] bug   run 1: FAIL 8649ms #1 wait_for_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[route-mismatch] clean run 2: PASS 5428ms 
+[route-mismatch] bug   run 2: FAIL 8930ms #1 wait_for_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[console-crash] clean run 0: PASS 5639ms 
+[console-crash] bug   run 0: FAIL 3947ms #2 expect_console_clean [default]: actor 'default' has 1 console error(s): Uncaught: TypeError: Cannot read properties of null (reading 'map')
+    at http://127.0.0.1:41647/app.js:7:23 (http://127.0.0.1:41647/app.js:6:22)
+    at <anonymous> (http://127.0.0.1:41647/app.js):6:22
+[console-crash] clean run 1: PASS 5529ms 
+[console-crash] bug   run 1: FAIL 4138ms #2 expect_console_clean [default]: actor 'default' has 1 console error(s): Uncaught: TypeError: Cannot read properties of null (reading 'map')
+    at http://127.0.0.1:39975/app.js:7:23 (http://127.0.0.1:39975/app.js:6:22)
+    at <anonymous> (http://127.0.0.1:39975/app.js):6:22
+[console-crash] clean run 2: PASS 5659ms 
+[console-crash] bug   run 2: FAIL 3994ms #2 expect_console_clean [default]: actor 'default' has 1 console error(s): Uncaught: TypeError: Cannot read properties of null (reading 'map')
+    at http://127.0.0.1:43797/app.js:7:23 (http://127.0.0.1:43797/app.js:6:22)
+    at <anonymous> (http://127.0.0.1:43797/app.js):6:22
+[covered-button] clean run 0: PASS 7802ms 
+[covered-button] bug   run 0: FAIL 3859ms #3 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 1: PASS 7879ms 
+[covered-button] bug   run 1: FAIL 4129ms #3 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 2: PASS 7867ms 
+[covered-button] bug   run 2: FAIL 3868ms #3 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[realtime-sync] clean run 0: PASS 18550ms 
+[realtime-sync] bug   run 0: FAIL 18688ms #13 expect_text [bob]: text "hello team" not found in document.body.innerText after 5000 ms
+[realtime-sync] clean run 1: PASS 18100ms 
+[realtime-sync] bug   run 1: FAIL 17819ms #13 expect_text [bob]: text "hello team" not found in document.body.innerText after 5000 ms
+[realtime-sync] clean run 2: PASS 18462ms 
+[realtime-sync] bug   run 2: FAIL 18173ms #13 expect_text [bob]: text "hello team" not found in document.body.innerText after 5000 ms
+[hidden-error] clean run 0: PASS 10221ms 
+[hidden-error] bug   run 0: FAIL 5644ms #10 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+[hidden-error] clean run 1: PASS 10290ms 
+[hidden-error] bug   run 1: FAIL 5674ms #10 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+[hidden-error] clean run 2: PASS 11012ms 
+[hidden-error] bug   run 2: FAIL 5733ms #10 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+wrote /tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/final-results/haiku-all-sources-1.json

@@ -1,0 +1,632 @@
+{
+  "label": "reference",
+  "fixtures": 8,
+  "runs_per_variant": 3,
+  "detected": 8,
+  "false_positives": 0,
+  "flaky": 0,
+  "gap_detected": 2,
+  "mean_run_ms": 7992,
+  "results": [
+    {
+      "name": "login-session",
+      "bug_class": "logic",
+      "bug_description": "The dashboard ignores the session cookie, so a signed-in user is always shown 'Please sign in' after a successful login.",
+      "manifest": "bench/manifests/login-session.json",
+      "steps": 8,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 11473,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 5000 ms",
+          "duration_ms": 16417,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 11353,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 5000 ms",
+          "duration_ms": 16914,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 11541,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 5000 ms",
+          "duration_ms": 16564,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "counter",
+      "bug_class": "logic/state",
+      "bug_description": "The server adds 2 per increment instead of 1, so the displayed count skips values.",
+      "manifest": "bench/manifests/counter.json",
+      "steps": 9,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 5759,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#6 expect_text [default]: text \"Count: 3\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 9043,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 6138,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#6 expect_text [default]: text \"Count: 3\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 9287,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 6068,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#6 expect_text [default]: text \"Count: 3\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 9188,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "create-500",
+      "bug_class": "network",
+      "bug_description": "POST /api/todos always returns HTTP 500 and the UI silently drops the new todo without showing any error message.",
+      "manifest": "bench/manifests/create-500.json",
+      "steps": 7,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": true,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 7036,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#3 expect_text [default]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 9987,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 7396,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#3 expect_text [default]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 10301,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 6352,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#3 expect_text [default]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 9986,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "route-mismatch",
+      "bug_class": "network/static",
+      "bug_description": "The server only serves /api/item (singular), so the page's request to /api/items gets a 404 and the list silently shows 'No items'.",
+      "manifest": "bench/manifests/route-mismatch.json",
+      "steps": 7,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": true,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4139,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#1 expect_text [default]: text \"Apples\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7356,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4279,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#1 expect_text [default]: text \"Apples\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 6628,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4212,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#1 expect_text [default]: text \"Apples\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7212,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "console-crash",
+      "bug_class": "console",
+      "bug_description": "The profile API returns tags as null, so the client's tags.map call throws an uncaught TypeError and the tag list never renders.",
+      "manifest": "bench/manifests/console-crash.json",
+      "steps": 4,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4086,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"admin\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 6803,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4141,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"admin\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7007,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4564,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"admin\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7130,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "covered-button",
+      "bug_class": "visual/pixel",
+      "bug_description": "An invisible full-size overlay (opacity 0, z-index 10) sits over the Subscribe button, so a real mouse click never reaches it even though the DOM button still works when clicked from script.",
+      "manifest": "bench/manifests/covered-button.json",
+      "steps": 4,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4609,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 3889,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4616,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 4003,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4311,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 3995,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "realtime-sync",
+      "bug_class": "multi_actor",
+      "bug_description": "Notes are stored per session cookie, so each browser only sees its own notes and Bob never sees the note Alice posted.",
+      "manifest": "bench/manifests/realtime-sync.json",
+      "steps": 7,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 11070,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#5 expect_text [bob]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 12722,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 10501,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#5 expect_text [bob]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 14239,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 10731,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#5 expect_text [bob]: text \"Buy milk\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 13639,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "hidden-error",
+      "bug_class": "visual",
+      "bug_description": "The empty-email validation message is written into #email-error but that element stays display:none, so the message is never visible to the user.",
+      "manifest": "bench/manifests/hidden-error.json",
+      "steps": 5,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4603,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7522,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4773,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7806,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4695,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7540,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    }
+  ]
+}

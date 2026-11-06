@@ -1,0 +1,716 @@
+{
+  "label": "haiku-explore-2",
+  "fixtures": 8,
+  "runs_per_variant": 3,
+  "detected": 8,
+  "false_positives": 0,
+  "flaky": 0,
+  "gap_detected": 2,
+  "mean_run_ms": 10325,
+  "results": [
+    {
+      "name": "login-session",
+      "bug_class": "logic",
+      "bug_description": "The dashboard ignores the session cookie, so a signed-in user is always shown 'Please sign in' after a successful login.",
+      "manifest": "bench/authored/explore-2/login-session.json",
+      "steps": 18,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 20772,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#11 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 19818,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 19785,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#11 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 18921,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 19976,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#11 expect_text [default]: text \"Welcome, alice@test.com\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 19675,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/login",
+              "observed_status": 401,
+              "source": {
+                "method": "POST",
+                "path": "/api/login",
+                "file": "public/app.js",
+                "line": 7
+              },
+              "message": "POST /api/login returned 401 (called from public/app.js:7)"
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "counter",
+      "bug_class": "logic/state",
+      "bug_description": "The server adds 2 per increment instead of 1, so the displayed count skips values.",
+      "manifest": "bench/authored/explore-2/counter.json",
+      "steps": 17,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 12257,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Count: 1\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7727,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 12109,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Count: 1\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7618,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 11986,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"Count: 1\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7782,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "create-500",
+      "bug_class": "network",
+      "bug_description": "POST /api/todos always returns HTTP 500 and the UI silently drops the new todo without showing any error message.",
+      "manifest": "bench/authored/explore-2/create-500.json",
+      "steps": 18,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": true,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 14553,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#3 expect_request [default]: no POST request to a URL containing \"/api/todos\" with status 201 for actor 'default'; observed: GET http://127.0.0.1:42495/ 200; GET http://127.0.0.1:42495/app.js 200; GET http://127.0.0.1:42495/api/todos 200; POST http://127.0.0.1:42495/api/todos 500; GET http://127.0.0.1:42495/api/todos 200",
+          "duration_ms": 7141,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 14609,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#3 expect_request [default]: no POST request to a URL containing \"/api/todos\" with status 201 for actor 'default'; observed: GET http://127.0.0.1:35607/ 200; GET http://127.0.0.1:35607/app.js 200; GET http://127.0.0.1:35607/api/todos 200; POST http://127.0.0.1:35607/api/todos 500; GET http://127.0.0.1:35607/api/todos 200",
+          "duration_ms": 6764,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 14726,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#3 expect_request [default]: no POST request to a URL containing \"/api/todos\" with status 201 for actor 'default'; observed: GET http://127.0.0.1:35091/ 200; GET http://127.0.0.1:35091/app.js 200; GET http://127.0.0.1:35091/api/todos 200; POST http://127.0.0.1:35091/api/todos 500; GET http://127.0.0.1:35091/api/todos 200",
+          "duration_ms": 7217,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "POST",
+              "path": "/api/todos",
+              "observed_status": 500,
+              "source": {
+                "method": "POST",
+                "path": "/api/todos",
+                "file": "public/app.js",
+                "line": 18
+              },
+              "message": "POST /api/todos returned 500 (called from public/app.js:18)"
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "route-mismatch",
+      "bug_class": "network/static",
+      "bug_description": "The server only serves /api/item (singular), so the page's request to /api/items gets a 404 and the list silently shows 'No items'.",
+      "manifest": "bench/authored/explore-2/route-mismatch.json",
+      "steps": 8,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": true,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4480,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#2 expect_request [default]: no GET request to a URL containing \"/api/items\" with status 200 for actor 'default'; observed: GET http://127.0.0.1:44785/ 200; GET http://127.0.0.1:44785/app.js 200; GET http://127.0.0.1:44785/api/items 404",
+          "duration_ms": 3798,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4349,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#2 expect_request [default]: no GET request to a URL containing \"/api/items\" with status 200 for actor 'default'; observed: GET http://127.0.0.1:42199/ 200; GET http://127.0.0.1:42199/app.js 200; GET http://127.0.0.1:42199/api/items 404",
+          "duration_ms": 3920,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4455,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#2 expect_request [default]: no GET request to a URL containing \"/api/items\" with status 200 for actor 'default'; observed: GET http://127.0.0.1:46171/ 200; GET http://127.0.0.1:46171/app.js 200; GET http://127.0.0.1:46171/api/items 404",
+          "duration_ms": 4037,
+          "gaps": [
+            {
+              "kind": "observed_failure",
+              "method": "GET",
+              "path": "/api/items",
+              "observed_status": 404,
+              "source": {
+                "method": "GET",
+                "path": "/api/items",
+                "file": "public/app.js",
+                "line": 21
+              },
+              "message": "GET /api/items returned 404 (called from public/app.js:21)"
+            }
+          ],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "console-crash",
+      "bug_class": "console",
+      "bug_description": "The profile API returns tags as null, so the client's tags.map call throws an uncaught TypeError and the tag list never renders.",
+      "manifest": "bench/authored/explore-2/console-crash.json",
+      "steps": 8,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4280,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"admin\\nbeta\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7166,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4365,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"admin\\nbeta\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7056,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 4308,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#4 expect_text [default]: text \"admin\\nbeta\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7109,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "covered-button",
+      "bug_class": "visual/pixel",
+      "bug_description": "An invisible full-size overlay (opacity 0, z-index 10) sits over the Subscribe button, so a real mouse click never reaches it even though the DOM button still works when clicked from script.",
+      "manifest": "bench/authored/explore-2/covered-button.json",
+      "steps": 9,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 5858,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 4164,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 5924,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 3994,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 6017,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it",
+          "duration_ms": 4249,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "realtime-sync",
+      "bug_class": "multi_actor",
+      "bug_description": "Notes are stored per session cookie, so each browser only sees its own notes and Bob never sees the note Alice posted.",
+      "manifest": "bench/authored/explore-2/realtime-sync.json",
+      "steps": 18,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 21270,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#6 expect_text [bob]: text \"First note\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 15227,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 22448,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#6 expect_text [bob]: text \"First note\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 14326,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 23629,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#6 expect_text [bob]: text \"First note\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 14271,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "hidden-error",
+      "bug_class": "visual",
+      "bug_description": "The empty-email validation message is written into #email-error but that element stays display:none, so the message is never visible to the user.",
+      "manifest": "bench/authored/explore-2/hidden-error.json",
+      "steps": 11,
+      "detected": true,
+      "false_positive": false,
+      "flaky": false,
+      "gap_detected": false,
+      "runs": [
+        {
+          "variant": "clean",
+          "run": 0,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 9997,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 0,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7657,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 1,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 9164,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 1,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7392,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "clean",
+          "run": 2,
+          "passed": true,
+          "first_failure": null,
+          "duration_ms": 9724,
+          "gaps": [],
+          "error": null
+        },
+        {
+          "variant": "bug",
+          "run": 2,
+          "passed": false,
+          "first_failure": "#2 expect_text [default]: text \"Email is required\" not found in document.body.innerText after 3000 ms",
+          "duration_ms": 7533,
+          "gaps": [],
+          "error": null
+        }
+      ]
+    }
+  ]
+}

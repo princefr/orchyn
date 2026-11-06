@@ -1,0 +1,49 @@
+[login-session] clean run 0: PASS 11473ms 
+[login-session] bug   run 0: FAIL 16417ms #4 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 5000 ms
+[login-session] clean run 1: PASS 11353ms 
+[login-session] bug   run 1: FAIL 16914ms #4 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 5000 ms
+[login-session] clean run 2: PASS 11541ms 
+[login-session] bug   run 2: FAIL 16564ms #4 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 5000 ms
+[counter] clean run 0: PASS 5759ms 
+[counter] bug   run 0: FAIL 9043ms #6 expect_text [default]: text "Count: 3" not found in document.body.innerText after 3000 ms
+[counter] clean run 1: PASS 6138ms 
+[counter] bug   run 1: FAIL 9287ms #6 expect_text [default]: text "Count: 3" not found in document.body.innerText after 3000 ms
+[counter] clean run 2: PASS 6068ms 
+[counter] bug   run 2: FAIL 9188ms #6 expect_text [default]: text "Count: 3" not found in document.body.innerText after 3000 ms
+[create-500] clean run 0: PASS 7036ms 
+[create-500] bug   run 0: FAIL 9987ms #3 expect_text [default]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[create-500] clean run 1: PASS 7396ms 
+[create-500] bug   run 1: FAIL 10301ms #3 expect_text [default]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[create-500] clean run 2: PASS 6352ms 
+[create-500] bug   run 2: FAIL 9986ms #3 expect_text [default]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 0: PASS 4139ms 
+[route-mismatch] bug   run 0: FAIL 7356ms #1 expect_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 1: PASS 4279ms 
+[route-mismatch] bug   run 1: FAIL 6628ms #1 expect_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 2: PASS 4212ms 
+[route-mismatch] bug   run 2: FAIL 7212ms #1 expect_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 0: PASS 4086ms 
+[console-crash] bug   run 0: FAIL 6803ms #2 expect_text [default]: text "admin" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 1: PASS 4141ms 
+[console-crash] bug   run 1: FAIL 7007ms #2 expect_text [default]: text "admin" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 2: PASS 4564ms 
+[console-crash] bug   run 2: FAIL 7130ms #2 expect_text [default]: text "admin" not found in document.body.innerText after 3000 ms
+[covered-button] clean run 0: PASS 4609ms 
+[covered-button] bug   run 0: FAIL 3889ms #1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 1: PASS 4616ms 
+[covered-button] bug   run 1: FAIL 4003ms #1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 2: PASS 4311ms 
+[covered-button] bug   run 2: FAIL 3995ms #1 click [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[realtime-sync] clean run 0: PASS 11070ms 
+[realtime-sync] bug   run 0: FAIL 12722ms #5 expect_text [bob]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[realtime-sync] clean run 1: PASS 10501ms 
+[realtime-sync] bug   run 1: FAIL 14239ms #5 expect_text [bob]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[realtime-sync] clean run 2: PASS 10731ms 
+[realtime-sync] bug   run 2: FAIL 13639ms #5 expect_text [bob]: text "Buy milk" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 0: PASS 4603ms 
+[hidden-error] bug   run 0: FAIL 7522ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 1: PASS 4773ms 
+[hidden-error] bug   run 1: FAIL 7806ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 2: PASS 4695ms 
+[hidden-error] bug   run 2: FAIL 7540ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+wrote /tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/final-results/reference.json

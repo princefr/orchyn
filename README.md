@@ -195,57 +195,96 @@ The CLI and the benchmark do not need PostgreSQL.
 
 ## Benchmark
 
-Eight tiny apps in `bench/fixtures/`, each with one planted bug that is only
-active with `BUG=1` (logic, state, HTTP 500, client/server route mismatch,
-console crash, a button covered by an invisible overlay, multi-user sync, an
-error message that is set but hidden). A manifest scores a **valid catch**
-only if it fails on every buggy run *and* passes on every clean run.
+Two questions, answered separately: **does the harness catch bugs?** (internal
+bug-seeded suite) and **does it help a coding agent build correct apps?**
+(public Web-Bench).
 
-Conditions:
+### 1. Catching planted bugs
 
-- **reference**: manifests hand-written next to the fixtures (knowing the bug).
-- **haiku-spec-N**: a small model (Claude Haiku) wrote the manifests from
-  `FEATURE.md` alone — it never saw the code, the bug, or the running app.
-- **haiku-explore-N**: same, but it could also probe the *clean* running app
-  over HTTP before writing them (it never saw the buggy version).
+Eight tiny apps in `bench/fixtures/`, each with one bug active only with
+`BUG=1`: logic, state, HTTP 500, client/server route mismatch, console crash,
+a button covered by an invisible overlay, multi-user sync, a validation message
+that is set but hidden. A check scores a **valid catch** only if it fails on
+every buggy run *and* passes on every clean run.
 
-| fixture | class | reference | haiku-spec-1 | haiku-spec-2 | haiku-explore-1 | haiku-explore-2 |
-|---|---|---|---|---|---|---|
-| login-session | logic | ✓ | ✓ | ✓ | ✓ | ✓ |
-| counter | logic/state | ✓ | ✓ | ✓ | ✓ | ✓ |
-| create-500 | network | ✓ | ✓ | ✓ | ✓ | ✓ |
-| route-mismatch | network/static | ✓ | ✓ | ✓ | ✓ | ✓ |
-| console-crash | console | ✓ | ✗ clean fails | ✗ clean fails | ✓ | ✓ |
-| covered-button | visual/pixel | ✓ | ✓ | ✓ | ✓ | ✓ |
-| realtime-sync | multi_actor | ✓ | ✓ | ✓ | ✓ | ✓ |
-| hidden-error | visual | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **valid catches** | | **8/8** | **7/8** | **7/8** | **8/8** | **8/8** |
-| false positives | | 0 | 1 | 1 | 0 | 0 |
-| flaky fixtures | | 0 | 0 | 0 | 0 | 0 |
-| runs per variant | | 3 | 3 | 3 | 3 | 3 |
-| mean run (ms) | | 7995 | 10633 | 10330 | 10846 | 10174 |
+**Replay manifests** (who wrote the test; 3 runs per variant; 336 browser runs,
+0 flaky verdicts):
 
-What this shows, and what it doesn't:
+- *reference*: hand-written next to the fixtures.
+- *haiku-spec-N*: a small model (Claude Haiku) from `FEATURE.md` only — no
+  code, no bug, no running app.
+- *haiku-explore-N*: spec + probing the clean running app over HTTP.
+- *haiku-all-sources-N*: spec + build transcript (`PROMPTS.md`) + extracted
+  invariant candidates + probing the clean app.
 
-- Deterministic replay is stable: 0 flaky verdicts across 240 browser runs.
-- A small model that never saw the bug wrote tests that caught all 8 once it
-  could look at the real app. From the spec alone it caught 7: both spec-only
-  authors asserted the heading "Tags", but CSS renders it as "TAGS". The spec
-  is not what the user sees; observing the running app fixes that.
-- The pixel-level check matters: `covered-button` passes any DOM-level test
-  (`button.click()` works) and is only caught by a real click at the
-  element's centre.
-- Static intent vs. observed traffic flags the two network bugs
-  (`create-500`, `route-mismatch`) with no manifest assertion at all.
-- Limits: 8 toy fixtures, bugs planted by the same team that wrote the
-  harness, one bug per app, 3 runs per variant. This is a sanity check of the
-  pipeline, not evidence about real-world recall.
+| fixture | class | reference | haiku-spec-1 | haiku-spec-2 | haiku-explore-1 | haiku-explore-2 | haiku-all-sources-1 | haiku-all-sources-2 |
+|---|---|---|---|---|---|---|---|---|
+| login-session | logic | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| counter | logic/state | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| create-500 | network | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| route-mismatch | network/static | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| console-crash | console | ✓ | ✗ clean fails | ✗ clean fails | ✓ | ✓ | ✓ | ✓ |
+| covered-button | visual/pixel | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| realtime-sync | multi_actor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| hidden-error | visual | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **valid catches** | | **8/8** | **7/8** | **7/8** | **8/8** | **8/8** | **8/8** | **8/8** |
+| false positives | | 0 | 1 | 1 | 0 | 0 | 0 | 0 |
+| flaky | | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**Invariant sources without any hand- or model-written test:**
+
+| source | valid catches | false positives | what it caught |
+|---|---|---|---|
+| universal rules (no spec) | 3/8 | 0 (2 rules marked advisory) | route mismatch, console crash, covered button |
+| mined from 3 clean runs | 4/8 | 0 | counter +2 (expected +1), POST 500 (expected 201), 404 (expected 200), `tags: null` (expected array) |
+
+Universal rules catch what is wrong for *any* app; mined invariants catch
+changes in API behaviour; neither knows that the login page should greet the
+user or that Bob should see Alice's note — that needs intent (spec,
+transcript), which is what the authored manifests add.
+
+### 2. Helping a coding agent (Web-Bench)
+
+[Web-Bench](https://github.com/bytedance/web-bench) (public, official
+Playwright tests). Claude Haiku built 3 projects (`expressjs`, `survey`,
+`form`) through tasks 1–15, two replicates per arm, verifying either with shell
+tools only or with `orchyn-check`. Hidden tests passed:
+
+| project | shell | shell | orchyn | orchyn |
+|---|---|---|---|---|
+| expressjs | 13 | 13 | 13 | 13 |
+| form | 14 | 14 | 14 | 13 |
+| survey | 12 | 9 | 8 | 10 |
+| **total /45** | **39** | **36** | **35** | **36** |
+
+**No measurable gain**, at 3–5× the agent time. The remaining failures are
+mostly spec misreadings that the agent's *own* checks shared (all its Orchyn
+checks were green), plus two benchmark text/test mismatches that cap
+`expressjs` at 13/15 for everyone. Details: `bench/webbench/RESULTS.md`.
+
+### What the numbers say
+
+- Deterministic, browser-grounded replay works and is stable; the pixel-level
+  click check catches a class of bug DOM-level tests miss.
+- Observing the running app beats reading the spec when writing checks.
+- Spec-free sources (universal rules, mined invariants) catch about half the
+  planted bugs with zero false positives — useful as a free regression net.
+- Self-verification does not fix misunderstanding: a checker is only as good
+  as the independence of its invariants.
+
+### Threats to validity
+
+Toy fixtures with one planted bug each, written by the same team as the
+harness; fixture names hint at the bug class (`create-500`, `covered-button`,
+…), which the authoring models could see; small n everywhere (2 replicates on
+Web-Bench). Treat these as a sanity check of the pipeline, not as recall
+numbers.
 
 Reproduce: `(cd bench && npm install)`, then
-`CHROME=/path/to/chrome ORCHYN_NO_SANDBOX=1 cargo run -p orchyn-bench -- --runs 3 [--manifests bench/authored/explore-1 --label haiku-explore-1 --out bench/results/haiku-explore-1.json]`,
-then `python3 bench/summarize.py`.
-
----
+`CHROME=/path/to/chrome ORCHYN_NO_SANDBOX=1 cargo run -p orchyn-bench -- --runs 3
+[--manifests bench/authored/explore-1 --label haiku-explore-1 --out …]`,
+`--mode universal`, `--mode mined --manifests bench/authored/explore-1`; Web-Bench
+scoring via `bench/webbench/score.sh`.
 
 ## Philosophy
 

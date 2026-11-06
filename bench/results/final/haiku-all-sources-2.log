@@ -1,0 +1,49 @@
+[login-session] clean run 0: PASS 20999ms 
+[login-session] bug   run 0: FAIL 19699ms #18 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 1: PASS 20984ms 
+[login-session] bug   run 1: FAIL 20798ms #18 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 2: PASS 20678ms 
+[login-session] bug   run 2: FAIL 19715ms #18 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[counter] clean run 0: PASS 18303ms 
+[counter] bug   run 0: FAIL 11146ms #13 expect_text [idle]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 1: PASS 18483ms 
+[counter] bug   run 1: FAIL 11198ms #13 expect_text [idle]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 2: PASS 19171ms 
+[counter] bug   run 2: FAIL 10904ms #13 expect_text [idle]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[create-500] clean run 0: PASS 20294ms 
+[create-500] bug   run 0: FAIL 12393ms #15 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:32953/ 200; GET http://127.0.0.1:32953/app.js 200; GET http://127.0.0.1:32953/api/todos 200; POST http://127.0.0.1:32953/api/todos 500; GET http://127.0.0.1:32953/api/todos 200
+[create-500] clean run 1: PASS 20818ms 
+[create-500] bug   run 1: FAIL 11194ms #15 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:45517/ 200; GET http://127.0.0.1:45517/app.js 200; GET http://127.0.0.1:45517/api/todos 200; POST http://127.0.0.1:45517/api/todos 500; GET http://127.0.0.1:45517/api/todos 200
+[create-500] clean run 2: PASS 19870ms 
+[create-500] bug   run 2: FAIL 11372ms #15 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:41559/ 200; GET http://127.0.0.1:41559/app.js 200; GET http://127.0.0.1:41559/api/todos 200; POST http://127.0.0.1:41559/api/todos 500; GET http://127.0.0.1:41559/api/todos 200
+[route-mismatch] clean run 0: PASS 9746ms 
+[route-mismatch] bug   run 0: FAIL 7123ms #2 wait_for_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 1: PASS 9659ms 
+[route-mismatch] bug   run 1: FAIL 7062ms #2 wait_for_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[route-mismatch] clean run 2: PASS 9341ms 
+[route-mismatch] bug   run 2: FAIL 7054ms #2 wait_for_text [default]: text "Apples" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 0: PASS 5283ms 
+[console-crash] bug   run 0: FAIL 7086ms #2 expect_text [default]: text "Alice Chen\nTAGS\nadmin\nbeta" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 1: PASS 5396ms 
+[console-crash] bug   run 1: FAIL 6944ms #2 expect_text [default]: text "Alice Chen\nTAGS\nadmin\nbeta" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 2: PASS 5466ms 
+[console-crash] bug   run 2: FAIL 6924ms #2 expect_text [default]: text "Alice Chen\nTAGS\nadmin\nbeta" not found in document.body.innerText after 3000 ms
+[covered-button] clean run 0: PASS 11851ms 
+[covered-button] bug   run 0: FAIL 4010ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 1: PASS 12120ms 
+[covered-button] bug   run 1: FAIL 4051ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 2: PASS 11622ms 
+[covered-button] bug   run 2: FAIL 4189ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[realtime-sync] clean run 0: PASS 24514ms 
+[realtime-sync] bug   run 0: FAIL 21172ms #15 wait_for_text [viewer]: text "Ship the release" not found in document.body.innerText after 4000 ms
+[realtime-sync] clean run 1: PASS 23104ms 
+[realtime-sync] bug   run 1: FAIL 21110ms #15 wait_for_text [viewer]: text "Ship the release" not found in document.body.innerText after 4000 ms
+[realtime-sync] clean run 2: PASS 24474ms 
+[realtime-sync] bug   run 2: FAIL 20044ms #15 wait_for_text [viewer]: text "Ship the release" not found in document.body.innerText after 4000 ms
+[hidden-error] clean run 0: PASS 12161ms 
+[hidden-error] bug   run 0: FAIL 7896ms #8 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 1: PASS 11222ms 
+[hidden-error] bug   run 1: FAIL 8082ms #8 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 2: PASS 11838ms 
+[hidden-error] bug   run 2: FAIL 7944ms #8 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+wrote /tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/final-results/haiku-all-sources-2.json
