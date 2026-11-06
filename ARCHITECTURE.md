@@ -26,8 +26,8 @@ file in the same PR.
 | Code | `crates/orchyn-harness/src/replay/` | `crates/orchyn-harness/src/agent/` |
 | Model | None | Qwen 3.5 0.8B through `QwenClient` |
 | Determinism | Same manifest + same app state gives the same verdict | Low; the model's choices vary between runs |
-| Entry point | `orchyn-bench` (there is no replay subcommand in `orchyn-cli`) | `orchyn-cli --app ...` |
-| Output | `ReplayReport` (per-step results, observed requests, console errors) | `AgentReport` (gap, test and fix counts, final report JSON) |
+| Entry point | `orchyn-check` (one app, one run) or `orchyn-bench` (scored fixtures); there is no replay subcommand in `orchyn-cli` | `orchyn-cli --app ...` |
+| Output | `ReplayReport` (per-step results, observed requests and API exchanges, console errors) | `AgentReport` (gap, test and fix counts, final report JSON) |
 
 **Intended workflow: explore once, replay forever.** An explorer (a human, a
 frontier model, or agent mode) writes a replay manifest from the product spec
@@ -39,11 +39,11 @@ clicking in CI.
 Today the pieces exist but the loop is not closed: agent mode does not emit a
 replay manifest, and nothing in the CLI runs replay. Manifests are currently
 written by hand or by an external explorer, and replay is driven by
-`orchyn-bench`.
+`orchyn-check` and `orchyn-bench`.
 
 **Reconciliation** (`crates/orchyn-harness/src/intent/`) is pure and has no
-model. It is used by `orchyn-bench` only; neither `orchyn-cli` nor the agent
-calls it yet.
+model. It is used by `orchyn-check` and `orchyn-bench`; neither `orchyn-cli` nor
+the agent calls it yet.
 
 ---
 
@@ -76,7 +76,9 @@ There is no vision model. The pixel-level checks that exist are:
    element into view, then probe `elementFromPoint` at its centre. If another
    element covers that point, the step fails with "covered by ...". This is the
    "DOM says clickable, pixels say not" check. `click` then sends a real mouse
-   event at the centre.
+   event at the centre. The `expect_all_clickable` op applies the same test to
+   every visible, enabled control, and `click_each` applies it to each control
+   it clicks (a covered control is skipped and reported).
 2. **Screenshot annotation.** `pixel-observer::annotate_screenshot` draws
    numbered boxes on a PNG and returns the matching element map. No current
    code path feeds the annotated image to a model.
@@ -92,7 +94,7 @@ orchyn/
 ├── crates/
 │   ├── core/                  # orchyn-core: OrchynError, Action enums, types, PlatformAdapter trait
 │   ├── model-client/          # orchyn-model-client: ModelClient trait, QwenClient (0.8B), MockClient
-│   ├── orchyn-harness/        # replay/, intent/, agent/, DiffEngine, legacy OrchynHarness
+│   ├── orchyn-harness/        # replay/, intent/, invariants/, agent/, DiffEngine, legacy OrchynHarness
 │   ├── platform-web/          # orchyn-platform-web: WebAdapter over headless_chrome
 │   ├── action-executor/       # re-exports core::{Action, DeviceInfo, PlatformAdapter, Result}
 │   ├── pixel-observer/        # annotate_screenshot(); legacy PixelObserver<M>
@@ -110,8 +112,9 @@ orchyn/
 │   ├── orchyn-cli/            # explorer: agent mode, optional --diff
 │   ├── orchyn-server/         # axum + GraphQL API on 127.0.0.1:3000
 │   ├── orchyn-worker/         # scheduler worker
-│   └── orchyn-bench/          # scores replay manifests against bug-seeded fixtures
-├── bench/                     # suite.json, fixtures/<name>/ (clean and BUG=1), manifests/, FEATURE.md specs
+│   ├── orchyn-check/          # grounded checks of a running app: manifests, --universal, --contracts
+│   └── orchyn-bench/          # scores replay manifests against bug-seeded fixtures (--mode)
+├── bench/                     # suite.json, fixtures/<name>/ (clean and BUG=1, PROMPTS.md), manifests/, results/, webbench/
 ├── tests/
 │   ├── fixtures/              # Node apps: broken-counter, broken-login, qa-target, todo-app
 │   └── integration/           # orchyn-integration-tests (end-to-end)
@@ -141,7 +144,10 @@ legacy phase pipeline described below (`OrchynHarness`) does not depend on them.
     `AssertFailure`, `WsWait`), used by agent mode and by the replay adapter
     contract.
 - `core::PlatformAdapter` has default implementations of `scrape_elements`,
-  `current_url`, `collect_telemetry`, `execute_harness` and `shutdown`.
+  `current_url`, `collect_telemetry`, `execute_harness`, `shutdown` and
+  `take_exchanges` (which returns none by default).
+- `core::Exchange { method, url, status, request_body, response_body }` is one
+  API exchange. Bodies are optional.
 
 ### `model-client`
 
@@ -182,6 +188,11 @@ pub trait ModelClient: Send + Sync + Debug {
   and typing.
 - `collect_telemetry` drains console messages and network requests for the
   replay runner.
+- JavaScript dialogs (`alert`, `confirm`, `prompt`) are accepted as soon as they
+  open, and recorded as console entries prefixed `[dialog] `. `expect_dialog`
+  reads them.
+- `take_exchanges` returns XHR and fetch exchanges only. A response body is kept
+  when it is non-empty, not base64 and at most 16 KiB.
 
 ### `toolkit`
 
@@ -224,6 +235,10 @@ turns it on) and the tool index used by `tool_search`.
 
 **`intent/`: static intent and reconciliation (no model).** See
 [Reality gaps](#reality-gaps) below.
+
+**`invariants/`: invariant candidates (no model).** Universal page rules, code
+contracts, transcripts, production logs and mined traces. See
+[Invariants](#invariants) below.
 
 **`agent/`: `AgentHarness`.**
 
@@ -282,6 +297,30 @@ orchyn-cli --app <URL-or-path> --diff <FROM_REF> <TO_REF>
 There is no `run`, `agent`, `validate` or `diff` subcommand, and no manifest
 input or output.
 
+### `bin/orchyn-check`
+
+Grounded checks for a running app, for a coding agent or a person. No model.
+
+```text
+orchyn-check --url <base-url> [--project .] [--manifest FILE ...] [--universal] [--contracts]
+```
+
+- `--url`: the running app. A manifest's relative `goto` paths resolve against it.
+- `--project` (default `.`): the source tree for code intent and contracts.
+- `--manifest` (repeatable): each manifest is replayed, and each failing step is
+  printed. A halted run says so.
+- `--universal`: each universal candidate (see [Invariants](#invariants)) is
+  replayed as its own manifest. A failing candidate with confidence 0.9 or more
+  fails the run. Lower-confidence failures print as advisory.
+- `--contracts`: prints the statements of the invariants the code declares. It
+  does not run them.
+- Always: prints reality gaps (`reconcile`), leaving out `UnexercisedClientCall`.
+  Gaps do not affect the exit status.
+
+Exit status is 0 when every manifest passes and no universal candidate with
+confidence 0.9 or more fails. It is 1 otherwise, including when a manifest file
+cannot be read or parsed.
+
 ### `bin/orchyn-bench`
 
 See [Benchmark](#benchmark) below.
@@ -333,10 +372,16 @@ Ops, from `crates/orchyn-harness/src/replay/manifest.rs`:
 | `expect_no_text` | `text` | Text must be absent (checked once) |
 | `expect_url` | `contains` | Current URL must contain the string |
 | `expect_visible` | `selector` | Exists, non-zero size, not hidden, not covered at centre |
-| `expect_console_clean` | | No console errors or uncaught exceptions for this actor since start or last reset |
+| `expect_console_clean` | | No console errors or uncaught exceptions for this actor since start or last reset. Chrome's `Failed to load resource` lines are not counted; `expect_no_failed_requests` judges those |
 | `expect_request` | `method`, `path_contains`, `status?` | At least one matching request for this actor |
-| `expect_no_failed_requests` | | No response status >= 400 and no network failures for this actor |
+| `expect_no_failed_requests` | | No response status >= 400 and no network failures for this actor. `/favicon.ico` is ignored |
 | `reset_telemetry` | | Forget this actor's telemetry so far |
+| `expect_dialog` | `contains` | A JS dialog whose message contains the string was shown to this actor since start or last reset. Dialogs are accepted automatically |
+| `expect_all_clickable` | | Every visible, enabled `button, a[href], input, select, textarea, [role=button]` is the hit target at its centre. Each is scrolled into view first; at most five offenders are listed |
+| `reload` | | `location.reload()`, then wait for `document.readyState` to be `complete` (5 s limit), then settle for 300 ms |
+| `snapshot_text` | `key` | Store this actor's normalised `document.body.innerText` under `key` |
+| `expect_text_unchanged` | `key` | This actor's normalised text must equal the snapshot under `key`. Fails if no snapshot was taken |
+| `click_each` | `selector?` (default `button, input[type=submit], [role=button]`) | Really click each visible, enabled match in DOM order, at most 20. A covered match is skipped. Fails on a console error or failed request caused by a click. A navigation caused by a click is undone before the next click |
 
 Runner behaviour (`replay/runner.rs`):
 
@@ -346,6 +391,9 @@ Runner behaviour (`replay/runner.rs`):
   steps (`StepResult` with actor, op, passed, detail, duration), `first_failure`,
   all observed requests, and all console errors formatted as `actor: message`.
 - Actors run sequentially in manifest order; the runner does not interleave them.
+- `ReplayReport.observed_exchanges` holds the XHR and fetch exchanges with bodies,
+  all actors, in order. The runner drains them whenever it collects telemetry and
+  at the end of the run. The `mined` bench mode reads them.
 
 ---
 
@@ -361,6 +409,13 @@ what the running app did?
   `$.get` and `$.post`, `new EventSource(...)`, and `<form action method>`.
 - Server routes: `app|router|server|api` `.get|post|put|patch|delete|all(...)`
   (`all` maps to method `ANY`).
+- Mounts: `app|router|server|api.use('/prefix', x)`, where `x` is an identifier
+  bound by `require` or `import`, or an inline `require('./x')`. Each route in
+  the mounted file is emitted once per prefix. Mounts chain up to five levels. A
+  file reachable only through a cycle, or through a deeper chain, keeps its
+  literal paths. Only relative specifiers (`./`, `../`) are followed. A specifier
+  resolves as written, then with `.js`, `.mjs`, `.cjs` or `.ts`, then as
+  `index.js` or `index.ts`. A `.js` specifier also tries `.ts`.
 - Scans `js mjs cjs jsx ts tsx html vue svelte`. Skips `node_modules`, `.git`,
   `dist`, `build`, `.next`, `target` and `coverage`, and files over 1 MB.
 
@@ -377,7 +432,119 @@ static asset requests are ignored, and the result is sorted and de-duplicated.
 Each `RealityGap` carries method, path, observed status, the source call
 (file and line) when known, and a message.
 
-Reconciliation is used by `orchyn-bench` only. The agent does not call it.
+Reconciliation is used by `orchyn-check` and `orchyn-bench`. The agent does not
+call it.
+
+---
+
+## Invariants
+
+`crates/orchyn-harness/src/invariants/` collects candidate invariants, meaning
+things that should always hold, from several sources. Every candidate has the
+same shape (`InvariantCandidate`, in `invariants/mod.rs`):
+
+- `id`: stable, for example `universal:console-clean:/`,
+  `contract:input:email:required` or `mined:status_always:POST /api/todos`.
+- `source`: `Universal`, `CodeContract`, `Transcript`, `Mined`, `Production` or
+  `Spec`. Nothing produces `Spec` yet.
+- `statement`: one plain-English sentence.
+- `evidence`: file, line, and a quote or note.
+- `confidence`: 0.0 to 1.0, the extractor's estimate that the behaviour is
+  intended.
+- `check`: replay steps that test the statement, when it can be checked
+  mechanically. Only universal candidates set it today. The other sources yield
+  statements that a person or an explorer can turn into manifests.
+
+Nothing in this module calls a model.
+
+### Universal rules (`universal.rs`)
+
+Spec-free rules that apply to every page. `page_paths` returns `/` plus each GET
+or ANY route that serves a page. It leaves out `/api` and `/api/...`, routes with
+`:param`, `*` or `{`, and paths whose last segment has an extension other than
+`.html`. Each page gets six candidates, and each is a replay check:
+
+| kind | confidence | check |
+|---|---|---|
+| `console-clean` | 0.9 | Load the page. No console errors or uncaught exceptions |
+| `no-failed-requests` | 0.9 | Load the page. No failed requests |
+| `all-clickable` | 0.9 | Every visible, enabled control is the hit target at its centre |
+| `reload-stable` | 0.6 | Reloading the page leaves its visible text unchanged |
+| `interactions-clean` | 0.7 | Clicking each button causes no console error and no failed request |
+| `actors-agree` | 0.5 | Actor `a` clicks each button. Actor `b` loads the page, then reloads it. `b`'s text must not change across the reload |
+
+`actors-agree` does not compare the two actors' text. Its statement ("what one
+user changes stays visible to another") says more than its check does.
+
+`manifests()` gives one manifest per candidate, so a failure does not hide the
+candidates after it. The runner halts at the first failure within a manifest.
+Each candidate's evidence cites the route that serves its page.
+
+### Code contracts (`contracts.rs`)
+
+Regex and line heuristics over the source tree, with the same skip rules as
+intent scanning. Ids are grouped by prefix:
+
+| id | found by | confidence |
+|---|---|---|
+| `contract:input:<name>:<constraint>` | `required`, `type="email"`, `minlength`, `maxlength` or `pattern` on an `<input>` in html, htm, jsx, tsx, vue or svelte | 0.8 |
+| `contract:validate:<METHOD path>:<field>` | `if (!req.body.x …)` with `res.status(4xx)` or `sendStatus(4xx)` within the next three lines | 0.7 |
+| `contract:status:<METHOD path>` | `res.status(2xx)` or `sendStatus(2xx)` in a route handler. Codes are merged per route | 0.6 |
+| `contract:auth:<METHOD path>` | Route middleware named like `auth`, `login`, `session`, `requireUser` or `protect` (0.8). An `if` that tests `req.session` or `req.cookies.<name>` inside a handler (0.6) | 0.8 or 0.6 |
+| `contract:schema:<field>:<zod type>` | Fields of a zod `z.object({...})`. The statement notes `.email()` and `.min(n)` | 0.7 |
+| `contract:sql:<table>.<column>:not_null` / `:unique` | `CREATE TABLE` in JavaScript or TypeScript source, or in `.sql` files | 0.9 |
+| `contract:ts:<Interface>.<member>` | Members of a TypeScript interface that are not optional | 0.4 |
+
+When two sites give the same id, their evidence is merged and the highest
+confidence is kept.
+
+### Transcripts and production logs (`sources.rs`)
+
+- `from_transcript(path)` reads a vibecoding chat, as Markdown or as a JSON array
+  of `{role, content}` turns. **Only user turns count.** A sentence becomes a
+  candidate (`transcript:<turn>:<sentence>`) when it has a requirement marker
+  such as `must`, `should`, `always`, `never`, `make sure`, `only`, `every`,
+  `don't`, `so that`, or a `when … then`. Confidence is 0.7 with a strong marker
+  (`must`, `never`, `always`, `ensure*`), otherwise 0.5.
+- `from_production_log(path)` reads NDJSON events that carry `method`, a
+  `route`, `url` or `path`, and a `status`. Optionally they carry an `error` or
+  `message`. A route (numeric segments become `:n`) becomes
+  `production:status:<METHOD path>` at confidence 0.8, if it has at least 20
+  events with a status and at least 99% of them are below 400. An error message
+  seen at least three times becomes `production:error:<message>` at 0.6.
+
+Each bench fixture has a `PROMPTS.md`, which `orchyn-bench --mode invariants`
+reads as a transcript.
+
+### Mined from known-good traces (`mined.rs`)
+
+Daikon-style mining. `mine(traces)` takes the API exchanges of several known-good
+runs, one trace per run. Endpoints are keyed by method and path, with numeric and
+UUID segments as `:n`. A fact is kept only when its endpoint appears in at least
+two traces and the fact held for every observation:
+
+- `StatusAlways`: every exchange returned the same status (at least two).
+- `ShapeAlways`: every JSON response has the same type at each JSON pointer, up to
+  three segments deep.
+- `NonNull`: the value at a pointer is never null.
+- `NonEmptyArray`: the array at a pointer is never empty.
+- `NumericStep`: within each trace, consecutive responses differ at a pointer by
+  the same non-zero delta, with at least two pairs.
+
+`check(invariants, trace)` returns a `Violation` for each broken observation. It
+also reports "endpoint never called" once for each mined endpoint that is absent
+from the trace. `to_candidates` turns the mined facts into candidates at
+confidence 0.8, with no `check`.
+
+### Where the sources are used
+
+- `orchyn-check --universal` runs the universal candidates. `--contracts` prints
+  the contract candidates.
+- `orchyn-bench --mode universal` runs the universal candidates against the clean
+  and buggy fixtures. `--mode mined` mines and checks traces. `--mode invariants`
+  writes every source per fixture, reading `PROMPTS.md` and `production.ndjson`
+  where they exist. No fixture has a `production.ndjson` yet, so the production
+  source has no benchmark coverage.
 
 ---
 
@@ -387,7 +554,7 @@ Reconciliation is used by `orchyn-bench` only. The agent does not call it.
 
 ```bash
 npm install --prefix bench          # or: cd bench && npm install
-cargo run -p orchyn-bench -- --runs 3 [--suite bench/suite.json] [--manifests DIR] [--label L] [--out FILE] [--only NAME]
+cargo run -p orchyn-bench -- --runs 3 [--suite bench/suite.json] [--manifests DIR] [--label L] [--out FILE] [--only NAME] [--mode manifest|universal|mined|invariants]
 ```
 
 - `suite.json` is a JSON array of `{name, dir, bug_class, bug_description,
@@ -413,6 +580,35 @@ The suite currently has eight fixtures: login-session, counter, create-500,
 route-mismatch, console-crash, covered-button, realtime-sync and hidden-error.
 The reference manifests are in `bench/manifests/`. Results are written to
 `bench/results/` when `--out` is given.
+
+`--mode` selects what is scored (`manifest` is the default and the one described
+above):
+
+- `universal`: no manifest and no spec. Each universal candidate is replayed
+  `--runs` times on the clean and buggy builds. A candidate is *valid* if it
+  passes every clean run, and it *fires* on a fixture if it also fails every
+  buggy run. Results go to `--out` as JSON.
+- `mined`: needs `--manifests DIR`, holding a driver manifest per fixture. The
+  driver is replayed with its assertions, snapshots and text-expectations
+  removed, so the app is driven through the same actions without verdicts. Its
+  `max(--runs, 2)` clean traces are mined, and one further clean trace is held
+  out. The held-out trace is checked for false positives, and each of the
+  `--runs` buggy traces is checked against the mined invariants.
+- `invariants`: writes every candidate from every source for each fixture. `--out`
+  is a directory here (default `bench/results/invariants/`), and each fixture gets
+  `<fixture>.json`.
+
+`bench/summarize.py` combines the manifest-mode JSON files in `bench/results/`
+into one markdown table of valid catches, false positives and flaky fixtures.
+
+`bench/webbench/` is a separate experiment: Web-Bench projects built by Claude
+Haiku 5.5, with and without `orchyn-check`. It found no measurable gain. With
+Orchyn the agent passed 71 of 90 task tests, and without it 75 of 90, a gap within
+noise for two runs per arm, at 3 to 5 times the agent time. The write-up
+attributes this to checks an agent writes for itself, which share its reading of
+the spec. It argues that the value must come from invariants with an independent
+source, such as the transcript, code contracts, or mined or production traffic.
+See [RESULTS.md](bench/webbench/RESULTS.md).
 
 ---
 
@@ -492,15 +688,19 @@ EXPLORER (human, frontier model, or agent mode)
     - writes a replay manifest for the app (JSON, by hand today)
     |
     v
-REPLAY (orchyn-bench; per commit in CI once wired)
+REPLAY (orchyn-check, orchyn-bench; per commit in CI once wired)
     - one browser per actor, no model
     - halts at the first failing step
-    - ReplayReport: steps, observed requests, console errors
+    - ReplayReport: steps, observed requests and API exchanges, console errors
     |
     v
 RECONCILIATION (intent/)
     - static client calls and server routes vs observed requests
     - ObservedFailure / UnexpectedRequest / UnexercisedClientCall / ClientCallWithoutRoute
+
+INVARIANTS (invariants/, no model)
+    - universal page rules (orchyn-check --universal) and code contracts (--contracts)
+    - transcript, production-log and mined candidates (orchyn-bench --mode invariants)
 
 AGENT MODE (orchyn-cli --app URL) is separate and exploratory; see the
 caveat under orchyn-harness. It does not feed replay yet.

@@ -44,7 +44,7 @@ pub struct Evidence {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InvariantCandidate {
-    /// Stable id, e.g. `contract:required:#email` or `mined:status:POST /api/todos`.
+    /// Stable id, e.g. `contract:input:email:required` or `mined:status_always:POST /api/todos`.
     pub id: String,
     pub source: InvariantSource,
     /// One plain-English sentence: what must always hold.

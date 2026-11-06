@@ -4,7 +4,7 @@
 the loop and tells you what a real user would actually see.
 
     export CHROME=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome ORCHYN_NO_SANDBOX=1
-    /tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/bin/orchyn-check \
+    orchyn-check   # built with: cargo build -p orchyn-check (target/debug/orchyn-check) \
         --url http://localhost:<port> --project app \
         --manifest checks/task-1.json [--manifest checks/task-2.json ...] \
         [--universal] [--contracts]

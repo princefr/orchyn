@@ -13,7 +13,9 @@
 //! * Always: reconcile the project's client calls / server routes with the
 //!   network traffic observed during the run (reality gaps).
 //!
-//! Exit code 0 when every manifest and universal check passed, 1 otherwise.
+//! Exit code 1 when any manifest fails or a universal check with confidence
+//! >= 0.9 fails; lower-confidence universal failures are printed as advisory.
+//! Exit code 0 otherwise.
 
 use anyhow::{Context, Result};
 use clap::Parser;
