@@ -2,7 +2,7 @@ use chrono::Utc;
 use futures::future::{BoxFuture, FutureExt};
 use headless_chrome::protocol::cdp::types::Event;
 use headless_chrome::protocol::cdp::{Emulation, Log, Network};
-use headless_chrome::{Browser, LaunchOptions};
+use headless_chrome::{Browser, LaunchOptions, Tab};
 use orchyn_action_executor::{Action, DeviceInfo, PlatformAdapter};
 use orchyn_core::action::{Action as HarnessAction, AnnotatedElement, BoundingBox};
 use orchyn_core::{
@@ -10,11 +10,152 @@ use orchyn_core::{
     Platform, RawTelemetry, Result, UiElement,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use tracing::info;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex, Once, OnceLock};
+use tracing::{info, warn};
+
+/// Process-wide Chromium shared by every `WebAdapter` (unless
+/// `ORCHYN_BROWSER_PER_ADAPTER=1`). Each adapter gets its own incognito browser
+/// context inside it, so cookies and storage stay isolated per adapter.
+static SHARED_BROWSER: OnceLock<Mutex<Option<Arc<Browser>>>> = OnceLock::new();
+
+/// PID of the shared Chromium (0 = none). Read by the exit hook below.
+static SHARED_PID: AtomicU32 = AtomicU32::new(0);
+static EXIT_HOOK: Once = Once::new();
+
+/// Statics are never dropped, and binaries end with `process::exit`, so the
+/// shared Chromium would outlive the process. An `atexit` hook kills it by PID.
+#[cfg(unix)]
+mod exit_hook {
+    use std::ffi::c_int;
+    use std::sync::atomic::Ordering;
+
+    unsafe extern "C" {
+        fn atexit(cb: extern "C" fn()) -> c_int;
+        fn kill(pid: c_int, sig: c_int) -> c_int;
+    }
+
+    const SIGKILL: c_int = 9;
+
+    extern "C" fn kill_shared_chromium() {
+        let pid = super::SHARED_PID.load(Ordering::SeqCst);
+        if pid != 0 {
+            // SAFETY: plain libc call; a stale pid at worst signals an exited process.
+            unsafe {
+                kill(pid as c_int, SIGKILL);
+            }
+        }
+    }
+
+    pub fn install() {
+        // SAFETY: registers a plain `extern "C"` function with libc.
+        unsafe {
+            atexit(kill_shared_chromium);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+mod exit_hook {
+    pub fn install() {}
+}
+
+fn shared_slot() -> std::sync::MutexGuard<'static, Option<Arc<Browser>>> {
+    SHARED_BROWSER
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Escape hatch: `ORCHYN_BROWSER_PER_ADAPTER=1` restores one Chromium per adapter.
+fn per_adapter_browser() -> bool {
+    std::env::var("ORCHYN_BROWSER_PER_ADAPTER").is_ok_and(|v| v == "1")
+}
+
+fn launch_browser() -> Result<Browser> {
+    Browser::new(
+        LaunchOptions::default_builder()
+            .headless(true)
+            // `CHROME` overrides the browser binary (e.g. a Playwright-managed
+            // Chromium); `ORCHYN_NO_SANDBOX=1` is needed when running as root
+            // inside containers / CI.
+            .path(std::env::var_os("CHROME").map(std::path::PathBuf::from))
+            .sandbox(std::env::var("ORCHYN_NO_SANDBOX").map(|v| v != "1").unwrap_or(true))
+            // Default idle_browser_timeout is 30s — too short when LLM inference
+            // takes 15-40s per turn. Set to 10 minutes to outlast any turn.
+            .idle_browser_timeout(std::time::Duration::from_secs(600))
+            .build()
+            .map_err(|e| OrchynError::Internal(e.to_string()))?,
+    )
+    .map_err(|e| OrchynError::Internal(e.to_string()))
+}
+
+/// Returns the shared Chromium, launching it (or relaunching it if it no longer
+/// answers) when needed. Holding the slot lock across the launch keeps
+/// concurrent adapters from starting several browsers.
+fn acquire_shared_browser() -> Result<Arc<Browser>> {
+    let mut slot = shared_slot();
+    if let Some(browser) = slot.as_ref() {
+        if browser.get_version().is_ok() {
+            return Ok(Arc::clone(browser));
+        }
+        warn!("shared Chromium is not responding; relaunching");
+    }
+    let browser = Arc::new(launch_browser()?);
+    EXIT_HOOK.call_once(exit_hook::install);
+    SHARED_PID.store(browser.get_process_id().unwrap_or(0), Ordering::SeqCst);
+    *slot = Some(Arc::clone(&browser));
+    Ok(browser)
+}
+
+/// Forgets `dead` if it is still the shared browser, so the next acquire relaunches.
+fn discard_shared_browser(dead: &Arc<Browser>) {
+    let mut slot = shared_slot();
+    if slot.as_ref().is_some_and(|b| Arc::ptr_eq(b, dead)) {
+        SHARED_PID.store(0, Ordering::SeqCst);
+        *slot = None;
+    }
+}
+
+/// Opens a tab in a fresh incognito context of `browser`.
+fn open_isolated_tab(browser: &Browser) -> Result<Arc<Tab>> {
+    let context = browser
+        .new_context()
+        .map_err(|e| OrchynError::Internal(format!("new_context: {e}")))?;
+    context
+        .new_tab()
+        .map_err(|e| OrchynError::Internal(format!("new_tab: {e}")))
+}
+
+/// Owns this adapter's tab. Releasing it closes the tab; it never touches the
+/// shared browser process. Dropping it releases with `fire_unload = false`.
+struct TabLease {
+    /// Keeps the Chromium process alive for as long as this tab exists.
+    _browser: Arc<Browser>,
+    tab: Arc<Tab>,
+    released: bool,
+}
+
+impl TabLease {
+    fn release(&mut self, fire_unload: bool) {
+        if self.released {
+            return;
+        }
+        self.released = true;
+        if let Err(e) = self.tab.close(fire_unload) {
+            warn!("closing tab failed: {e}");
+        }
+    }
+}
+
+impl Drop for TabLease {
+    fn drop(&mut self) {
+        self.release(false);
+    }
+}
 
 pub struct WebAdapter {
-    _browser: Browser,
+    lease: TabLease,
     tab: Arc<headless_chrome::Tab>,
     device_info: DeviceInfo,
     diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>>,
@@ -37,25 +178,37 @@ impl WebAdapter {
     pub async fn new(url: &str) -> Result<Self> {
         info!("Initializing Headless Chrome WebAdapter for {}", url);
 
-        let browser = Browser::new(
-            LaunchOptions::default_builder()
-                .headless(true)
-                // `CHROME` overrides the browser binary (e.g. a Playwright-managed
-                // Chromium); `ORCHYN_NO_SANDBOX=1` is needed when running as root
-                // inside containers / CI.
-                .path(std::env::var_os("CHROME").map(std::path::PathBuf::from))
-                .sandbox(std::env::var("ORCHYN_NO_SANDBOX").map(|v| v != "1").unwrap_or(true))
-                // Default idle_browser_timeout is 30s — too short when LLM inference
-                // takes 15-40s per turn. Set to 10 minutes to outlast any turn.
-                .idle_browser_timeout(std::time::Duration::from_secs(600))
-                .build()
-                .map_err(|e| OrchynError::Internal(e.to_string()))?,
-        )
-        .map_err(|e| OrchynError::Internal(e.to_string()))?;
+        // Shared mode: one long-lived Chromium, a fresh incognito context per
+        // adapter. If the shared browser stopped serving tabs (e.g. its event loop
+        // timed out while idle), relaunch it and retry once.
+        let (browser, tab) = if per_adapter_browser() {
+            let browser = Arc::new(launch_browser()?);
+            let tab = browser
+                .new_tab()
+                .map_err(|e| OrchynError::Internal(e.to_string()))?;
+            (browser, tab)
+        } else {
+            let mut attempt = 0;
+            loop {
+                let browser = acquire_shared_browser()?;
+                match open_isolated_tab(&browser) {
+                    Ok(tab) => break (browser, tab),
+                    Err(e) if attempt == 0 => {
+                        warn!("opening isolated tab failed ({e}); relaunching shared Chromium");
+                        discard_shared_browser(&browser);
+                        attempt += 1;
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        };
 
-        let tab = browser
-            .new_tab()
-            .map_err(|e| OrchynError::Internal(e.to_string()))?;
+        // From here on, any early return drops `lease`, which closes the tab.
+        let lease = TabLease {
+            _browser: browser,
+            tab: Arc::clone(&tab),
+            released: false,
+        };
 
         let diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>> = Arc::new(Mutex::new(Vec::new()));
         let network_events: Arc<Mutex<Vec<NetworkEvent>>> = Arc::new(Mutex::new(Vec::new()));
@@ -365,7 +518,7 @@ impl WebAdapter {
             .map_err(|e| OrchynError::Internal(e.to_string()))?;
 
         Ok(Self {
-            _browser: browser,
+            lease,
             tab,
             device_info: DeviceInfo {
                 platform: Platform::Web,
@@ -611,6 +764,8 @@ impl PlatformAdapter for WebAdapter {
     }
 
     fn shutdown(&mut self) -> BoxFuture<'_, Result<()>> {
+        // Closes this adapter's tab and context only; the shared browser stays up.
+        self.lease.release(true);
         async move { Ok(()) }.boxed()
     }
 
