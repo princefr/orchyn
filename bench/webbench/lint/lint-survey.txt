@@ -1,0 +1,74 @@
+== spec ambiguities (/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-runs/survey-shell-2/TASKS.md)
+L11 [unspecified_value] estion') in 'design.js', and click it to create a Question (random title and unique name) whose root is prepended to the form.
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L11 [unspecified_value] gn.js', and click it to create a Question (random title and unique name) whose root is prepended to the form.
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L15 [removal] nfig panel (class 'q-config') containing a button (class 'q-remove') clicked to remove the question from the form. Config pane
+    ? 'remove' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L15 [removal] o remove the question from the form. Config panel should be hidden in preview page.
+    ? 'hidden' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L19 [position] estion)' and 'appendQuestion(question)' are used to prepend/append a 'question.root' to the form (got by param 'formSelector'). Save codes to 'common/Survey
+    ? Should the new element go before or after the submit button it sits next to?
+    readings: before the submit button | after the submit button
+L27 [removal] ons should use preview mode in which config panel should be hidden and question can not be editable.
+    ? 'hidden' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L27 [position] estion)' and 'appendQuestion(question)' are used to prepend/append a 'question.root' to the form (got by param 'formSelector'). Create a SurveyPreview insta
+    ? Should the new element go before or after the submit button it sits next to?
+    readings: before the submit button | after the submit button
+L31 [removal] class 'option') in '.q-body', user can click button (class 'remove-option') to remove an option, click option text (class 'opt
+    ? 'remove' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L31 [unspecified_value] sign.js', and click it to create a SingleSelectionQuestion (random title, unique name, 3 random options) whose root is prepend
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L31 [unspecified_value] click it to create a SingleSelectionQuestion (random title, unique name, 3 random options) whose root is prepended to the form
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L35 [removal] class 'option') in '.q-body', user can click button (class 'remove-option') to remove an option, click option text (class 'opt
+    ? 'remove' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L35 [unspecified_value] esign.js', and click it to create a MultiSelectionQuestion (random title, unique name, 3 random options) whose root is prepend
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L35 [unspecified_value] click it to create a MultiSelectionQuestion (random title, unique name, 3 random options) whose root is prepended to the form
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L43 [value_range] n, and get the rating value (stored in param-named control) from 0 to 1.
+    ? Is this value a normalised fraction (k/n), a 0-based index, a 1-based count, or a continuous slider?
+    readings: normalised fraction k/n | 0-based index | 1-based count | continuous slider
+L43 [unspecified_value] /SurveyDesign.js', and click it to create a RatingQuestion (random title, unique name) whose root is prepended to the form. Ad
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L43 [unspecified_value] js', and click it to create a RatingQuestion (random title, unique name) whose root is prepended to the form. Add a config pan
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L47 [removal] option row (class 'option'), user can click button (class 'remove-option') to remove an option, click option text (class 'opt
+    ? 'remove' is ambiguous for this question: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L47 [unspecified_value] SurveyDesign.js', and click it to create a RankingQuestion (random title, unique name and 3 random options) whose root is prep
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L47 [unspecified_value] s', and click it to create a RankingQuestion (random title, unique name and 3 random options) whose root is prepended to the f
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L51 [unspecified_value] mon/SurveyDesign.js', and click it to create a NpsQuestion (random title, unique name) whose root is prepended the form. In pr
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L51 [unspecified_value] gn.js', and click it to create a NpsQuestion (random title, unique name) whose root is prepended the form. In preview page, hi
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L55 [unspecified_value] /SurveyDesign.js', and click it to create a LikertQuestion (random title, unique name, 5 random options, 3 statements) whose r
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L55 [unspecified_value] js', and click it to create a LikertQuestion (random title, unique name, 5 random options, 3 statements) whose root is prepend
+    ? What format should the unique value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L59 [removal] ment row (class 'statement'), user can click button (class 'remove-statement') to remove an statement row, click statement tex
+    ? 'remove' is ambiguous for this panel: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+

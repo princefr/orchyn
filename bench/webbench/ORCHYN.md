@@ -17,7 +17,12 @@ the loop and tells you what a real user would actually see.
   document.body.innerText), expect_no_text{text}, expect_url{contains}, expect_visible{selector},
   expect_all_clickable, expect_console_clean, expect_request{method,path_contains,status?},
   expect_no_failed_requests, reset_telemetry, reload, snapshot_text{key},
-  expect_text_unchanged{key}, click_each{selector?}.
+  expect_text_unchanged{key}, click_each{selector?}, expect_dialog{contains} (alert/confirm are
+  auto-accepted), hover{selector} (JS hover events; CSS-only :hover is not simulated),
+  drag{selector,target,position?: "before"|"after"} (HTML5 drag-and-drop), expect_value{selector,value}
+  (input value; "true"/"false" for a checkbox; checked value of a radio group), expect_count{selector,count},
+  expect_attribute{selector,name,value?}, expect_storage{key,contains?}, set_storage{key,value},
+  expect_same_text{key,other_actor} (this actor's page text equals other_actor's snapshot_text).
   The run halts at the first failing step and prints why.
 - `--universal`: checks every page for console errors, failed requests, controls that are
   covered/unclickable, text that changes on reload, buttons whose click causes errors.

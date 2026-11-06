@@ -1,0 +1,35 @@
+== spec ambiguities (/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-runs/form-shell-2/TASKS.md)
+L15 [unspecified_value] is the options index. Create a SingleSelectionQuestion with random title, 'single1' name and 3 random options. Prepend it to t
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L19 [unspecified_value] the options index. Create a MultipleSelectionQuestion with random title, 'multi1' name and 3 random options. Prepend it to th
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L23 [unspecified_value] tring), isMultilines (boolean). Create an OpenQuestion with random title, 'open1' name, single line. Create another OpenQuesti
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L27 [value_range] ), and get the rating value (stored in param-named control) from 0 to 1. Create a RatingQuestion with random title, 'rating1' name.
+    ? Is this value a normalised fraction (k/n), a 0-based index, a 1-based count, or a continuous slider?
+    readings: normalised fraction k/n | 0-based index | 1-based count | continuous slider
+L27 [unspecified_value] am-named control) from 0 to 1. Create a RatingQuestion with random title, 'rating1' name. Create another RatingQuestion with r
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L31 [unspecified_value] dices in param-named control. Create a RankingQuestion with random title, 'ranking1' name and 3 random options. Prepend it to
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L35 [unspecified_value] re (0-10) in param-named control. Create a NpsQuestion with random title, 'nps1' name. Prepend it to the form.
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L39 [unspecified_value] param-name}_{statement-index}. Create a LikertQuestion with random title, 'likert1' name, 5 random options, 3 statements. Prep
+    ? What format should the random value take: length, character set, seed, or uniqueness scope?
+    readings: fixed-length random word | uuid or counter-based id | random number suffix | pick from a fixed sample list
+L55 [error_feedback] Implement 'required' feature for NpsQuestion, LikertQuestion, RatingQuestion.
+    ? When validation fails, how is the failure shown to the user: alert, inline message, native validation, or a disabled submit button?
+    readings: alert dialog | inline message next to the field | native browser validation (required attribute) | submit button disabled until valid
+L59 [error_feedback] property minLength (number, default 0) for OpenQuestion. A required OpenQuestion's answer length should be greater than 1. Open
+    ? When validation fails, how is the failure shown to the user: alert, inline message, native validation, or a disabled submit button?
+    readings: alert dialog | inline message next to the field | native browser validation (required attribute) | submit button disabled until valid
+L67 [position] date contents. Method 'appendQuestion(question)' is used to append a 'question.root' to the form and to update contents. Replace relevant old codes to Surve
+    ? Should the new element go before or after the submit button it sits next to?
+    readings: before the submit button | after the submit button
+

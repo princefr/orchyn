@@ -4,7 +4,11 @@
 //! ```text
 //! orchyn-check --url http://localhost:3000 --project ./app \
 //!     [--manifest checks.json ...] [--universal] [--contracts]
+//! orchyn-check --lint-spec TASKS.md [--lint-spec MORE.md]
 //! ```
+//!
+//! * `--lint-spec`: model-free lint of a task spec for phrases that admit more
+//!   than one reading. Runs first, needs no `--url`, never changes the exit code.
 //!
 //! * `--manifest`: replay each manifest in real browsers; print every step.
 //! * `--universal`: replay the spec-free universal invariants for each page.
@@ -31,9 +35,12 @@ use std::sync::Arc;
 #[derive(Parser, Debug)]
 #[command(name = "orchyn-check", about = "Grounded checks for a running web app (no model)")]
 struct Args {
-    /// Base URL of the running app.
+    /// Base URL of the running app (required unless only `--lint-spec` is given).
     #[arg(long)]
-    url: String,
+    url: Option<String>,
+    /// Task spec to lint for ambiguous phrases (repeatable).
+    #[arg(long = "lint-spec", value_name = "FILE")]
+    lint_spec: Vec<PathBuf>,
     /// Project source directory (for code intent and contracts).
     #[arg(long, default_value = ".")]
     project: PathBuf,
@@ -89,10 +96,36 @@ fn print_report(r: &ReplayReport) {
     }
 }
 
+/// Print the ambiguities of one spec file. Informational only.
+fn print_lint(path: &PathBuf) -> Result<()> {
+    let text = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    println!("== spec ambiguities ({})", path.display());
+    let found = invariants::ambiguity::lint(&text);
+    if found.is_empty() {
+        println!("none");
+    }
+    for a in &found {
+        println!("L{} [{}] {}", a.line, a.kind, a.excerpt);
+        println!("    ? {}", a.question);
+        println!("    readings: {}", a.readings.join(" | "));
+    }
+    println!();
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let runner = || ReplayRunner::new(factory()).with_base_url(args.url.clone());
+    for path in &args.lint_spec {
+        print_lint(path)?;
+    }
+    let Some(url) = args.url.clone() else {
+        if !args.manifest.is_empty() || args.universal || args.contracts {
+            anyhow::bail!("--url is required to run manifests, --universal or --contracts");
+        }
+        return Ok(());
+    };
+    let runner = || ReplayRunner::new(factory()).with_base_url(url.clone());
     let code = intent::extract_intent(&args.project);
     let mut all_ok = true;
     let mut observed = Vec::new();

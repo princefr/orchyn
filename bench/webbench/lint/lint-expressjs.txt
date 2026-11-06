@@ -1,0 +1,74 @@
+== spec ambiguities (/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-runs/expressjs-shell-2/TASKS.md)
+L11 [vague_quality] 1) Every page in this app will have a appealing header showing '🛍️ WebBench Shopping Mart', and a beautiful
+    ? What does 'appealing' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L15 [vague_quality] Shopping Mart' in header, navigate to '/' 3) create css to beautify UI.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L19 [status_code] roducts (id, name, price, image, description, quantity). 3) POST /api/products to insert product data (Request Body follow {'name': 'SKU',
+    ? Which status codes should `POST /api/products` return on success and on failure?
+    readings: 201 created on success, 400 on invalid input | 200 ok on success, 400 on invalid input | 200 ok on success, 401 or 404 on failure
+L19 [status_code] true, data: {'id': 'xxxx' } } when inserted successfully 4) GET /api/products to fetch all products. Return { success: true, products: [{
+    ? Which status codes should `GET /api/products` return on success and on failure?
+    readings: 201 created on success, 400 on invalid input | 200 ok on success, 400 on invalid input | 200 ok on success, 401 or 404 on failure
+L23 [vague_quality] .product-card is wrapped in .product-list. 5) create css to beautify UI.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L23 [naming_variant] price). 2) UI Structure For Product Cards: <div className='product-card' id='product_card_{{id}}'><img className='product-image' sr
+    ? The same name appears as `product-card`, `product_card`: which exact spelling should the code use?
+    readings: product-card | product_card
+L27 [vague_quality] clicked, goto related product detail page 4) create css to beautify UI. 5) If the product is not found, show 'Product Not Found
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L27 [naming_variant] oduct-card, .product-image, .product-name, .product-price, .product_quantity, .product-description. 3) In /product page, When .product-c
+    ? Which exact spelling should `product_quantity` use, given that the other class and id names use hyphens?
+    readings: product_quantity | product-quantity | productQuantity
+L31 [status_code] sername: user, password: 123456, role: user, coin: 1000; 2) POST /api/auth to login into system with example payload {username: 'xxx',
+    ? Which status codes should `POST /api/auth` return on success and on failure?
+    readings: 201 created on success, 400 on invalid input | 200 ok on success, 400 on invalid input | 200 ok on success, 401 or 404 on failure
+L35 [vague_quality] ome page should be rendered in Server Side 4) create css to beautify UI.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L39 [vague_quality] The initial coin for new user is 1000 7) create CSS file to beautify CSS.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L43 [vague_quality] 3) If User not found, shows User not found 4) Create css to beautify UI. DO NOT use a third-party UI library.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L47 [vague_quality] ayed on the right side of the site header. 4) Create CSS to beautify UI. DO NOT use a third-party UI library.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L51 [vague_quality] echarge Button clicked, recharge 1000 coin 3) Create css to beautify UI. Constraint: DO NOT use a third-party UI library. Keep p
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L55 [visibility_scope] in table rows 2) In Home page, add .home-go-product-portal-link and .home-go-user-portal-link to navigate to respective por
+    ? Who should see this link: everyone, or only admin users?
+    readings: visible to everyone | visible only to admin users
+L55 [vague_quality] admin, Redirect to /login if no privilege. 4) Create css to beautify UI.
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L55 [naming_variant] Every products and users are wrapped in table row with IDs #admin_product_{product_id} and #admin_user_{username} respectively. Displ
+    ? Which exact spelling should `admin_product` use, given that the other class and id names use hyphens?
+    readings: admin_product | admin-product | adminProduct
+L55 [naming_variant] pped in table row with IDs #admin_product_{product_id} and #admin_user_{username} respectively. Display the full information of pr
+    ? Which exact spelling should `admin_user` use, given that the other class and id names use hyphens?
+    readings: admin_user | admin-user | adminUser
+L59 [removal] Name='wishlist-price'></div></div>. 3) Add functionality to remove items from wishlist with button (.remove-from-wishlist). 4)
+    ? 'remove' is ambiguous for this button: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L59 [vague_quality] home page to navigate to '/wishlist' 6) Create CSS file to beautify the Wishlist UI. Constraint: DO NOT use a third-party UI li
+    ? What does 'beautify' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L59 [naming_variant] products the user has added, structured as <div className='wishlist-item' id='wishlist_item_{product_id}'><img className='wishlist-i
+    ? The same name appears as `wishlist-item`, `wishlist_item`: which exact spelling should the code use?
+    readings: wishlist-item | wishlist_item
+L63 [removal] Wrap Product Title, image, quantity (.cart-item-quantity), remove button (.cart-item-remove) in #cart_item_{product_id} 2) In
+    ? 'remove' is ambiguous for this button: should it be removed from the DOM, hidden with display:none, or disabled?
+    readings: removed from the DOM | hidden with display:none (still in the DOM) | disabled (visible but inert)
+L63 [vague_quality] 1) In public/components/Cart.js, create an appealing cart button .cart-button that shows the number of items in
+    ? What does 'appealing' mean here? Give concrete criteria (colours, spacing, breakpoints, contrast), or accept any reasonable styling (low priority).
+    readings: any reasonable styling | a specific visual spec (colours, spacing, fonts) | matches a named reference design
+L63 [naming_variant] .cart-item-quantity), remove button (.cart-item-remove) in #cart_item_{product_id} 2) In the Detail Page, add an .add-to-cart-but
+    ? Which exact spelling should `cart_item` use, given that the other class and id names use hyphens?
+    readings: cart_item | cart-item | cartItem
+
