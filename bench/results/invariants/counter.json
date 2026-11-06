@@ -1,0 +1,269 @@
+{
+  "name": "counter",
+  "counts": {
+    "transcript": 5,
+    "universal": 6
+  },
+  "candidates": [
+    {
+      "id": "universal:console-clean:/",
+      "source": "universal",
+      "statement": "Loading / logs no console errors or uncaught exceptions.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_console_clean"
+        }
+      ]
+    },
+    {
+      "id": "universal:no-failed-requests:/",
+      "source": "universal",
+      "statement": "Every network request made while loading / succeeds.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_no_failed_requests"
+        }
+      ]
+    },
+    {
+      "id": "universal:all-clickable:/",
+      "source": "universal",
+      "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.9,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "expect_all_clickable"
+        }
+      ]
+    },
+    {
+      "id": "universal:reload-stable:/",
+      "source": "universal",
+      "statement": "Reloading / leaves its visible text unchanged.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.6,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "default",
+          "op": "snapshot_text",
+          "key": "before"
+        },
+        {
+          "actor": "default",
+          "op": "reload"
+        },
+        {
+          "actor": "default",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "default",
+          "op": "expect_text_unchanged",
+          "key": "before"
+        }
+      ]
+    },
+    {
+      "id": "universal:interactions-clean:/",
+      "source": "universal",
+      "statement": "Clicking each button on / produces no console errors and no failed requests.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.7,
+      "check": [
+        {
+          "actor": "default",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "default",
+          "op": "reset_telemetry"
+        },
+        {
+          "actor": "default",
+          "op": "click_each",
+          "selector": null
+        },
+        {
+          "actor": "default",
+          "op": "expect_console_clean"
+        },
+        {
+          "actor": "default",
+          "op": "expect_no_failed_requests"
+        }
+      ]
+    },
+    {
+      "id": "universal:actors-agree:/",
+      "source": "universal",
+      "statement": "What one user changes on / stays visible to another user across reloads.",
+      "evidence": [
+        {
+          "note": "applies to every page; no server route serves it"
+        }
+      ],
+      "confidence": 0.5,
+      "check": [
+        {
+          "actor": "a",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "a",
+          "op": "click_each",
+          "selector": null
+        },
+        {
+          "actor": "b",
+          "op": "goto",
+          "path": "/"
+        },
+        {
+          "actor": "b",
+          "op": "wait_ms",
+          "ms": 1500
+        },
+        {
+          "actor": "b",
+          "op": "snapshot_text",
+          "key": "b"
+        },
+        {
+          "actor": "b",
+          "op": "reload"
+        },
+        {
+          "actor": "b",
+          "op": "wait_ms",
+          "ms": 500
+        },
+        {
+          "actor": "b",
+          "op": "expect_text_unchanged",
+          "key": "b"
+        }
+      ]
+    },
+    {
+      "id": "transcript:1:3",
+      "source": "transcript",
+      "statement": "Everyone who opens it should see the same number.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/counter/PROMPTS.md",
+          "line": 3,
+          "note": "\"Everyone who opens it should see the same number.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:2:2",
+      "source": "transcript",
+      "statement": "When the page loads it should show whatever the server currently has.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/counter/PROMPTS.md",
+          "line": 7,
+          "note": "\"When the page loads it should show whatever the server currently has.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:4:1",
+      "source": "transcript",
+      "statement": "Important: the page should never change the number by itself.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/counter/PROMPTS.md",
+          "line": 15,
+          "note": "\"Important: the page should never change the number by itself.\""
+        }
+      ],
+      "confidence": 0.7
+    },
+    {
+      "id": "transcript:4:3",
+      "source": "transcript",
+      "statement": "Only a click on Increment should move it.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/counter/PROMPTS.md",
+          "line": 15,
+          "note": "\"Only a click on Increment should move it.\""
+        }
+      ],
+      "confidence": 0.5
+    },
+    {
+      "id": "transcript:5:1",
+      "source": "transcript",
+      "statement": "Make sure one click always adds exactly one, even if I click fast.",
+      "evidence": [
+        {
+          "file": "bench/fixtures/counter/PROMPTS.md",
+          "line": 19,
+          "note": "\"Make sure one click always adds exactly one, even if I click fast.\""
+        }
+      ],
+      "confidence": 0.7
+    }
+  ]
+}
