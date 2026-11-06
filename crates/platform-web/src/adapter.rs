@@ -274,6 +274,25 @@ impl WebAdapter {
             .map_err(|e| OrchynError::Internal(format!("event_listener: {e}")))?;
         }
 
+        // ── dialogs: alert/confirm/prompt block the page (and every CDP call that
+        // waits on it) until handled. Accept them immediately, like a user
+        // clicking OK, and record them so manifests can assert on them.
+        {
+            let diag_d = Arc::clone(&diagnostics);
+            let dialog = tab.get_dialog();
+            tab.add_event_listener(Arc::new(move |event: &Event| {
+                if let Event::PageJavascriptDialogOpening(ev) = event {
+                    diag_d.lock().unwrap().push(DiagnosticEvent::Console {
+                        level: LogLevel::Info,
+                        message: format!("[dialog] {}", ev.params.message),
+                        timestamp: Utc::now(),
+                    });
+                    let _ = dialog.accept(None);
+                }
+            }))
+            .map_err(|e| OrchynError::Internal(format!("dialog_listener: {e}")))?;
+        }
+
         // ── response handler: fires on loadingFinished, gives us status + optional body ────────
         {
             let net_l = Arc::clone(&network_events);

@@ -190,6 +190,7 @@ fn actions_only(m: &ReplayManifest) -> ReplayManifest {
                 | StepOp::ExpectRequest { .. }
                 | StepOp::ExpectNoFailedRequests
                 | StepOp::ExpectTextUnchanged { .. }
+                | StepOp::ExpectDialog { .. }
                 | StepOp::SnapshotText { .. } => return None,
                 other => other.clone(),
             };

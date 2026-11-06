@@ -155,6 +155,8 @@ struct Actor {
     errors: Vec<String>,
     /// Normalised page text saved by `snapshot_text`, keyed by its `key`.
     snapshots: HashMap<String, String>,
+    /// Messages of JavaScript dialogs shown since the start or the last reset.
+    dialogs: Vec<String>,
 }
 
 /// Run-wide state. Lives for one `run` call.
@@ -179,6 +181,7 @@ impl Session {
             adapter,
             requests: Vec::new(),
             errors: Vec::new(),
+            dialogs: Vec::new(),
             snapshots: HashMap::new(),
         });
         Ok(self.actors.len() - 1)
@@ -232,7 +235,22 @@ impl Session {
                 self.pull(i).await?;
                 self.actors[i].requests.clear();
                 self.actors[i].errors.clear();
+                self.actors[i].dialogs.clear();
                 Ok("telemetry reset".to_string())
+            }
+            StepOp::ExpectDialog { contains } => {
+                self.pull(i).await?;
+                let a = &self.actors[i];
+                if a.dialogs.iter().any(|d| d.contains(contains.as_str())) {
+                    Ok(format!("dialog containing {contains:?} was shown"))
+                } else if a.dialogs.is_empty() {
+                    Err(format!("no dialog was shown to actor '{}'", a.name))
+                } else {
+                    Err(format!(
+                        "no dialog containing {contains:?}; shown: {}",
+                        a.dialogs.join(" | ")
+                    ))
+                }
             }
             StepOp::ExpectAllClickable => expect_all_clickable(&mut *self.actors[i].adapter).await,
             StepOp::Reload => reload(&mut *self.actors[i].adapter).await,
@@ -346,6 +364,10 @@ impl Session {
             .map_err(|e| format!("collecting telemetry failed: {e}"))?;
         let actor = &mut self.actors[i];
         for ConsoleLog { level, message } in raw.console_logs {
+            if let Some(d) = message.strip_prefix("[dialog] ") {
+                actor.dialogs.push(d.to_string());
+                continue;
+            }
             if is_console_error(&level, &message) {
                 self.console_errors
                     .push(format!("{}: {message}", actor.name));

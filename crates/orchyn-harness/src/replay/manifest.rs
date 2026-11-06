@@ -102,6 +102,10 @@ pub enum StepOp {
     ExpectNoFailedRequests,
     /// Forget telemetry collected so far for this actor.
     ResetTelemetry,
+    /// A JavaScript dialog (alert/confirm/prompt) whose message contains
+    /// `contains` was shown to this actor since the run started (or the last
+    /// `reset_telemetry`). Dialogs are accepted automatically.
+    ExpectDialog { contains: String },
     /// Every visible, enabled interactive element (`button, a[href], input`,
     /// `select`, `textarea`, `[role=button]`) must be the hit target at its
     /// centre. Each is scrolled into view first.
@@ -140,6 +144,7 @@ impl StepOp {
             StepOp::ExpectRequest { .. } => "expect_request",
             StepOp::ExpectNoFailedRequests => "expect_no_failed_requests",
             StepOp::ResetTelemetry => "reset_telemetry",
+            StepOp::ExpectDialog { .. } => "expect_dialog",
             StepOp::ExpectAllClickable => "expect_all_clickable",
             StepOp::Reload => "reload",
             StepOp::SnapshotText { .. } => "snapshot_text",
