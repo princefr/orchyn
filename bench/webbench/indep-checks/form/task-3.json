@@ -1,0 +1,26 @@
+{
+  "name": "task-3",
+  "base_url": "",
+  "_ambiguities": [
+    "The control type is inferred as checkbox (multi selection); the task only says 'selection control'.",
+    "The checkbox name attribute is not pinned.",
+    "The task text names the class both MultiSelectionQuestion and MultipleSelectionQuestion; neither is checked by name.",
+    "Random title and option texts are not asserted."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/MultiSelectionQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 3},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "multi1"},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:nth-child(2)", "name": "id", "value": "single1"},
+    {"op": "expect_count", "selector": "#multi1 legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "#multi1 input[type=checkbox]", "count": 3},
+    {"op": "expect_count", "selector": "#multi1 input[type=radio]", "count": 0},
+    {"op": "expect_attribute", "selector": "#multi1 input[type=checkbox][value='0']", "name": "value", "value": "0"},
+    {"op": "expect_attribute", "selector": "#multi1 input[type=checkbox][value='1']", "name": "value", "value": "1"},
+    {"op": "expect_attribute", "selector": "#multi1 input[type=checkbox][value='2']", "name": "value", "value": "2"},
+    {"op": "click", "selector": "#multi1 input[type=checkbox][value='0']"},
+    {"op": "click", "selector": "#multi1 input[type=checkbox][value='2']"},
+    {"op": "expect_count", "selector": "#multi1 input[type=checkbox]:checked", "count": 2}
+  ]
+}

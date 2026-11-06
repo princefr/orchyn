@@ -1,0 +1,118 @@
+{
+  "name": "task-5",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"Question\",\"title\":\"Alpha question\",\"name\":\"question1\",\"preview\":false},{\"className\":\"Question\",\"title\":\"Beta question\",\"name\":\"question2\",\"preview\":false}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_url",
+      "contains": "preview"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 2
+    },
+    {
+      "op": "expect_text",
+      "text": "Alpha question"
+    },
+    {
+      "op": "expect_text",
+      "text": "Beta question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title",
+      "count": 2
+    },
+    {
+      "op": "expect_visible",
+      "selector": "fieldset#question1"
+    },
+    {
+      "op": "expect_count",
+      "selector": "fieldset#question2",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title[contenteditable=\"true\"]",
+      "count": 0
+    },
+    {
+      "op": "goto",
+      "path": "/preview.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "SurveyPreview"
+    },
+    {
+      "op": "goto",
+      "path": "/common/SurveyPreview.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class SurveyPreview"
+    },
+    {
+      "op": "expect_text",
+      "text": "prependQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "appendQuestion"
+    },
+    {
+      "actor": "e2e",
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "actor": "e2e",
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "actor": "e2e",
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "actor": "e2e",
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "actor": "e2e",
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "actor": "e2e",
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title[contenteditable=\"true\"]",
+      "count": 0
+    }
+  ],
+  "_ambiguities": [
+    "Survey title display in preview is not pinned.",
+    "Hidden config panel in preview is not asserted (no negative-visibility op; see task-2).",
+    "The fieldset id = question name mapping is taken from task-1 (id is the name param).",
+    "Preview control details beyond question count, titles and contenteditable are not pinned.",
+    "The e2e actor only runs one question through Save; the storage format is not read back directly."
+  ]
+}

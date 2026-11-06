@@ -1,0 +1,27 @@
+{
+  "name": "task-2",
+  "base_url": "",
+  "_ambiguities": [
+    "Fixed positioning of header (top) and footer (bottom) and the main area filling the remaining space cannot be checked with replay ops; only presence and visibility are asserted.",
+    "The 'appealing' look is not checked.",
+    "The stylesheet path /css/style.css assumes the layout links the file at that URL; the task only says public/css/style.css.",
+    "Exact header markup is not pinned beyond the class names and visible text."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "🛍️ WebBench Shopping Mart"},
+    {"op": "expect_text", "text": "Copyright: Web Bench"},
+    {"op": "expect_count", "selector": ".site-header", "count": 1},
+    {"op": "expect_count", "selector": ".site-footer", "count": 1},
+    {"op": "expect_visible", "selector": ".site-header"},
+    {"op": "expect_visible", "selector": ".site-footer"},
+    {"op": "expect_visible", "selector": "main"},
+    {"op": "goto", "path": "/login"},
+    {"op": "expect_text", "text": "🛍️ WebBench Shopping Mart"},
+    {"op": "expect_text", "text": "Copyright: Web Bench"},
+    {"op": "expect_visible", "selector": ".site-header"},
+    {"op": "expect_visible", "selector": ".site-footer"},
+    {"op": "goto", "path": "/css/style.css"},
+    {"op": "expect_request", "method": "GET", "path_contains": "style.css", "status": 200}
+  ]
+}

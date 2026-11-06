@@ -1,0 +1,46 @@
+{
+  "name": "task-13",
+  "base_url": "",
+  "_ambiguities": [
+    "Row id for products uses the id prefix admin_product_ because product ids are unknown; the seeded product count is 2.",
+    "Users rows are asserted by exact ids #admin_user_admin and #admin_user_user (seeded usernames).",
+    "Full product/user field content is only spot-checked (name, coin value); the exact column layout is not pinned.",
+    "The redirect for a logged-out visitor and for a non-admin user is checked by URL substring /login.",
+    "Admin portal styling is not checked.",
+    "The user-portal home link is clicked without a separate visibility check."
+  ],
+  "steps": [
+    {"actor": "admin", "op": "goto", "path": "/login", "_note": "Precondition: seeded admin/123456 and user/123456; products Blue Mug and Red Shirt seeded via POST /api/products."},
+    {"actor": "admin", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "admin", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "admin", "op": "click", "selector": ".login-btn"},
+    {"actor": "admin", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "admin", "op": "expect_visible", "selector": ".home-go-product-portal-link"},
+    {"actor": "admin", "op": "click", "selector": ".home-go-product-portal-link"},
+    {"actor": "admin", "op": "expect_url", "contains": "/admin/products"},
+    {"actor": "admin", "op": "expect_count", "selector": "tr[id^=admin_product_]", "count": 2},
+    {"actor": "admin", "op": "expect_text", "text": "Blue Mug"},
+    {"actor": "admin", "op": "expect_text", "text": "Red Shirt"},
+    {"actor": "admin", "op": "goto", "path": "/admin/users"},
+    {"actor": "admin", "op": "expect_visible", "selector": "#admin_user_admin"},
+    {"actor": "admin", "op": "expect_visible", "selector": "#admin_user_user"},
+    {"actor": "admin", "op": "expect_count", "selector": "tr[id^=admin_user_]", "count": 2},
+    {"actor": "admin", "op": "expect_text", "text": "1000"},
+    {"actor": "admin", "op": "goto", "path": "/"},
+    {"actor": "admin", "op": "click", "selector": ".home-go-user-portal-link"},
+    {"actor": "admin", "op": "expect_url", "contains": "/admin/users"},
+
+    {"actor": "member", "op": "goto", "path": "/login"},
+    {"actor": "member", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "member", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "member", "op": "click", "selector": ".login-btn"},
+    {"actor": "member", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "member", "op": "goto", "path": "/admin/products"},
+    {"actor": "member", "op": "expect_url", "contains": "/login"},
+    {"actor": "member", "op": "goto", "path": "/admin/users"},
+    {"actor": "member", "op": "expect_url", "contains": "/login"},
+
+    {"actor": "guest", "op": "goto", "path": "/admin/users"},
+    {"actor": "guest", "op": "expect_url", "contains": "/login"}
+  ]
+}

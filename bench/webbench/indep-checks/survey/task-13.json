@@ -1,0 +1,86 @@
+{
+  "name": "task-13",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "click",
+      "selector": ".add-likert"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .statement",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-config .add-statement"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .statement",
+      "count": 4
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q input[type=\"radio\"]",
+      "count": 20
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .statement .remove-statement"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .statement",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .statement-text"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .statement-text",
+      "name": "contenteditable",
+      "value": "true"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option .add-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q input[type=\"radio\"]",
+      "count": 18
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option .remove-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q input[type=\"radio\"]",
+      "count": 15
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option-text"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .option-text",
+      "name": "contenteditable",
+      "value": "true"
+    }
+  ],
+  "_ambiguities": [
+    "Option cell structure is assumed: each column has one .option cell with add-option/remove-option/option-text inside it, and each statement row has one radio per column.",
+    "Insertion position of new statements or columns is not asserted.",
+    "Statement and option texts are not asserted (random or unspecified).",
+    "Design-page radio rendering is assumed (see task-12)."
+  ]
+}

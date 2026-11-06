@@ -1,0 +1,36 @@
+{
+  "name": "task-12",
+  "base_url": "",
+  "_ambiguities": [
+    "The task says the button is 'only visible' for the owner; the check uses expect_count 0 for a non-owner, so an implementation that hides it with CSS (element still in DOM) would fail this check.",
+    "How the recharge is persisted and whether the coin updates without reload is not pinned; the check reloads the page after clicking and expects 2000.",
+    "The button label is not specified, so it is located only by .recharge-button.",
+    "Starting coin 1000 is taken from the seed."
+  ],
+  "steps": [
+    {"actor": "user", "op": "goto", "path": "/login", "_note": "Precondition: seeded user/123456 (coin 1000) and admin/123456 (coin 0)."},
+    {"actor": "user", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "user", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "user", "op": "click", "selector": ".login-btn"},
+    {"actor": "user", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "user", "op": "goto", "path": "/profile/user"},
+    {"actor": "user", "op": "expect_visible", "selector": ".recharge-button"},
+    {"actor": "user", "op": "expect_text", "text": "1000"},
+    {"actor": "user", "op": "click", "selector": ".recharge-button"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "reload"},
+    {"actor": "user", "op": "expect_text", "text": "2000"},
+    {"actor": "user", "op": "expect_visible", "selector": ".profile-coin"},
+
+    {"actor": "admin", "op": "goto", "path": "/login"},
+    {"actor": "admin", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "admin", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "admin", "op": "click", "selector": ".login-btn"},
+    {"actor": "admin", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "admin", "op": "goto", "path": "/profile/user"},
+    {"actor": "admin", "op": "expect_visible", "selector": ".profile-coin"},
+    {"actor": "admin", "op": "expect_count", "selector": ".recharge-button", "count": 0},
+    {"actor": "admin", "op": "goto", "path": "/profile/admin"},
+    {"actor": "admin", "op": "expect_visible", "selector": ".recharge-button"}
+  ]
+}

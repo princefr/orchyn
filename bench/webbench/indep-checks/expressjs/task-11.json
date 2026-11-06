@@ -1,0 +1,37 @@
+{
+  "name": "task-11",
+  "base_url": "",
+  "_ambiguities": [
+    "The dropdown is shown on hover by the component's mechanism, which is not specified. The check uses the replay hover op, which dispatches JS mouse events only; a CSS-only :hover menu is not simulated, so this check assumes a JS hover handler or a hover that the real click path also satisfies.",
+    "The logout destination is not pinned; only the logged-out header state (.header-go-login visible) is checked.",
+    "Placement on the right side of the header is not checked.",
+    "The component file path public/components/HeaderUserMenu.js is not directly fetched.",
+    "Whether .header-username is absent (count 0) or hidden while logged out is assumed absent."
+  ],
+  "steps": [
+    {"actor": "guest", "op": "goto", "path": "/"},
+    {"actor": "guest", "op": "expect_visible", "selector": ".header-go-login"},
+    {"actor": "guest", "op": "expect_count", "selector": ".header-username", "count": 0},
+    {"actor": "guest", "op": "click", "selector": ".header-go-login"},
+    {"actor": "guest", "op": "expect_url", "contains": "/login"},
+
+    {"actor": "user", "op": "goto", "path": "/login", "_note": "Precondition: seeded user/123456 (coin 1000)."},
+    {"actor": "user", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "user", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "user", "op": "click", "selector": ".login-btn"},
+    {"actor": "user", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "user", "op": "expect_visible", "selector": ".header-username"},
+    {"actor": "user", "op": "expect_count", "selector": ".header-go-login", "count": 0},
+    {"actor": "user", "op": "hover", "selector": ".header-username"},
+    {"actor": "user", "op": "expect_visible", "selector": ".header-logout-btn"},
+    {"actor": "user", "op": "expect_visible", "selector": ".header-go-user-profile"},
+    {"actor": "user", "op": "click", "selector": ".header-go-user-profile"},
+    {"actor": "user", "op": "expect_url", "contains": "/profile/user"},
+    {"actor": "user", "op": "goto", "path": "/"},
+    {"actor": "user", "op": "hover", "selector": ".header-username"},
+    {"actor": "user", "op": "click", "selector": ".header-logout-btn"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "expect_visible", "selector": ".header-go-login"},
+    {"actor": "user", "op": "expect_count", "selector": ".header-username", "count": 0}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "task-4",
+  "base_url": "",
+  "_ambiguities": [
+    "The single-line control is assumed to be an input element and the multiline one a textarea; input type is not pinned.",
+    "Random titles are not asserted.",
+    "The order of open1 and open2 relative to each other is not pinned (the task prepends both without stating order); only that both sit above multi1.",
+    "OpenQuestion class API (isMultilines handling, constructor) is not observable; only the rendered DOM and the module request are checked."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/OpenQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 5},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)", "count": 2},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)#open1", "count": 1},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)#open2", "count": 1},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:nth-child(3)", "name": "id", "value": "multi1"},
+    {"op": "expect_count", "selector": "#open1 legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "#open2 legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "#open1 input", "count": 1},
+    {"op": "expect_count", "selector": "#open1 textarea", "count": 0},
+    {"op": "expect_count", "selector": "#open2 textarea", "count": 1},
+    {"op": "expect_count", "selector": "#open2 input", "count": 0},
+    {"op": "fill", "selector": "#open1 input", "value": "hello"},
+    {"op": "expect_value", "selector": "#open1 input", "value": "hello"},
+    {"op": "fill", "selector": "#open2 textarea", "value": "first line"},
+    {"op": "expect_value", "selector": "#open2 textarea", "value": "first line"}
+  ]
+}

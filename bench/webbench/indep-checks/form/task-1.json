@@ -1,0 +1,21 @@
+{
+  "name": "task-1",
+  "base_url": "",
+  "_ambiguities": [
+    "The name of the sample Question is not given, so the fieldset id is only checked to exist, not its value.",
+    "Whether legend and body are direct children of the fieldset is not pinned (descendant selectors used).",
+    "Question class API (constructor params, root member) is not observable without script evaluation; only the rendered DOM and the module request are checked.",
+    "Extra children inside the fieldset are allowed."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/Question.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 1},
+    {"op": "expect_count", "selector": "form > fieldset.q:first-child", "count": 1},
+    {"op": "expect_attribute", "selector": "fieldset.q", "name": "id"},
+    {"op": "expect_count", "selector": "fieldset.q legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "fieldset.q .q-body", "count": 1},
+    {"op": "expect_text", "text": "sample empty question"},
+    {"op": "expect_visible", "selector": "fieldset.q legend.q-title"}
+  ]
+}

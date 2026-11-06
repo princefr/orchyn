@@ -1,0 +1,16 @@
+{
+  "name": "task-1",
+  "base_url": "",
+  "_ambiguities": [
+    "Pug templates (views/home.pug, views/login.pug) and the template engine are not observable; only rendered text is checked.",
+    "The h1 tag is not asserted, only the visible text.",
+    "No header/footer requirements are checked here (those are task-2)."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "🛍️🛍️🛍️ Welcome to Shopping Mart !"},
+    {"op": "goto", "path": "/login"},
+    {"op": "expect_text", "text": "💡 Please Login First"},
+    {"op": "expect_url", "contains": "/login"}
+  ]
+}

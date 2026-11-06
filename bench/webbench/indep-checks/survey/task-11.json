@@ -1,0 +1,90 @@
+{
+  "name": "task-11",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/NpsQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class NpsQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-nps"
+    },
+    {
+      "op": "click",
+      "selector": ".add-nps"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"NpsQuestion\",\"title\":\"How likely?\",\"name\":\"nps1\",\"preview\":false}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .option",
+      "count": 11
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option:nth-child(8)"
+    },
+    {
+      "op": "expect_value",
+      "selector": "[name=\"nps1\"]",
+      "value": "7"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option:nth-child(1)"
+    },
+    {
+      "op": "expect_value",
+      "selector": "[name=\"nps1\"]",
+      "value": "0"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option:nth-child(11)"
+    },
+    {
+      "op": "expect_value",
+      "selector": "[name=\"nps1\"]",
+      "value": "10"
+    }
+  ],
+  "_ambiguities": [
+    "The highlight of the clicked score option is not asserted (class/style not specified).",
+    "Score options are assumed to be 11 sibling elements with class option (scores 0 to 10), selected by nth-child.",
+    "Design page appearance of the NPS question beyond creation is not pinned.",
+    "Random titles are not asserted."
+  ]
+}

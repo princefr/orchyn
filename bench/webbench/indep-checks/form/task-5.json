@@ -1,0 +1,28 @@
+{
+  "name": "task-5",
+  "base_url": "",
+  "_ambiguities": [
+    "The stored rating value 'from 0 to 1' is not checked: its meaning is unclear and the control type is not pinned.",
+    "Whether the param-named control exists (name=rating1) is not checked for the same reason.",
+    "Highlight is checked as: the clicked star and all stars before it carry class 'active'; the exact mechanism (class on each star vs. another attribute) is assumed.",
+    "Stars are assumed to be direct siblings with no other children before them (nth-child used to address them).",
+    "Random titles are not asserted; the order of rating1 and rating2 is not pinned (both sit in the first two positions)."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/RatingQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 7},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)", "count": 2},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)#rating1", "count": 1},
+    {"op": "expect_count", "selector": "form > fieldset.q:nth-child(-n+2)#rating2", "count": 1},
+    {"op": "expect_count", "selector": "#rating1 .star", "count": 5},
+    {"op": "expect_count", "selector": "#rating2 .star", "count": 10},
+    {"op": "click", "selector": "#rating1 .star:nth-child(3)"},
+    {"op": "expect_count", "selector": "#rating1 .star.active", "count": 3},
+    {"op": "expect_count", "selector": "#rating1 .star:nth-child(3).active", "count": 1},
+    {"op": "click", "selector": "#rating1 .star:nth-child(2)"},
+    {"op": "expect_count", "selector": "#rating1 .star.active", "count": 2},
+    {"op": "click", "selector": "#rating2 .star:nth-child(10)"},
+    {"op": "expect_count", "selector": "#rating2 .star.active", "count": 10}
+  ]
+}

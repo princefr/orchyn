@@ -1,0 +1,23 @@
+{
+  "name": "task-7",
+  "base_url": "",
+  "_ambiguities": [
+    "The class used to highlight the clicked score block is not named by the task, so highlight is not asserted beyond the score value.",
+    "The control type of the param-named control is not pinned (only its .value is read).",
+    "Score blocks are assumed to be direct siblings with no other children before them (nth-child used).",
+    "Random title is not asserted."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/NpsQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 9},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "nps1"},
+    {"op": "expect_count", "selector": "#nps1 .score", "count": 11},
+    {"op": "click", "selector": "#nps1 .score:nth-child(1)"},
+    {"op": "expect_value", "selector": "[name=nps1]", "value": "0"},
+    {"op": "click", "selector": "#nps1 .score:nth-child(9)"},
+    {"op": "expect_value", "selector": "[name=nps1]", "value": "8"},
+    {"op": "click", "selector": "#nps1 .score:nth-child(11)"},
+    {"op": "expect_value", "selector": "[name=nps1]", "value": "10"}
+  ]
+}

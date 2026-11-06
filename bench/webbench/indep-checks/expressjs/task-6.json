@@ -1,0 +1,25 @@
+{
+  "name": "task-6",
+  "base_url": "",
+  "_ambiguities": [
+    "The task says 'In /product page'; this check treats it as the /products list page from task-5.",
+    "Which product the first card opens is not pinned, so no product name is asserted on the detail page.",
+    "Product ids are not known; a non-existent id of 999999 is used for the not-found case.",
+    "Layout and CSS are not checked.",
+    "The task lists .product-card on the detail page as a class to add; it is asserted as visible there."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/products", "_note": "Precondition: products Blue Mug (1234, qty 100, description seeded) and Red Shirt (5678, qty 50) via POST /api/products."},
+    {"op": "expect_visible", "selector": ".product-card"},
+    {"op": "click", "selector": ".product-card"},
+    {"op": "expect_url", "contains": "/products/"},
+    {"op": "expect_visible", "selector": ".product-card"},
+    {"op": "expect_visible", "selector": ".product-image"},
+    {"op": "expect_visible", "selector": ".product-name"},
+    {"op": "expect_visible", "selector": ".product-price"},
+    {"op": "expect_visible", "selector": ".product_quantity"},
+    {"op": "expect_visible", "selector": ".product-description"},
+    {"op": "goto", "path": "/products/999999"},
+    {"op": "expect_text", "text": "Product Not Found"}
+  ]
+}

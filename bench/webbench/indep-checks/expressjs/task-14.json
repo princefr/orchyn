@@ -1,0 +1,44 @@
+{
+  "name": "task-14",
+  "base_url": "",
+  "_ambiguities": [
+    "The product added to the wishlist is whichever card is first on /products; no product name is asserted on the wishlist page.",
+    "The wishlist price text format and image src are not pinned; only the item structure (id, name, visibility) is checked.",
+    "Whether .add-to-wishlist toggles or changes its label is not pinned.",
+    "Wishlist persistence is checked by reload within the same browser session; it is not checked across browsers.",
+    "Wishlist styling is not checked."
+  ],
+  "steps": [
+    {"actor": "user", "op": "goto", "path": "/login", "_note": "Precondition: seeded user/123456; products Blue Mug and Red Shirt seeded via POST /api/products."},
+    {"actor": "user", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "user", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "user", "op": "click", "selector": ".login-btn"},
+    {"actor": "user", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "user", "op": "goto", "path": "/products"},
+    {"actor": "user", "op": "click", "selector": ".product-card"},
+    {"actor": "user", "op": "click", "selector": ".add-to-wishlist"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "goto", "path": "/wishlist"},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=wishlist_item_]", "count": 1},
+    {"actor": "user", "op": "expect_visible", "selector": ".wishlist-item .wishlist-name"},
+    {"actor": "user", "op": "reload"},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=wishlist_item_]", "count": 1},
+    {"actor": "user", "op": "click", "selector": ".remove-from-wishlist"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=wishlist_item_]", "count": 0},
+    {"actor": "user", "op": "reload"},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=wishlist_item_]", "count": 0},
+    {"actor": "user", "op": "goto", "path": "/"},
+    {"actor": "user", "op": "expect_visible", "selector": ".home-go-wish-list"},
+    {"actor": "user", "op": "click", "selector": ".home-go-wish-list"},
+    {"actor": "user", "op": "expect_url", "contains": "/wishlist"},
+
+    {"actor": "admin", "op": "goto", "path": "/login"},
+    {"actor": "admin", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "admin", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "admin", "op": "click", "selector": ".login-btn"},
+    {"actor": "admin", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "admin", "op": "goto", "path": "/wishlist"},
+    {"actor": "admin", "op": "expect_count", "selector": "[id^=wishlist_item_]", "count": 0}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "task-6",
+  "base_url": "",
+  "_ambiguities": [
+    "Option indices are read as the option's original index (the position it had when created), so the stored value after the first drag is 1,2,0.",
+    "Separator is assumed to be a comma with no spaces ('1,2,0').",
+    "The stored value's initial state (before any drag) is not pinned.",
+    "The control type of the param-named control is not pinned (only its .value is read).",
+    "Random titles and option texts are not asserted.",
+    "The draggable attribute and drag event details are not pinned; drag is performed with the HTML5 drag tool."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/RankingQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 8},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "ranking1"},
+    {"op": "expect_count", "selector": "#ranking1 legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "#ranking1 .ranking-item", "count": 3},
+    {"op": "drag", "selector": "#ranking1 .ranking-item:nth-child(1)", "target": "#ranking1 .ranking-item:nth-child(3)", "position": "after"},
+    {"op": "expect_value", "selector": "[name=ranking1]", "value": "1,2,0"},
+    {"op": "drag", "selector": "#ranking1 .ranking-item:nth-child(3)", "target": "#ranking1 .ranking-item:nth-child(1)", "position": "before"},
+    {"op": "expect_value", "selector": "[name=ranking1]", "value": "0,1,2"}
+  ]
+}

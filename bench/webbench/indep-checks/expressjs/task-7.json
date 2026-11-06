@@ -1,0 +1,14 @@
+{
+  "name": "task-7",
+  "base_url": "",
+  "_ambiguities": [
+    "POST /api/auth cannot be issued by replay ops (no HTTP request op) and no login UI exists yet at this task, so the login response and the TOKEN cookie are not checked.",
+    "The seeded users (admin/123456 coin 0, user/123456 coin 1000) are not observable at this task; they are verified in task-8 through the login form.",
+    "JWT payload, HS256 algorithm, 'WEBBENCH-SECRET' and 1 hour expiry are not observable through replay ops (cookie contents are not readable).",
+    "The 401 response body is not asserted."
+  ],
+  "steps": [
+    {"actor": "guest", "op": "goto", "path": "/api/auth"},
+    {"actor": "guest", "op": "expect_request", "method": "GET", "path_contains": "/api/auth", "status": 401}
+  ]
+}

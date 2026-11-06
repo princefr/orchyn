@@ -1,0 +1,70 @@
+{
+  "name": "task-3",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/SurveyDesign.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class SurveyDesign"
+    },
+    {
+      "op": "expect_text",
+      "text": "./Question.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "prependQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "appendQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "add-question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "SurveyDesign"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 2
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .q-remove",
+      "count": 2
+    }
+  ],
+  "_ambiguities": [
+    "formSelector and title constructor params of SurveyDesign are not observable through the UI; not asserted.",
+    "appendQuestion has no UI trigger in this task, so its behaviour is not observed; only the method name appears in the source.",
+    "Source checks are literal substring matches on common/SurveyDesign.js and design.js; the fact that add-question code was moved out of design.js is not asserted (no op reads source absence).",
+    "Prepend ordering is not asserted (see task-1)."
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "name": "task-15",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "click",
+      "selector": ".add-single"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .q-required",
+      "count": 1
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-required",
+      "name": "type",
+      "value": "checkbox"
+    },
+    {
+      "op": "expect_value",
+      "selector": "form fieldset.q .q-required",
+      "value": "false"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-required"
+    },
+    {
+      "op": "expect_value",
+      "selector": "form fieldset.q .q-required",
+      "value": "true"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "required"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"]",
+      "name": "required"
+    },
+    {
+      "op": "click",
+      "selector": "form [type=\"submit\"]"
+    },
+    {
+      "op": "wait_ms",
+      "ms": 500
+    },
+    {
+      "op": "expect_url",
+      "contains": "preview"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q input[type=\"radio\"][value=\"0\"]"
+    },
+    {
+      "op": "click",
+      "selector": "form [type=\"submit\"]"
+    },
+    {
+      "op": "wait_ms",
+      "ms": 500
+    },
+    {
+      "op": "expect_url",
+      "contains": "submit"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"SingleSelectionQuestion\",\"title\":\"Pick one\",\"name\":\"s1\",\"preview\":false,\"required\":true,\"options\":[\"A\",\"B\",\"C\"]},{\"className\":\"NpsQuestion\",\"title\":\"How likely?\",\"name\":\"n1\",\"preview\":false,\"required\":true},{\"className\":\"LikertQuestion\",\"title\":\"Agree?\",\"name\":\"l1\",\"preview\":false,\"required\":true,\"options\":[\"A\",\"B\",\"C\"],\"statements\":[\"S1\",\"S2\"]},{\"className\":\"RatingQuestion\",\"title\":\"Rate it\",\"name\":\"r1\",\"preview\":false,\"required\":true,\"starCount\":5}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "fieldset#s1 input[type=\"radio\"]",
+      "name": "required"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "[name=\"n1\"]",
+      "name": "required"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "[name=\"l1_0\"]",
+      "name": "required"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "[name=\"r1\"]",
+      "name": "required"
+    },
+    {
+      "op": "click",
+      "selector": "form [type=\"submit\"]"
+    },
+    {
+      "op": "wait_ms",
+      "ms": 500
+    },
+    {
+      "op": "expect_url",
+      "contains": "preview"
+    }
+  ],
+  "_ambiguities": [
+    "Hidden config panel is not asserted (see task-2).",
+    "The submit button is assumed to be matched by form [type=\"submit\"]; a button without an explicit type attribute would not match.",
+    "Which element carries required for NPS, Rating and Likert is taken from the param-named control (n1, r1, l1_0). The spec only says to prefer the required attribute, so a different placement would fail here.",
+    "Checkbox default false is asserted (spec: Question.required default false). Storage key \"required\" is asserted after Save.",
+    "The preview answer for the valid submit uses the first radio (value 0) of the single question."
+  ]
+}

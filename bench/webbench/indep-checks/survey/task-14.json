@@ -1,0 +1,143 @@
+{
+  "name": "task-14",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/Contents.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "contents-item"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".contents"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 0
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 1
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 2
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 5
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 5
+    },
+    {
+      "op": "expect_all_clickable"
+    },
+    {
+      "op": "click",
+      "selector": ".contents .contents-item:nth-child(3)"
+    },
+    {
+      "op": "click",
+      "selector": ".q-remove"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 4
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 4
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"Question\",\"title\":\"Alpha question\",\"name\":\"q1\",\"preview\":false},{\"className\":\"Question\",\"title\":\"Beta question\",\"name\":\"q2\",\"preview\":false},{\"className\":\"Question\",\"title\":\"Gamma question\",\"name\":\"q3\",\"preview\":false}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_url",
+      "contains": "preview"
+    },
+    {
+      "op": "expect_count",
+      "selector": ".contents .contents-item",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 3
+    },
+    {
+      "op": "expect_text",
+      "text": "Alpha question"
+    },
+    {
+      "op": "expect_text",
+      "text": "Gamma question"
+    },
+    {
+      "op": "click",
+      "selector": ".contents .contents-item:nth-child(2)"
+    },
+    {
+      "op": "drag",
+      "selector": ".contents .contents-item:nth-child(1)",
+      "target": ".contents .contents-item:nth-child(2)",
+      "position": "after"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q:first-of-type",
+      "name": "id",
+      "value": "q2"
+    }
+  ],
+  "_ambiguities": [
+    "Scroll-to-question on click is NOT asserted: no op reads scroll position; the click only checks the item is clickable.",
+    "Contents item text equals the question title is only checked through the titles appearing on the page (expect_text), which is weak.",
+    "Fixed position and \"cannot cover question content\" are checked only via expect_all_clickable on design with 5 questions.",
+    "Reordering is asserted only on the preview page (question order via first fieldset id = name). The spec does not say whether preview supports drag reorder, so this may be too strict; design-page reorder cannot be checked because design names are random.",
+    "Contents items are assumed to be the only children of .contents for the nth-child selectors.",
+    "Preview check depends on set_storage with the task-4 format and on preview rendering contents (task-5 behaviour)."
+  ]
+}

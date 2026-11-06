@@ -1,0 +1,36 @@
+{
+  "name": "task-8",
+  "base_url": "",
+  "_ambiguities": [
+    "The task does not say whether the login form posts to /api/auth or to a form route; expect_request POST /api/auth is asserted only for the successful login because task-7 names that API as the login endpoint.",
+    "The 'Login Failed' message's element and status code are not pinned; only the text is checked.",
+    "The home page's 'Welcome to Shopping Mart !' text after login is not asserted either way.",
+    "Server-side rendering of the username is not observable through replay ops (it appears as text in the page either way).",
+    "The CSS is not checked.",
+    "Whether '💡 Please Login First' remains on /login is not pinned."
+  ],
+  "steps": [
+    {"actor": "visitor", "op": "goto", "path": "/login"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".login-form"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".username"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".password"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".login-btn"},
+    {"actor": "visitor", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "visitor", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "visitor", "op": "click", "selector": ".login-btn"},
+    {"actor": "visitor", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "visitor", "op": "expect_request", "method": "POST", "path_contains": "/api/auth", "status": 200},
+
+    {"actor": "guest", "op": "goto", "path": "/login"},
+    {"actor": "guest", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "guest", "op": "fill", "selector": ".password", "value": "wrong-password"},
+    {"actor": "guest", "op": "click", "selector": ".login-btn"},
+    {"actor": "guest", "op": "expect_text", "text": "Login Failed"},
+
+    {"actor": "member", "op": "goto", "path": "/login"},
+    {"actor": "member", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "member", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "member", "op": "click", "selector": ".login-btn"},
+    {"actor": "member", "op": "expect_text", "text": "Hello user!"}
+  ]
+}

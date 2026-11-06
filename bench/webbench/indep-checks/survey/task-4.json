@@ -1,0 +1,88 @@
+{
+  "name": "task-4",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".preview"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "questions"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "className"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "Question"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "title"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "name"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "preview"
+    },
+    {
+      "actor": "fresh",
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "actor": "fresh",
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "actor": "fresh",
+      "op": "click",
+      "selector": ".preview"
+    },
+    {
+      "actor": "fresh",
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "questions"
+    }
+  ],
+  "_ambiguities": [
+    "Survey title value: the source of the survey title (SurveyDesign title param) is not pinned; only the presence of the title key is not checked either.",
+    "Only the constructor param \"preview\" is checked for the per-question JSON. Other config keys are not pinned, since later tasks add them.",
+    "Order of questions inside the saved array is not asserted.",
+    "The Preview button opens a new window that cannot be followed; the check only covers that localStorage.data is written on click.",
+    "Visible labels \"Save\" and \"Preview\" are not checked, only the classes."
+  ]
+}

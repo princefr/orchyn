@@ -1,0 +1,99 @@
+{
+  "name": "task-9",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/RatingQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class RatingQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "expect_text",
+      "text": "starCount"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-rating"
+    },
+    {
+      "op": "click",
+      "selector": ".add-rating"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .q-starCount",
+      "count": 1
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-config .q-starCount",
+      "name": "type",
+      "value": "checkbox"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "RatingQuestion"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "starCount"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"RatingQuestion\",\"title\":\"Rate it\",\"name\":\"rating1\",\"preview\":false,\"starCount\":5}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .option",
+      "count": 5
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .option:nth-child(3)"
+    },
+    {
+      "op": "expect_count",
+      "selector": "[name=\"rating1\"]",
+      "count": 1
+    }
+  ],
+  "_ambiguities": [
+    "The highlight of star options is not asserted: the highlight class/style is not specified.",
+    "The stored rating value encoding is not pinned (\"from 0 to 1\" is ambiguous: index, normalized value or other). Only the presence of one control named after the question is checked.",
+    "Whether the q-starCount checkbox changes the number of stars, and its checked default, are not pinned.",
+    "Stars are assumed to be the only children of their container for the nth-child selector.",
+    "Preview check uses set_storage with the task-4 format (constructor-param keys) and name rating1.",
+    "Random titles are not asserted."
+  ]
+}

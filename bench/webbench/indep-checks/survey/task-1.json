@@ -1,0 +1,89 @@
+{
+  "name": "task-1",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_text",
+      "text": "Add Question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 0
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q",
+      "name": "id"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title",
+      "count": 1
+    },
+    {
+      "op": "expect_visible",
+      "selector": "form fieldset.q legend.q-title"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body",
+      "count": 1
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 2
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title",
+      "count": 2
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body",
+      "count": 2
+    },
+    {
+      "op": "goto",
+      "path": "/common/Question.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class Question"
+    },
+    {
+      "op": "expect_text",
+      "text": "export"
+    }
+  ],
+  "_ambiguities": [
+    "Random question titles and unique names are not asserted; the name is only checked as an id attribute being present, not its value or uniqueness.",
+    "Prepend order (new question above older ones) is not asserted: no op reads DOM order of text-less or random-titled elements.",
+    "Legend and body are matched as descendants of fieldset.q, so direct-child vs nested structure is not pinned.",
+    "Element type of the Add Question control (button vs other) is not pinned; only class and text are checked.",
+    "common/Question.js is checked only for the text \"class Question\" and \"export\" (the file is served as text)."
+  ]
+}

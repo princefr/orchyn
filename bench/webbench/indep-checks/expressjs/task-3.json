@@ -1,0 +1,26 @@
+{
+  "name": "task-3",
+  "base_url": "",
+  "_ambiguities": [
+    "The header brand is assumed to be a clickable element whose exact trimmed text is '🛍️ WebBench Shopping Mart' (click_text needs a button, link or role=button).",
+    "The 404 status code is not asserted, only the page text.",
+    "Styling of the not-found page is not checked."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/no-such-page-xyz"},
+    {"op": "expect_text", "text": "Oops! Looks like you have wandered off the beaten path."},
+    {"op": "expect_visible", "selector": ".not-found-go-to-home"},
+    {"op": "expect_text", "text": "🛍️ WebBench Shopping Mart"},
+    {"op": "click", "selector": ".not-found-go-to-home"},
+    {"op": "expect_text", "text": "Welcome to Shopping Mart !"},
+    {"op": "expect_url", "contains": "/"},
+    {"op": "goto", "path": "/no-such-page-xyz"},
+    {"op": "expect_text", "text": "Oops! Looks like you have wandered off the beaten path."},
+    {"op": "click_text", "text": "🛍️ WebBench Shopping Mart"},
+    {"op": "expect_text", "text": "Welcome to Shopping Mart !"},
+    {"op": "goto", "path": "/login"},
+    {"op": "expect_text", "text": "💡 Please Login First"},
+    {"op": "click_text", "text": "🛍️ WebBench Shopping Mart"},
+    {"op": "expect_text", "text": "Welcome to Shopping Mart !"}
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "name": "task-6",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/SingleSelectionQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class SingleSelectionQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-single"
+    },
+    {
+      "op": "click",
+      "selector": ".add-single"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"]",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"][value=\"0\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"][value=\"1\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"][value=\"2\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .add-option",
+      "count": 1
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-config .add-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 4
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .remove-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .option-text"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-body .option-text",
+      "name": "contenteditable",
+      "value": "true"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"radio\"]",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "input[type=\"radio\"][value=\"1\"]"
+    },
+    {
+      "op": "expect_value",
+      "selector": "input[type=\"radio\"]",
+      "value": "1"
+    },
+    {
+      "op": "click",
+      "selector": "input[type=\"radio\"][value=\"2\"]"
+    },
+    {
+      "op": "expect_value",
+      "selector": "input[type=\"radio\"]",
+      "value": "2"
+    }
+  ],
+  "_ambiguities": [
+    "Random titles and option texts are not asserted.",
+    "Whether the design page renders radio controls is taken from the spec wording \"options are rendered in .q-body with radio\"; counts assume one radio per option.",
+    "Preview: option rows (class option) are specified only for design, so they are not counted in preview.",
+    "Preview radio clicks assume the radios are real clickable inputs (not visually hidden); a click on a hidden radio would fail the run.",
+    "Which option the remove-option button removes is not pinned (count only).",
+    "The preview check relies on Save storing the design state (task-4) and the preview rendering it (task-5)."
+  ]
+}

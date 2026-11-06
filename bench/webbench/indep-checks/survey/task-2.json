@@ -1,0 +1,81 @@
+{
+  "name": "task-2",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "click",
+      "selector": ".add-question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config",
+      "count": 2
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .q-remove",
+      "count": 2
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q legend.q-title"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q legend.q-title",
+      "name": "contenteditable",
+      "value": "true"
+    },
+    {
+      "op": "click",
+      "selector": ".q-remove"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"Question\",\"title\":\"Alpha question\",\"name\":\"question1\",\"preview\":false}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_url",
+      "contains": "preview"
+    },
+    {
+      "op": "expect_text",
+      "text": "Alpha question"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q legend.q-title[contenteditable=\"true\"]",
+      "count": 0
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    }
+  ],
+  "_ambiguities": [
+    "Config panel hidden in preview is NOT asserted: the replay runner has no negative-visibility op, and hiding may be display:none or DOM removal.",
+    "The preview steps set localStorage.data by hand (task-4 format, constructor-param keys) and depend on the preview page rendering saved questions (task-5 behaviour). They can only pass once preview renders questions.",
+    "contenteditable is asserted only after clicking the title; whether it is set before any click is not pinned.",
+    "Random titles are not asserted; which question .q-remove removes is not pinned (only the count).",
+    "Whether the title becomes editable via click alone (no double click) is assumed from the spec wording \"clicked to edit\"."
+  ]
+}

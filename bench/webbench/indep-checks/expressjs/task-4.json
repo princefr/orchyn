@@ -1,0 +1,21 @@
+{
+  "name": "task-4",
+  "base_url": "",
+  "_ambiguities": [
+    "POST /api/products (task requirement 3) cannot be issued by replay ops (there is no HTTP request op). It is not checked here; the harness must seed products through it before the run, so the seed call's response shape is unverified.",
+    "The seed used here: Blue Mug (price 1234, quantity 100) and Red Shirt (price 5678, quantity 50), both created by POST /api/products before this run.",
+    "libs/db.js, libs/setup.sql, DB_HOST and the routes/products/api.js file layout are not observable.",
+    "GET /api/products is checked as a browser navigation; JSON is rendered as plain text, so key order and whitespace are not asserted.",
+    "The id type and value are not asserted."
+  ],
+  "steps": [
+    {"actor": "api", "op": "goto", "path": "/api/products", "_note": "Precondition: products Blue Mug (1234, qty 100) and Red Shirt (5678, qty 50) were seeded through POST /api/products on a fresh DB."},
+    {"actor": "api", "op": "expect_request", "method": "GET", "path_contains": "/api/products", "status": 200},
+    {"actor": "api", "op": "expect_text", "text": "success"},
+    {"actor": "api", "op": "expect_text", "text": "products"},
+    {"actor": "api", "op": "expect_text", "text": "Blue Mug"},
+    {"actor": "api", "op": "expect_text", "text": "Red Shirt"},
+    {"actor": "api", "op": "expect_text", "text": "1234"},
+    {"actor": "api", "op": "expect_text", "text": "5678"}
+  ]
+}

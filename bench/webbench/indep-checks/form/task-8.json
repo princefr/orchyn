@@ -1,0 +1,24 @@
+{
+  "name": "task-8",
+  "base_url": "",
+  "_ambiguities": [
+    "Statement index base (0 or 1) is not pinned, so radios are addressed by the name prefix 'likert1_' rather than by a specific index.",
+    "The value stored per statement (option index, option text, etc.) is not pinned.",
+    "Assumes one radio per cell: 5 options x 3 statements = 15 radios.",
+    "Random title, option and statement texts are not asserted.",
+    "Whether a header row uses th or td is not pinned; row counts are not checked."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/LikertQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 10},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "likert1"},
+    {"op": "expect_count", "selector": "#likert1 legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "#likert1 table", "count": 1},
+    {"op": "expect_count", "selector": "#likert1 input[type=radio]", "count": 15},
+    {"op": "expect_count", "selector": "#likert1 input[type=checkbox]", "count": 0},
+    {"op": "expect_count", "selector": "input[name^='likert1_']", "count": 15},
+    {"op": "click", "selector": "input[name^='likert1_']"},
+    {"op": "expect_count", "selector": "input[name^='likert1_']:checked", "count": 1}
+  ]
+}

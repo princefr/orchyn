@@ -1,0 +1,28 @@
+{
+  "name": "task-13",
+  "base_url": "",
+  "_ambiguities": [
+    "minLength (default 0) is not checked: it is a property with no stated UI or DOM effect, so it is not observable through a replay manifest.",
+    "'Answer length greater than 1' is read as at least 2 characters; whitespace handling is not pinned.",
+    "Blocking is checked as the URL staying on index.html; the submit button is located as 'form button'.",
+    "The required attribute is checked on the single-line input of open1 only.",
+    "The answer requirement for non-required open questions is not pinned."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "click", "selector": "#open1 .q-required"},
+    {"op": "expect_value", "selector": "#open1 .q-required", "value": "true"},
+    {"op": "expect_attribute", "selector": "#open1 input", "name": "required"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "fill", "selector": "#open1 input", "value": "a"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "fill", "selector": "#open1 input", "value": "ab"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "submit"}
+  ]
+}

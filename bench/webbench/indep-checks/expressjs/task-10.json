@@ -1,0 +1,41 @@
+{
+  "name": "task-10",
+  "base_url": "",
+  "_ambiguities": [
+    "Behaviour for a logged-out visitor opening /profile/:username is not pinned (not checked).",
+    "The username h1 is checked with expect_visible on h1.profile-username; its exact text is only substring-checked because the header shows the username too.",
+    "The profile page being STATIC (no client-side rendering) and the 'no third-party UI library' constraint are not observable.",
+    "The unknown-user message is checked only for an admin visiting /profile/<unknown>; the task does not say whether a non-admin gets that text or a redirect.",
+    "Redirect target is checked by URL substring /login."
+  ],
+  "steps": [
+    {"actor": "user", "op": "goto", "path": "/login", "_note": "Precondition: seeded users admin/123456 (coin 0) and user/123456 (coin 1000)."},
+    {"actor": "user", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "user", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "user", "op": "click", "selector": ".login-btn"},
+    {"actor": "user", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "user", "op": "goto", "path": "/profile/user"},
+    {"actor": "user", "op": "expect_url", "contains": "/profile/user"},
+    {"actor": "user", "op": "expect_visible", "selector": "h1.profile-username"},
+    {"actor": "user", "op": "expect_text", "text": "user"},
+    {"actor": "user", "op": "expect_visible", "selector": ".profile-coin"},
+    {"actor": "user", "op": "expect_text", "text": "1000"},
+    {"actor": "user", "op": "goto", "path": "/profile/admin"},
+    {"actor": "user", "op": "expect_url", "contains": "/login"},
+
+    {"actor": "admin", "op": "goto", "path": "/login"},
+    {"actor": "admin", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "admin", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "admin", "op": "click", "selector": ".login-btn"},
+    {"actor": "admin", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "admin", "op": "goto", "path": "/profile/user"},
+    {"actor": "admin", "op": "expect_url", "contains": "/profile/user"},
+    {"actor": "admin", "op": "expect_visible", "selector": "h1.profile-username"},
+    {"actor": "admin", "op": "expect_visible", "selector": ".profile-coin"},
+    {"actor": "admin", "op": "expect_text", "text": "1000"},
+    {"actor": "admin", "op": "goto", "path": "/profile/admin"},
+    {"actor": "admin", "op": "expect_visible", "selector": "h1.profile-username"},
+    {"actor": "admin", "op": "goto", "path": "/profile/ghost-user-404"},
+    {"actor": "admin", "op": "expect_text", "text": "User not found"}
+  ]
+}

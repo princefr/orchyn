@@ -1,0 +1,109 @@
+{
+  "name": "task-10",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/RankingQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class RankingQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-ranking"
+    },
+    {
+      "op": "click",
+      "selector": ".add-ranking"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .option-text",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-config .add-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 4
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .remove-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .option-text"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-body .option-text",
+      "name": "contenteditable",
+      "value": "true"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"RankingQuestion\",\"title\":\"Rank these\",\"name\":\"ranking1\",\"preview\":false,\"options\":[\"Alpha\",\"Beta\",\"Gamma\"]}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .option",
+      "count": 3
+    },
+    {
+      "op": "drag",
+      "selector": "form fieldset.q .option:nth-child(1)",
+      "target": "form fieldset.q .option:nth-child(3)",
+      "position": "after"
+    },
+    {
+      "op": "expect_value",
+      "selector": "[name=\"ranking1\"]",
+      "value": "1,2,0"
+    }
+  ],
+  "_ambiguities": [
+    "Stored value spacing is assumed to be \"1,2,0\" (comma, no spaces); the spec says only \"comma separated\".",
+    "Stored indices are assumed to be the original option indices (Alpha=0, Beta=1, Gamma=2).",
+    "Option rows are assumed to be the only children of their container for the nth-child selectors.",
+    "Visual insertion and the drag feedback are not asserted beyond the stored value.",
+    "The preview check uses set_storage with the task-4 format and name ranking1.",
+    "Random titles are not asserted."
+  ]
+}

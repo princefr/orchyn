@@ -1,0 +1,28 @@
+{
+  "name": "task-5",
+  "base_url": "",
+  "_ambiguities": [
+    "Price formatting: the task shows {{price}} raw, so the check uses the bare number as a substring (a currency prefix or thousands separator would still contain the digits only if not comma-separated).",
+    "Product ids are not known, so cards are matched by the id prefix product_card_.",
+    "Card ordering is not asserted.",
+    "The CSS beautification is not checked."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/products", "_note": "Precondition: products Blue Mug (1234) and Red Shirt (5678) seeded via POST /api/products."},
+    {"op": "expect_visible", "selector": ".product-list"},
+    {"op": "expect_count", "selector": ".product-list .product-card", "count": 2},
+    {"op": "expect_count", "selector": "[id^=product_card_]", "count": 2},
+    {"op": "expect_visible", "selector": ".product-list .product-card .product-image"},
+    {"op": "expect_visible", "selector": ".product-list .product-card .product-name"},
+    {"op": "expect_visible", "selector": ".product-list .product-card .product-price"},
+    {"op": "expect_text", "text": "Blue Mug"},
+    {"op": "expect_text", "text": "1234"},
+    {"op": "expect_text", "text": "Red Shirt"},
+    {"op": "expect_text", "text": "5678"},
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": ".home-go-products-link"},
+    {"op": "click", "selector": ".home-go-products-link"},
+    {"op": "expect_url", "contains": "/products"},
+    {"op": "expect_visible", "selector": ".product-list"}
+  ]
+}

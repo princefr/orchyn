@@ -1,0 +1,92 @@
+{
+  "name": "task-8",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/OpenQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class OpenQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "expect_text",
+      "text": "isMultilines"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-open"
+    },
+    {
+      "op": "click",
+      "selector": ".add-open"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .q-multilines",
+      "count": 1
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-multilines",
+      "name": "type",
+      "value": "checkbox"
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-multilines"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "OpenQuestion"
+    },
+    {
+      "op": "expect_storage",
+      "key": "data",
+      "contains": "isMultilines"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    }
+  ],
+  "_ambiguities": [
+    "Default value of isMultilines and the checkbox checked state after creation are not pinned, so the toggled value is not asserted.",
+    "The line-break rule (isMultilines false means no line break in the value) is not asserted: the answer control type is not specified and no op can type a newline reliably.",
+    "Random titles are not asserted.",
+    "Whether the preview answer control is a textarea or input is not pinned."
+  ]
+}

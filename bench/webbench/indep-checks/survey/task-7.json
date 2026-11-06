@@ -1,0 +1,140 @@
+{
+  "name": "task-7",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/MultiSelectionQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class MultiSelectionQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-multi"
+    },
+    {
+      "op": "click",
+      "selector": ".add-multi"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"checkbox\"]",
+      "count": 3
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"checkbox\"][value=\"0\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"checkbox\"][value=\"1\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"checkbox\"][value=\"2\"]",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-config .add-option",
+      "count": 1
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-config .add-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 4
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .remove-option"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body .option",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "form fieldset.q .q-body .option-text"
+    },
+    {
+      "op": "expect_attribute",
+      "selector": "form fieldset.q .q-body .option-text",
+      "name": "contenteditable",
+      "value": "true"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q .q-body input[type=\"checkbox\"]",
+      "count": 3
+    },
+    {
+      "op": "click",
+      "selector": "input[type=\"checkbox\"][value=\"0\"]"
+    },
+    {
+      "op": "click",
+      "selector": "input[type=\"checkbox\"][value=\"2\"]"
+    },
+    {
+      "op": "expect_value",
+      "selector": "input[type=\"checkbox\"][value=\"0\"]",
+      "value": "true"
+    },
+    {
+      "op": "expect_value",
+      "selector": "input[type=\"checkbox\"][value=\"1\"]",
+      "value": "false"
+    },
+    {
+      "op": "expect_value",
+      "selector": "input[type=\"checkbox\"][value=\"2\"]",
+      "value": "true"
+    }
+  ],
+  "_ambiguities": [
+    "Random titles and option texts are not asserted.",
+    "Design page checkbox rendering is taken from the spec wording; counts assume one checkbox per option.",
+    "Preview option rows (class option) are not counted, since the spec names them only for design.",
+    "Preview checkbox clicks assume real clickable inputs; a visually hidden checkbox would fail the click.",
+    "Which option the remove-option button removes is not pinned (count only)."
+  ]
+}

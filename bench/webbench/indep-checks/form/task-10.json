@@ -1,0 +1,25 @@
+{
+  "name": "task-10",
+  "base_url": "",
+  "_ambiguities": [
+    "Relies on the same contents order assumption as task 9: contents item 1 is the top question (likert1, the last question prepended before task 10) and item 10 is the bottom one (sample).",
+    "Contents items are assumed to be the only children of the .contents panel (nth-child used).",
+    "Drag position 'after' and 'before' map to the bottom and top quarters of the target item (the drag tool's definition).",
+    "Only likert1 (top and bottom positions) is moved; other reorderings are not pinned."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_count", "selector": ".contents-item", "count": 10},
+    {"op": "click", "selector": ".contents-item:nth-child(1)"},
+    {"op": "expect_visible", "selector": "form > fieldset.q#likert1"},
+    {"op": "drag", "selector": ".contents-item:nth-child(1)", "target": ".contents-item:nth-child(10)", "position": "after"},
+    {"op": "expect_count", "selector": ".contents-item", "count": 10},
+    {"op": "expect_count", "selector": "form > fieldset.q", "count": 10},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:last-of-type", "name": "id", "value": "likert1"},
+    {"op": "click", "selector": ".contents-item:nth-child(10)"},
+    {"op": "expect_visible", "selector": "form > fieldset.q#likert1"},
+    {"op": "drag", "selector": ".contents-item:nth-child(10)", "target": ".contents-item:nth-child(1)", "position": "before"},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "likert1"},
+    {"op": "expect_count", "selector": ".contents-item", "count": 10}
+  ]
+}

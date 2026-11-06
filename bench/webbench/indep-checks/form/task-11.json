@@ -1,0 +1,29 @@
+{
+  "name": "task-11",
+  "base_url": "",
+  "_ambiguities": [
+    "Blocking is checked as: the URL stays on index.html after clicking the form's button while the required radio group is unanswered; the submit button is located as 'form button' (assumed to be the only button in the form).",
+    "A successful submit is checked by the URL containing 'submit' (the form action is 'submit'); the form method is not pinned.",
+    "The required attribute is checked on the radio with value 0 only (the group representative); whether every radio carries it is not pinned.",
+    "The config checkbox is assumed to be a native checkbox input.",
+    "The required feature is only checked on single1; other questions are assumed not required by default."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 10},
+    {"op": "expect_count", "selector": "fieldset.q > .q-config:last-child", "count": 10},
+    {"op": "expect_count", "selector": "fieldset.q .q-config", "count": 10},
+    {"op": "expect_count", "selector": ".q-config input.q-required[type=checkbox]", "count": 10},
+    {"op": "expect_count", "selector": "input.q-required:checked", "count": 0},
+    {"op": "click", "selector": "#single1 .q-required"},
+    {"op": "expect_value", "selector": "#single1 .q-required", "value": "true"},
+    {"op": "expect_attribute", "selector": "#single1 input[type=radio][value='0']", "name": "required"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "click", "selector": "#single1 input[type=radio][value='2']"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "submit"}
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "task-9",
+  "base_url": "",
+  "_ambiguities": [
+    "The task does not say which page holds the .login-link; this check places it on /register (the task lists it right after the register form). The .login-link click is checked from /register.",
+    "Error message element: .error-message is asserted visible for the mismatch case only.",
+    "Coin value 1000 for a new user is checked through GET /api/auth as a browser navigation (JSON rendered as text); key order is not asserted.",
+    "Status codes of the failed registrations are not asserted.",
+    "Whether a failed registration clears the fields is not asserted.",
+    "Input field visibility (input.username, input.password, input.confirm-password) is covered by the successful fills and clicks rather than asserted separately."
+  ],
+  "steps": [
+    {"actor": "visitor", "op": "goto", "path": "/register"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".register-form"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".register-button"},
+
+    {"actor": "visitor", "op": "fill", "selector": "input.username", "value": "carol"},
+    {"actor": "visitor", "op": "fill", "selector": "input.password", "value": "pw1"},
+    {"actor": "visitor", "op": "fill", "selector": "input.confirm-password", "value": "pw2"},
+    {"actor": "visitor", "op": "click", "selector": ".register-button"},
+    {"actor": "visitor", "op": "expect_text", "text": "Passwords must match"},
+    {"actor": "visitor", "op": "expect_visible", "selector": ".error-message"},
+    {"actor": "visitor", "op": "expect_url", "contains": "/register"},
+
+    {"actor": "visitor", "op": "fill", "selector": "input.username", "value": "admin"},
+    {"actor": "visitor", "op": "fill", "selector": "input.password", "value": "pw1"},
+    {"actor": "visitor", "op": "fill", "selector": "input.confirm-password", "value": "pw1"},
+    {"actor": "visitor", "op": "click", "selector": ".register-button"},
+    {"actor": "visitor", "op": "expect_text", "text": "Username already exists"},
+    {"actor": "visitor", "op": "expect_url", "contains": "/register"},
+
+    {"actor": "visitor", "op": "fill", "selector": "input.username", "value": "newbie"},
+    {"actor": "visitor", "op": "fill", "selector": "input.password", "value": "pw1"},
+    {"actor": "visitor", "op": "fill", "selector": "input.confirm-password", "value": "pw1"},
+    {"actor": "visitor", "op": "click", "selector": ".register-button"},
+    {"actor": "visitor", "op": "expect_text", "text": "Hello newbie!"},
+    {"actor": "visitor", "op": "goto", "path": "/api/auth"},
+    {"actor": "visitor", "op": "expect_text", "text": "newbie"},
+    {"actor": "visitor", "op": "expect_text", "text": "1000"},
+
+    {"actor": "browser2", "op": "goto", "path": "/register"},
+    {"actor": "browser2", "op": "click", "selector": ".login-link"},
+    {"actor": "browser2", "op": "expect_url", "contains": "/login"},
+    {"actor": "browser2", "op": "expect_visible", "selector": ".register-link"},
+    {"actor": "browser2", "op": "click", "selector": ".register-link"},
+    {"actor": "browser2", "op": "expect_url", "contains": "/register"}
+  ]
+}

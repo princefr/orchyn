@@ -1,0 +1,34 @@
+form task-1 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 1
+form task-2 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 2
+form task-3 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 3
+form task-4 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 5
+form task-5 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 7
+form task-6 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 8
+form task-7 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 9
+form task-8 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 10
+form task-9 FAIL:   ERR #4 [default] expect_count: 15 element(s) match .contents-item, expected 10
+form task-10 FAIL:   ERR #1 [default] expect_count: 15 element(s) match .contents-item, expected 10
+form task-11 FAIL:   ERR #1 [default] expect_count: 15 element(s) match fieldset.q, expected 10
+form task-12 FAIL:   ERR #12 [default] expect_url: url is http://localhost:3720/, expected it to contain "index.html"
+form task-13 FAIL:   ERR #6 [default] expect_url: url is http://localhost:3720/, expected it to contain "index.html"
+form task-14 FAIL:   ERR #6 [default] expect_url: url is http://localhost:3720/, expected it to contain "index.html"
+form task-15 FAIL:   ERR #2 [default] expect_count: 15 element(s) match fieldset.q, expected 10
+== form: 0/15 checker manifests pass on reference
+
+survey task-1 FAIL:   ERR #2 [default] expect_text: text "Add Question" not found in document.body.innerText after 3000 ms
+survey task-2 PASS
+survey task-3 PASS
+survey task-4 FAIL:   ERR #11 [default] expect_storage: localStorage["data"] is {"title":"Sample Survey","questions":[{"className":"Question","name":"question2","required":false,"isShuffleMode":fal..., expected it to con
+survey task-5 FAIL:   ERR #15 [default] expect_text: text "prependQuestion" not found in document.body.innerText after 3000 ms
+survey task-6 FAIL:   ERR #15 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey task-7 FAIL:   ERR #15 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey task-8 PASS
+survey task-9 FAIL:   ERR #9 [default] expect_attribute: form fieldset.q .q-config .q-starCount has type="number", expected "checkbox"
+survey task-10 FAIL:   ERR #10 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey task-11 PASS
+survey task-12 PASS
+survey task-13 FAIL:   ERR #6 [default] click: element form fieldset.q .statement .remove-statement is not visible (zero size, display:none or visibility:hidden)
+survey task-14 PASS
+survey task-15 PASS
+== survey: 7/15 checker manifests pass on reference
+

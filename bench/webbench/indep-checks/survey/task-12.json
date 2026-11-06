@@ -1,0 +1,93 @@
+{
+  "name": "task-12",
+  "base_url": "",
+  "steps": [
+    {
+      "op": "goto",
+      "path": "/common/LikertQuestion.js"
+    },
+    {
+      "op": "expect_text",
+      "text": "class LikertQuestion"
+    },
+    {
+      "op": "expect_text",
+      "text": "extends Question"
+    },
+    {
+      "op": "goto",
+      "path": "/design.html"
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".add-likert"
+    },
+    {
+      "op": "click",
+      "selector": ".add-likert"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q table",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q input[type=\"radio\"]",
+      "count": 15
+    },
+    {
+      "op": "expect_visible",
+      "selector": ".save"
+    },
+    {
+      "op": "click",
+      "selector": ".save"
+    },
+    {
+      "op": "set_storage",
+      "key": "data",
+      "value": "{\"title\":\"Survey\",\"questions\":[{\"className\":\"LikertQuestion\",\"title\":\"Agree?\",\"name\":\"lik1\",\"preview\":false,\"options\":[\"A\",\"B\",\"C\",\"D\",\"E\"],\"statements\":[\"S1\",\"S2\",\"S3\"]}]}"
+    },
+    {
+      "op": "goto",
+      "path": "/preview.html"
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q table",
+      "count": 1
+    },
+    {
+      "op": "expect_count",
+      "selector": "form fieldset.q input[type=\"radio\"]",
+      "count": 15
+    },
+    {
+      "op": "expect_count",
+      "selector": "input[name=\"lik1_0\"]",
+      "count": 5
+    },
+    {
+      "op": "expect_count",
+      "selector": "input[name=\"lik1_1\"]",
+      "count": 5
+    },
+    {
+      "op": "expect_count",
+      "selector": "input[name=\"lik1_2\"]",
+      "count": 5
+    },
+    {
+      "op": "click",
+      "selector": "input[name=\"lik1_1\"]"
+    }
+  ],
+  "_ambiguities": [
+    "Radio value attributes and the stored selection encoding are not specified, so the selected value is not asserted; only the click succeeds.",
+    "Table header/body structure is not pinned (only one table inside fieldset.q).",
+    "The design-page count of 15 radios assumes radio controls are rendered in the design table too.",
+    "Random titles are not asserted.",
+    "The name pattern {param-name}_{statement-index} is checked for statement indices 0 to 2 only."
+  ]
+}

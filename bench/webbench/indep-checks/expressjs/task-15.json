@@ -1,0 +1,46 @@
+{
+  "name": "task-15",
+  "base_url": "",
+  "_ambiguities": [
+    "The cart button's count display format (e.g. a number inside the button) is not pinned; only the popover items are checked.",
+    "Which product is added is whichever card is first on /products; no product name is asserted.",
+    "Cart popover open/close mechanics beyond the first click are not pinned.",
+    "The fixed right-bottom position is not checked.",
+    "Behaviour when the same product is added twice (quantity change) is not checked.",
+    "Persistence is checked by reload in the same browser; not across browsers.",
+    "Cart styling is not checked."
+  ],
+  "steps": [
+    {"actor": "user", "op": "goto", "path": "/login", "_note": "Precondition: seeded user/123456; products Blue Mug and Red Shirt seeded via POST /api/products."},
+    {"actor": "user", "op": "fill", "selector": ".username", "value": "user"},
+    {"actor": "user", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "user", "op": "click", "selector": ".login-btn"},
+    {"actor": "user", "op": "expect_text", "text": "Hello user!"},
+    {"actor": "user", "op": "goto", "path": "/products"},
+    {"actor": "user", "op": "click", "selector": ".product-card"},
+    {"actor": "user", "op": "click", "selector": ".add-to-cart-button"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "goto", "path": "/"},
+    {"actor": "user", "op": "expect_visible", "selector": ".cart-button"},
+    {"actor": "user", "op": "click", "selector": ".cart-button"},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=cart_item_]", "count": 1},
+    {"actor": "user", "op": "expect_visible", "selector": "[id^=cart_item_] .cart-item-quantity"},
+    {"actor": "user", "op": "reload"},
+    {"actor": "user", "op": "click", "selector": ".cart-button"},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=cart_item_]", "count": 1},
+    {"actor": "user", "op": "goto", "path": "/wishlist"},
+    {"actor": "user", "op": "expect_visible", "selector": ".cart-button"},
+    {"actor": "user", "op": "click", "selector": ".cart-button"},
+    {"actor": "user", "op": "click", "selector": ".cart-item-remove"},
+    {"actor": "user", "op": "wait_ms", "ms": 500},
+    {"actor": "user", "op": "expect_count", "selector": "[id^=cart_item_]", "count": 0},
+
+    {"actor": "admin", "op": "goto", "path": "/login"},
+    {"actor": "admin", "op": "fill", "selector": ".username", "value": "admin"},
+    {"actor": "admin", "op": "fill", "selector": ".password", "value": "123456"},
+    {"actor": "admin", "op": "click", "selector": ".login-btn"},
+    {"actor": "admin", "op": "expect_text", "text": "Hello admin!"},
+    {"actor": "admin", "op": "click", "selector": ".cart-button"},
+    {"actor": "admin", "op": "expect_count", "selector": "[id^=cart_item_]", "count": 0}
+  ]
+}

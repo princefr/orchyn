@@ -1,0 +1,24 @@
+{
+  "name": "task-9",
+  "base_url": "",
+  "_ambiguities": [
+    "Contents items are assumed to be listed in the same top-to-bottom order as the questions, so item 10 is the sample question at the bottom and item 1 is the top question.",
+    "Contents items are assumed to be the only children of the .contents panel (nth-child used).",
+    "The fixed position at the right side is a CSS property and is not checked; only visibility and that interactive elements are not covered are checked.",
+    "Item text equal to each question title is not checked (titles are random), except the sample question's count via the 10 items.",
+    "Class API of Contents.js is not observable; only its module request is checked."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/Contents.js", "status": 200},
+    {"op": "expect_count", "selector": ".contents", "count": 1},
+    {"op": "expect_visible", "selector": ".contents"},
+    {"op": "expect_count", "selector": ".contents-item", "count": 10},
+    {"op": "expect_count", "selector": "form > fieldset.q", "count": 10},
+    {"op": "click", "selector": ".contents-item:nth-child(10)"},
+    {"op": "expect_visible", "selector": "form > fieldset.q:last-of-type legend.q-title"},
+    {"op": "click", "selector": ".contents-item:nth-child(1)"},
+    {"op": "expect_visible", "selector": "form > fieldset.q:first-child legend.q-title"},
+    {"op": "expect_all_clickable"}
+  ]
+}

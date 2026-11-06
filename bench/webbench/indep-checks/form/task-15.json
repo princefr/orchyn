@@ -1,0 +1,21 @@
+{
+  "name": "task-15",
+  "base_url": "",
+  "_ambiguities": [
+    "Survey's constructor, prependQuestion and appendQuestion are not observable without a UI that calls appendQuestion; only the module request and the preserved page behaviour are checked.",
+    "The survey title's display is not specified and is not checked.",
+    "Whether index.js no longer contains the old prepend code is not checkable from a replay manifest.",
+    "The checks are regression counts from earlier tasks (questions, contents, config panels, required controls) and must still hold after the refactor."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/Survey.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 10},
+    {"op": "expect_count", "selector": "form > fieldset.q:first-child#likert1", "count": 1},
+    {"op": "expect_count", "selector": ".contents", "count": 1},
+    {"op": "expect_count", "selector": ".contents-item", "count": 10},
+    {"op": "expect_count", "selector": ".q-config", "count": 10},
+    {"op": "expect_count", "selector": ".q-required", "count": 10},
+    {"op": "expect_count", "selector": "input[name^='likert1_']", "count": 15}
+  ]
+}

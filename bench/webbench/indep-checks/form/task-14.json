@@ -1,0 +1,23 @@
+{
+  "name": "task-14",
+  "base_url": "",
+  "_ambiguities": [
+    "The alert text is not specified, so expect_dialog uses an empty 'contains' (any alert message matches).",
+    "Blocking is checked as the URL staying on index.html after the failed submit; the submit button is located as 'form button'.",
+    "Selecting a single checkbox (value 1) is assumed to satisfy the requirement; the checkbox type is inferred.",
+    "Other questions are assumed not required by default."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "click", "selector": "#multi1 .q-required"},
+    {"op": "expect_value", "selector": "#multi1 .q-required", "value": "true"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 300},
+    {"op": "expect_dialog", "contains": ""},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "click", "selector": "#multi1 input[type=checkbox][value='1']"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "submit"}
+  ]
+}

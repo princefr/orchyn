@@ -1,0 +1,38 @@
+{
+  "name": "task-12",
+  "base_url": "",
+  "_ambiguities": [
+    "Likert 'no/empty value' is not defined: the final pass answers all three statements, and the blocked check uses no answer at all; partial-answer blocking is not pinned.",
+    "Statement indices are assumed 0-based (likert1_0, likert1_1, likert1_2) for the final answers.",
+    "The required attribute is checked on the first matching element of [name=nps1], [name=rating1] and input[name^='likert1_'] (the control representative); whether hidden controls carry it is not pinned.",
+    "NPS score and rating star clicks are assumed to set the value that gates submission; control types are not pinned.",
+    "Submit button is located as 'form button'; success is the URL containing 'submit'.",
+    "Blocking is checked only with the three questions partly answered; each question's individual blocking is not isolated."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "click", "selector": "#nps1 .q-required"},
+    {"op": "click", "selector": "#rating1 .q-required"},
+    {"op": "click", "selector": "#likert1 .q-required"},
+    {"op": "expect_value", "selector": "#nps1 .q-required", "value": "true"},
+    {"op": "expect_value", "selector": "#rating1 .q-required", "value": "true"},
+    {"op": "expect_value", "selector": "#likert1 .q-required", "value": "true"},
+    {"op": "expect_attribute", "selector": "[name=nps1]", "name": "required"},
+    {"op": "expect_attribute", "selector": "[name=rating1]", "name": "required"},
+    {"op": "expect_attribute", "selector": "input[name^='likert1_']", "name": "required"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "click", "selector": "#nps1 .score:nth-child(5)"},
+    {"op": "click", "selector": "#rating1 .star:nth-child(3)"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "index.html"},
+    {"op": "click", "selector": "#likert1 input[name='likert1_0']"},
+    {"op": "click", "selector": "#likert1 input[name='likert1_1']"},
+    {"op": "click", "selector": "#likert1 input[name='likert1_2']"},
+    {"op": "click", "selector": "form button"},
+    {"op": "wait_ms", "ms": 500},
+    {"op": "expect_url", "contains": "submit"}
+  ]
+}

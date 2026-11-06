@@ -1,0 +1,29 @@
+{
+  "name": "task-2",
+  "base_url": "",
+  "_ambiguities": [
+    "Random title and option texts are not asserted; only legend presence, counts and attributes are checked.",
+    "SingleSelectionQuestion is checked only by its module request; inheritance from Question is not observable without script evaluation.",
+    "The radio group name is assumed to be the question name 'single1' (a radio group needs a shared name).",
+    "The radio is assumed to be natively clickable (click targets value 1).",
+    "The initial checked state of the radios is not pinned."
+  ],
+  "steps": [
+    {"op": "goto", "path": "/index.html"},
+    {"op": "expect_request", "method": "GET", "path_contains": "common/SingleSelectionQuestion.js", "status": 200},
+    {"op": "expect_count", "selector": "fieldset.q", "count": 2},
+    {"op": "expect_attribute", "selector": "form > fieldset.q:first-child", "name": "id", "value": "single1"},
+    {"op": "expect_count", "selector": "#single1 legend.q-title", "count": 1},
+    {"op": "expect_visible", "selector": "#single1 legend.q-title"},
+    {"op": "expect_count", "selector": "#single1 .q-body", "count": 1},
+    {"op": "expect_count", "selector": "#single1 input[type=radio]", "count": 3},
+    {"op": "expect_count", "selector": "#single1 input[type=checkbox]", "count": 0},
+    {"op": "expect_count", "selector": "input[name=single1]", "count": 3},
+    {"op": "expect_attribute", "selector": "#single1 input[type=radio][value='0']", "name": "value", "value": "0"},
+    {"op": "expect_attribute", "selector": "#single1 input[type=radio][value='1']", "name": "value", "value": "1"},
+    {"op": "expect_attribute", "selector": "#single1 input[type=radio][value='2']", "name": "value", "value": "2"},
+    {"op": "click", "selector": "#single1 input[type=radio][value='1']"},
+    {"op": "expect_value", "selector": "input[name=single1]", "value": "1"},
+    {"op": "expect_count", "selector": "input[name=single1]:checked", "count": 1}
+  ]
+}
