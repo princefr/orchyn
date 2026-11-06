@@ -1,0 +1,16 @@
+expressjs task-1 PASS
+expressjs task-2 PASS
+expressjs task-3 PASS
+expressjs task-4 PASS
+expressjs task-5 PASS
+expressjs task-6 FAIL:   ERR #4 [default] expect_visible: element .product-card not found on the page
+expressjs task-7 PASS
+expressjs task-8 PASS
+expressjs task-9 PASS
+expressjs task-10 FAIL:   ERR #26 [admin] expect_text: text "User not found" not found in document.body.innerText after 3000 ms
+expressjs task-11 FAIL:   ERR #13 [user] expect_visible: element .header-logout-btn is not visible (zero size, display:none or visibility:hidden)
+expressjs task-12 PASS
+expressjs task-13 PASS
+expressjs task-14 FAIL: 
+expressjs task-15 PASS
+== expressjs: 11/15 checker manifests pass on reference
