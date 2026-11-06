@@ -57,7 +57,9 @@ pub struct InvariantCandidate {
     pub check: Option<Vec<ReplayStep>>,
 }
 
+pub mod ambiguity;
 pub mod contracts;
 pub mod mined;
+pub mod pages;
 pub mod sources;
 pub mod universal;
