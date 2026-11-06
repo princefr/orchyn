@@ -1,0 +1,678 @@
+[
+  {
+    "name": "login-session",
+    "bug_class": "logic",
+    "caught": false,
+    "fired_by": [],
+    "invalid": [
+      "universal:interactions-clean:/",
+      "universal:actors-agree:/"
+    ],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 0,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": false,
+        "fired": false,
+        "bug_failure": "#2 click_each: 2 problem(s) while clicking each element on http://127.0.0.1:43901/: BUTTON#login-btn logged a console error: Failed to load resource: the server responded with a status of 401 (Unauthorized) | BUTTON#login-btn caused POST http://127.0.0.1:43901/api/login 401",
+        "clean_failure": "#2 click_each: 2 problem(s) while clicking each element on http://127.0.0.1:44101/: BUTTON#login-btn logged a console error: Failed to load resource: the server responded with a status of 401 (Unauthorized) | BUTTON#login-btn caused POST http://127.0.0.1:44101/api/login 401"
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 0,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": false,
+        "fired": false,
+        "bug_failure": "#1 click_each: 2 problem(s) while clicking each element on http://127.0.0.1:41955/: BUTTON#login-btn logged a console error: Failed to load resource: the server responded with a status of 401 (Unauthorized) | BUTTON#login-btn caused POST http://127.0.0.1:41955/api/login 401",
+        "clean_failure": "#1 click_each: 2 problem(s) while clicking each element on http://127.0.0.1:35971/: BUTTON#login-btn logged a console error: Failed to load resource: the server responded with a status of 401 (Unauthorized) | BUTTON#login-btn caused POST http://127.0.0.1:35971/api/login 401"
+      },
+      {
+        "id": "universal:console-clean:/dashboard",
+        "statement": "Loading /dashboard logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/dashboard",
+        "statement": "Every network request made while loading /dashboard succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/dashboard",
+        "statement": "Every visible, enabled control on /dashboard can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/dashboard",
+        "statement": "Reloading /dashboard leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/dashboard",
+        "statement": "Clicking each button on /dashboard produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/dashboard",
+        "statement": "What one user changes on /dashboard stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "counter",
+    "bug_class": "logic/state",
+    "caught": false,
+    "fired_by": [],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "create-500",
+    "bug_class": "network",
+    "caught": false,
+    "fired_by": [],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "route-mismatch",
+    "bug_class": "network/static",
+    "caught": true,
+    "fired_by": [
+      "universal:console-clean:/",
+      "universal:no-failed-requests:/"
+    ],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": true,
+        "fired": true,
+        "bug_failure": "#1 expect_console_clean: actor 'default' has 1 console error(s): Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": true,
+        "fired": true,
+        "bug_failure": "#1 expect_no_failed_requests: actor 'default' has 1 failed request(s): GET http://127.0.0.1:36343/api/items 404",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "console-crash",
+    "bug_class": "console",
+    "caught": true,
+    "fired_by": [
+      "universal:console-clean:/"
+    ],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": true,
+        "fired": true,
+        "bug_failure": "#1 expect_console_clean: actor 'default' has 1 console error(s): Uncaught: TypeError: Cannot read properties of null (reading 'map')\n    at http://127.0.0.1:37055/app.js:7:23 (http://127.0.0.1:37055/app.js:6:22)\n    at <anonymous> (http://127.0.0.1:37055/app.js):6:22",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "covered-button",
+    "bug_class": "visual/pixel",
+    "caught": true,
+    "fired_by": [
+      "universal:all-clickable:/"
+    ],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 2,
+        "runs": 2,
+        "valid": true,
+        "fired": true,
+        "bug_failure": "#1 expect_all_clickable: 1 of 1 interactive element(s) cannot be clicked: BUTTON#subscribe covered by DIV.scrim",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "realtime-sync",
+    "bug_class": "multi_actor",
+    "caught": false,
+    "fired_by": [],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  },
+  {
+    "name": "hidden-error",
+    "bug_class": "visual",
+    "caught": false,
+    "fired_by": [],
+    "invalid": [],
+    "candidates": [
+      {
+        "id": "universal:console-clean:/",
+        "statement": "Loading / logs no console errors or uncaught exceptions.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:no-failed-requests:/",
+        "statement": "Every network request made while loading / succeeds.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:all-clickable:/",
+        "statement": "Every visible, enabled control on / can be clicked by a real pointer, not covered by another element.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:reload-stable:/",
+        "statement": "Reloading / leaves its visible text unchanged.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:interactions-clean:/",
+        "statement": "Clicking each button on / produces no console errors and no failed requests.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      },
+      {
+        "id": "universal:actors-agree:/",
+        "statement": "What one user changes on / stays visible to another user across reloads.",
+        "clean_passed": 2,
+        "bug_failed": 0,
+        "runs": 2,
+        "valid": true,
+        "fired": false,
+        "bug_failure": "",
+        "clean_failure": ""
+      }
+    ]
+  }
+]

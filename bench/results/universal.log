@@ -1,0 +1,55 @@
+[login-session] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[login-session] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[login-session] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[login-session] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[login-session] universal:interactions-clean:/                clean 0/2 bug-fail 2/2 invalid
+[login-session] universal:actors-agree:/                      clean 0/2 bug-fail 2/2 invalid
+[login-session] universal:console-clean:/dashboard            clean 2/2 bug-fail 0/2 
+[login-session] universal:no-failed-requests:/dashboard       clean 2/2 bug-fail 0/2 
+[login-session] universal:all-clickable:/dashboard            clean 2/2 bug-fail 0/2 
+[login-session] universal:reload-stable:/dashboard            clean 2/2 bug-fail 0/2 
+[login-session] universal:interactions-clean:/dashboard       clean 2/2 bug-fail 0/2 
+[login-session] universal:actors-agree:/dashboard             clean 2/2 bug-fail 0/2 
+[counter] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[counter] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[counter] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[counter] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[counter] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[counter] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[create-500] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[create-500] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[create-500] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[create-500] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[create-500] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[create-500] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[route-mismatch] universal:console-clean:/                     clean 2/2 bug-fail 2/2 FIRED
+[route-mismatch] universal:no-failed-requests:/                clean 2/2 bug-fail 2/2 FIRED
+[route-mismatch] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[route-mismatch] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[route-mismatch] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[route-mismatch] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[console-crash] universal:console-clean:/                     clean 2/2 bug-fail 2/2 FIRED
+[console-crash] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[console-crash] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[console-crash] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[console-crash] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[console-crash] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[covered-button] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[covered-button] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[covered-button] universal:all-clickable:/                     clean 2/2 bug-fail 2/2 FIRED
+[covered-button] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[covered-button] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[covered-button] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[realtime-sync] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+[hidden-error] universal:console-clean:/                     clean 2/2 bug-fail 0/2 
+[hidden-error] universal:no-failed-requests:/                clean 2/2 bug-fail 0/2 
+[hidden-error] universal:all-clickable:/                     clean 2/2 bug-fail 0/2 
+[hidden-error] universal:reload-stable:/                     clean 2/2 bug-fail 0/2 
+[hidden-error] universal:interactions-clean:/                clean 2/2 bug-fail 0/2 
+[hidden-error] universal:actors-agree:/                      clean 2/2 bug-fail 0/2 
+wrote bench/results/universal.json

@@ -15,7 +15,7 @@ use anyhow::{Context, Result};
 use orchyn_core::Exchange;
 use orchyn_harness::intent;
 use orchyn_harness::invariants::{self, InvariantCandidate, mined};
-use orchyn_harness::replay::{ReplayManifest, ReplayReport, ReplayRunner};
+use orchyn_harness::replay::{ReplayManifest, ReplayReport, ReplayRunner, ReplayStep, StepOp};
 use serde::Serialize;
 use std::path::Path;
 
@@ -169,6 +169,36 @@ pub(crate) async fn universal(args: &Args, suite_dir: &Path, fixtures: &[Fixture
 
 // ── mined ────────────────────────────────────────────────────────────────────
 
+/// Mining needs the app's *traffic*, not the driver's verdicts: keep the
+/// actions, drop assertions, and turn waits-for-text into plain waits so a
+/// buggy build is driven through the same flow instead of halting early.
+fn actions_only(m: &ReplayManifest) -> ReplayManifest {
+    let steps = m
+        .steps
+        .iter()
+        .filter_map(|s| {
+            let op = match &s.op {
+                StepOp::WaitForText { timeout_ms, .. } => StepOp::WaitMs {
+                    ms: (*timeout_ms).min(1500),
+                },
+                StepOp::ExpectText { .. }
+                | StepOp::ExpectNoText { .. }
+                | StepOp::ExpectUrl { .. }
+                | StepOp::ExpectVisible { .. }
+                | StepOp::ExpectAllClickable
+                | StepOp::ExpectConsoleClean
+                | StepOp::ExpectRequest { .. }
+                | StepOp::ExpectNoFailedRequests
+                | StepOp::ExpectTextUnchanged { .. }
+                | StepOp::SnapshotText { .. } => return None,
+                other => other.clone(),
+            };
+            Some(ReplayStep { actor: s.actor.clone(), op })
+        })
+        .collect();
+    ReplayManifest { name: format!("{} (actions only)", m.name), base_url: m.base_url.clone(), steps }
+}
+
 #[derive(Serialize)]
 struct MinedFixture {
     name: String,
@@ -197,6 +227,7 @@ pub(crate) async fn mined(args: &Args, suite_dir: &Path, fixtures: &[Fixture]) -
             eprintln!("[{}] no driver manifest at {}", fx.name, path.display());
             continue;
         };
+        let manifest = actions_only(&manifest);
         // train + 1 held-out clean trace
         let mut clean: Vec<Vec<Exchange>> = Vec::new();
         for _ in 0..=train {
