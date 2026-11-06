@@ -9,6 +9,7 @@ async fn test_harness_phase_transitions() {
     let config = HarnessConfig {
         target_url: "http://localhost:8080".to_string(),
         max_fix_iterations: 3,
+        phases: None,
     };
     let model = Arc::new(MockClient::new(vec![]));
     let llm = MockLlm { client: model };
@@ -17,7 +18,7 @@ async fn test_harness_phase_transitions() {
     let storage = Arc::new(Storage::new(mock_db));
     let artifact_storage = Arc::new(MockArtifactStorage::new());
 
-    let mut harness = OrchynHarness::new(storage, artifact_storage, config, llm);
+    let harness = OrchynHarness::new(storage, artifact_storage, config, llm);
 
     // Test Ingest phase
     let evidence = harness.run_phase(Phase::Ingest).await.unwrap();
@@ -35,6 +36,7 @@ async fn test_harness_full_flow() {
     let config = HarnessConfig {
         target_url: "http://localhost:8080".to_string(),
         max_fix_iterations: 3,
+        phases: None,
     };
     let model = Arc::new(MockClient::new(vec![]));
     let llm = MockLlm { client: model };
@@ -43,7 +45,7 @@ async fn test_harness_full_flow() {
     let storage = Arc::new(Storage::new(mock_db));
     let artifact_storage = Arc::new(MockArtifactStorage::new());
 
-    let mut harness = OrchynHarness::new(storage, artifact_storage, config, llm);
+    let harness = OrchynHarness::new(storage, artifact_storage, config, llm);
 
     let phases = vec![
         Phase::Ingest,
@@ -68,6 +70,7 @@ async fn test_harness_run_all() {
     let config = HarnessConfig {
         target_url: "http://localhost:8080".to_string(),
         max_fix_iterations: 3,
+        phases: None,
     };
     let model = Arc::new(MockClient::new(vec![]));
     let llm = MockLlm { client: model };
@@ -76,7 +79,7 @@ async fn test_harness_run_all() {
     let storage = Arc::new(Storage::new(mock_db));
     let artifact_storage = Arc::new(MockArtifactStorage::new());
 
-    let mut harness = OrchynHarness::new(storage, artifact_storage, config, llm);
+    let harness = OrchynHarness::new(storage, artifact_storage, config, llm);
 
     let results = harness.run_all().await.unwrap();
     assert!(results.len() >= 5);
