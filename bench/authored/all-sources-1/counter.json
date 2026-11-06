@@ -1,0 +1,29 @@
+{
+  "name": "counter",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "wait_for_text", "text": "Count: 0"},
+    {"op": "expect_visible", "selector": "#inc"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_all_clickable"},
+    {"op": "wait_ms", "ms": 2500},
+    {"op": "expect_text", "text": "Count: 0"},
+    {"op": "expect_request", "method": "GET", "path_contains": "/api/counter"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 1"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/counter/inc"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 3"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_console_clean"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "wait_for_text", "text": "Count: 3", "timeout_ms": 5000},
+    {"actor": "bob", "op": "click", "selector": "#inc"},
+    {"actor": "bob", "op": "expect_text", "text": "Count: 4"},
+    {"op": "reload"},
+    {"op": "wait_for_text", "text": "Count: 4", "timeout_ms": 5000}
+  ]
+}
