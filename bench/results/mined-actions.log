@@ -4,3 +4,6 @@
 [route-mismatch] mined 4 invariants; clean violations 0; bug violations [1, 1, 1]
 [console-crash] mined 6 invariants; clean violations 0; bug violations [5, 5, 5]
 [covered-button] mined 0 invariants; clean violations 0; bug violations [0, 0, 0]
+[realtime-sync] mined 7 invariants; clean violations 0; bug violations [0, 0, 0]
+[hidden-error] mined 4 invariants; clean violations 0; bug violations [0, 0, 0]
+wrote bench/results/mined-actions.json

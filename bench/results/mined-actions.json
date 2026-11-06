@@ -1,0 +1,1224 @@
+[
+  {
+    "name": "login-session",
+    "bug_class": "logic",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/login",
+        "status": 401
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/login",
+        "shape": {
+          "": "object",
+          "/error": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/login",
+        "pointer": "/error"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false
+  },
+  {
+    "name": "counter",
+    "bug_class": "logic/state",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/counter",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/counter/inc",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/counter",
+        "shape": {
+          "": "object",
+          "/value": "number"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/counter/inc",
+        "shape": {
+          "": "object",
+          "/value": "number"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/counter",
+        "pointer": "/value"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/counter/inc",
+        "pointer": "/value"
+      },
+      {
+        "kind": "numeric_step",
+        "endpoint": "POST /api/counter/inc",
+        "pointer": "/value",
+        "delta": 1.0
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false
+  },
+  {
+    "name": "create-500",
+    "bug_class": "network",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/todos",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/todos",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/todos",
+        "shape": {
+          "": "array"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/todos",
+        "shape": {
+          "": "object",
+          "/done": "bool",
+          "/id": "number",
+          "/title": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/done"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/id"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/title"
+      },
+      {
+        "kind": "numeric_step",
+        "endpoint": "POST /api/todos",
+        "pointer": "/id",
+        "delta": 1.0
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false
+  },
+  {
+    "name": "route-mismatch",
+    "bug_class": "network/static",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/items",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/items",
+        "shape": {
+          "": "array",
+          "/0": "string"
+        }
+      },
+      {
+        "kind": "non_empty_array",
+        "endpoint": "GET /api/items",
+        "pointer": ""
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/items",
+        "pointer": "/0"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false
+  },
+  {
+    "name": "console-crash",
+    "bug_class": "console",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/profile",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/profile",
+        "shape": {
+          "": "object",
+          "/name": "string",
+          "/tags": "array",
+          "/tags/0": "string"
+        }
+      },
+      {
+        "kind": "non_empty_array",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/name"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags/0"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false
+  },
+  {
+    "name": "covered-button",
+    "bug_class": "visual/pixel",
+    "invariants": [],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false
+  },
+  {
+    "name": "realtime-sync",
+    "bug_class": "multi_actor",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/notes",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/notes",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/notes",
+        "shape": {
+          "": "array"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/notes",
+        "shape": {
+          "": "object",
+          "/at": "number",
+          "/id": "string",
+          "/text": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/at"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/id"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/text"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false
+  },
+  {
+    "name": "hidden-error",
+    "bug_class": "visual",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/signup",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/signup",
+        "shape": {
+          "": "object",
+          "/email": "string",
+          "/ok": "bool"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/signup",
+        "pointer": "/email"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/signup",
+        "pointer": "/ok"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false
+  }
+]
