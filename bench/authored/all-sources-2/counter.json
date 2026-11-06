@@ -1,0 +1,31 @@
+{
+  "name": "counter",
+  "base_url": "",
+  "steps": [
+    {"actor":"idle","op":"goto","path":"/"},
+    {"actor":"idle","op":"wait_for_text","text":"Count: 0"},
+    {"actor":"idle","op":"expect_console_clean"},
+    {"actor":"idle","op":"expect_no_failed_requests"},
+    {"actor":"idle","op":"expect_all_clickable"},
+    {"actor":"idle","op":"wait_ms","ms":2500},
+    {"actor":"idle","op":"expect_text","text":"Count: 0"},
+    {"actor":"idle","op":"snapshot_text","key":"before"},
+    {"actor":"idle","op":"reload"},
+    {"actor":"idle","op":"wait_for_text","text":"Count: 0"},
+    {"actor":"idle","op":"expect_text_unchanged","key":"before"},
+    {"actor":"idle","op":"click","selector":"#inc"},
+    {"actor":"idle","op":"expect_request","method":"POST","path_contains":"/api/counter/inc","status":200},
+    {"actor":"idle","op":"expect_text","text":"Count: 1"},
+    {"actor":"viewer","op":"goto","path":"/"},
+    {"actor":"viewer","op":"wait_for_text","text":"Count: 1"},
+    {"actor":"viewer","op":"click","selector":"#inc"},
+    {"actor":"viewer","op":"expect_text","text":"Count: 2"},
+    {"actor":"idle","op":"reload"},
+    {"actor":"idle","op":"wait_for_text","text":"Count: 2"},
+    {"actor":"viewer","op":"click","selector":"#inc"},
+    {"actor":"viewer","op":"click","selector":"#inc"},
+    {"actor":"late","op":"goto","path":"/"},
+    {"actor":"late","op":"wait_for_text","text":"Count: 4"},
+    {"actor":"late","op":"expect_console_clean"}
+  ]
+}

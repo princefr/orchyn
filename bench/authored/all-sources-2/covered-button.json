@@ -1,0 +1,26 @@
+{
+  "name": "covered-button",
+  "base_url": "",
+  "steps": [
+    {"actor": "default", "op": "goto", "path": "/"},
+    {"actor": "default", "op": "expect_text", "text": "Weekly newsletter"},
+    {"actor": "default", "op": "expect_visible", "selector": "#subscribe"},
+    {"actor": "default", "op": "expect_all_clickable"},
+    {"actor": "default", "op": "expect_console_clean"},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "expect_no_text", "text": "Subscribed!"},
+    {"actor": "default", "op": "snapshot_text", "key": "before"},
+    {"actor": "default", "op": "reload"},
+    {"actor": "default", "op": "expect_text_unchanged", "key": "before"},
+    {"actor": "default", "op": "click", "selector": "#subscribe"},
+    {"actor": "default", "op": "expect_text", "text": "Subscribed!"},
+    {"actor": "default", "op": "wait_ms", "ms": 1000},
+    {"actor": "default", "op": "expect_text", "text": "Subscribed!"},
+    {"actor": "default", "op": "expect_console_clean"},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "viewer", "op": "goto", "path": "/"},
+    {"actor": "viewer", "op": "expect_visible", "selector": "#subscribe"},
+    {"actor": "viewer", "op": "expect_no_text", "text": "Subscribed!"},
+    {"actor": "viewer", "op": "click_each"}
+  ]
+}

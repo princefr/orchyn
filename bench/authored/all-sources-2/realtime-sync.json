@@ -1,0 +1,31 @@
+{
+  "name": "realtime-sync",
+  "base_url": "",
+  "steps": [
+    {"actor": "viewer", "op": "goto", "path": "/"},
+    {"actor": "viewer", "op": "expect_visible", "selector": "#post-btn"},
+    {"actor": "viewer", "op": "expect_all_clickable"},
+    {"actor": "viewer", "op": "expect_console_clean"},
+    {"actor": "viewer", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "goto", "path": "/"},
+    {"actor": "default", "op": "expect_visible", "selector": "#post-btn"},
+    {"actor": "default", "op": "fill", "selector": "#note", "value": "   "},
+    {"actor": "default", "op": "click", "selector": "#post-btn"},
+    {"actor": "default", "op": "wait_ms", "ms": 800},
+    {"actor": "default", "op": "expect_no_failed_requests"},
+    {"actor": "default", "op": "fill", "selector": "#note", "value": "Ship the release"},
+    {"actor": "default", "op": "click", "selector": "#post-btn"},
+    {"actor": "default", "op": "expect_request", "method": "POST", "path_contains": "/api/notes", "status": 201},
+    {"actor": "default", "op": "expect_text", "text": "Ship the release"},
+    {"actor": "viewer", "op": "wait_for_text", "text": "Ship the release", "timeout_ms": 4000},
+    {"actor": "default", "op": "fill", "selector": "#note", "value": "Second note"},
+    {"actor": "default", "op": "click", "selector": "#post-btn"},
+    {"actor": "default", "op": "expect_text", "text": "Ship the release\nSecond note"},
+    {"actor": "viewer", "op": "wait_for_text", "text": "Ship the release\nSecond note", "timeout_ms": 4000},
+    {"actor": "viewer", "op": "snapshot_text", "key": "before"},
+    {"actor": "viewer", "op": "reload"},
+    {"actor": "viewer", "op": "wait_for_text", "text": "Second note"},
+    {"actor": "viewer", "op": "expect_text_unchanged", "key": "before"},
+    {"actor": "viewer", "op": "click_each"}
+  ]
+}
