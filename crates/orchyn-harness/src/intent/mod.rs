@@ -65,6 +65,11 @@ pub struct RealityGap {
 
 /// Extracts client calls and server routes from every source file under `root`.
 ///
+/// Routes in a file mounted with `app.use('/prefix', router)` (or `router.use`
+/// inside another router) carry the mount prefix, one route per prefix. The
+/// module may be bound with `require` or `import`, and is resolved relative to
+/// the mounting file. Routes in unmounted files keep their literal path.
+///
 /// Skips `node_modules`, `.git`, `dist`, `build`, `.next`, `target` and `coverage`
 /// directories, and files larger than 1 MB.
 pub fn extract_intent(root: &Path) -> CodeIntent {

@@ -1,8 +1,8 @@
 //! Source scanning: walks a project and extracts client calls and server routes.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 
 use regex::{Captures, Regex};
@@ -26,6 +26,10 @@ const SOURCE_EXTENSIONS: &[&str] = &[
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
 /// How far past a `fetch(` URL to look for its `method` option.
 const FETCH_OPTIONS_WINDOW: usize = 300;
+/// Longest chain of `use(prefix, router)` mounts followed when joining prefixes.
+const MAX_MOUNT_DEPTH: usize = 5;
+/// Extensions tried, in order, after a relative module specifier.
+const MODULE_EXTENSIONS: &[&str] = &[".js", ".mjs", ".cjs", ".ts"];
 
 /// A JS/TS string literal: '...', "..." or `...`. Content is captured in groups
 /// 1, 2 and 3, one per quote style. See [`literal`].
@@ -51,6 +55,25 @@ static ROUTE: LazyLock<Regex> = LazyLock::new(|| {
         r"\b(app|router|server|api)\.(get|post|put|patch|delete|all)\(\s*{LITERAL}"
     ))
 });
+/// `app.use('/prefix', ident)` or `app.use('/prefix', require('./x'))`.
+/// Groups: 1-3 prefix literal, 4 identifier, 5-7 required module literal.
+static MOUNT: LazyLock<Regex> = LazyLock::new(|| {
+    compile(&format!(
+        r"\b(?:app|router|server|api)\.use\(\s*{LITERAL}\s*,\s*(?:([A-Za-z_$][\w$]*)\s*[,)]|require\(\s*{LITERAL}\s*\))"
+    ))
+});
+/// `const|let|var ident = require('./x')`. Groups: 1 identifier, 2-4 module literal.
+static REQUIRE_BINDING: LazyLock<Regex> = LazyLock::new(|| {
+    compile(&format!(
+        r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\(\s*{LITERAL}\s*\)"
+    ))
+});
+/// `import ident from './x'`. Groups: 1 identifier, 2-4 module literal.
+static IMPORT_BINDING: LazyLock<Regex> = LazyLock::new(|| {
+    compile(&format!(
+        r"\bimport\s+([A-Za-z_$][\w$]*)\s+from\s+{LITERAL}"
+    ))
+});
 static FORM_TAG: LazyLock<Regex> = LazyLock::new(|| compile(r"(?i)<form\b([^>]*)>"));
 static FORM_ACTION: LazyLock<Regex> =
     LazyLock::new(|| compile(r#"(?i)(?:^|\s)action\s*=\s*(?:"([^"]*)"|'([^']*)')"#));
@@ -61,20 +84,205 @@ static METHOD_OPTION: LazyLock<Regex> =
 static TEMPLATE_EXPR: LazyLock<Regex> = LazyLock::new(|| compile(r"\$\{[^}]*\}"));
 
 /// Walks `root` and collects every client call and server route.
+///
+/// Two passes: first every source file is read and scanned for calls, routes
+/// and mounts; then routes in mounted files are re-emitted under each mount
+/// prefix that reaches them.
 pub(super) fn extract(root: &Path) -> CodeIntent {
+    let sources: Vec<(PathBuf, String)> = source_files(root)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let text = fs::read_to_string(path).ok()?;
+            Some((path.strip_prefix(root).unwrap_or(path).to_path_buf(), text))
+        })
+        .collect();
+    let known: HashSet<PathBuf> = sources.iter().map(|(file, _)| file.clone()).collect();
+
+    let scans: Vec<Scanned> = sources
+        .iter()
+        .map(|(file, text)| {
+            let mut scanned = Scanned::default();
+            scan_source(text, file, &known, &mut scanned);
+            scanned
+        })
+        .collect();
+
+    let mut mounted_by: MountIndex = HashMap::new();
+    for scan in &scans {
+        for mount in &scan.mounts {
+            mounted_by
+                .entry(mount.target.clone())
+                .or_default()
+                .push((scan.file.clone(), mount.prefix.clone()));
+        }
+    }
+
     let mut client_calls = Vec::new();
     let mut server_routes = Vec::new();
-    for entry in source_files(root) {
-        let path = entry.path();
-        let Ok(text) = fs::read_to_string(path) else {
-            continue;
-        };
-        let file = path.strip_prefix(root).unwrap_or(path).to_path_buf();
-        scan_source(&text, &file, &mut client_calls, &mut server_routes);
+    for scan in scans {
+        let mut prefixes = mount_prefixes(&scan.file, &mounted_by, &mut Vec::new());
+        if prefixes.is_empty() {
+            // Mount cycles or chains past MAX_MOUNT_DEPTH: keep the literal paths.
+            prefixes.push(String::new());
+        }
+        client_calls.extend(scan.clients);
+        for route in &scan.routes {
+            for prefix in &prefixes {
+                server_routes.push(Endpoint {
+                    method: route.method.clone(),
+                    path: join_paths(prefix, &route.path),
+                    file: route.file.clone(),
+                    line: route.line,
+                });
+            }
+        }
     }
     CodeIntent {
         client_calls: finish(client_calls),
         server_routes: finish(server_routes),
+    }
+}
+
+/// Everything one source file contributes before mount prefixes are applied.
+#[derive(Default)]
+struct Scanned {
+    file: PathBuf,
+    clients: Vec<Endpoint>,
+    /// Routes with their literal path, as written in this file.
+    routes: Vec<Endpoint>,
+    mounts: Vec<Mount>,
+}
+
+/// A `use(prefix, module)` in some file, with the module resolved to a scanned file.
+struct Mount {
+    prefix: String,
+    target: PathBuf,
+}
+
+/// Maps a mounted file to the `(mounting file, prefix)` pairs that mount it.
+type MountIndex = HashMap<PathBuf, Vec<(PathBuf, String)>>;
+
+/// Every full prefix under which `file` is reachable, following mounts upward.
+///
+/// Returns `[""]` for a file nobody mounts. A file mounted only through a cycle
+/// or a chain deeper than [`MAX_MOUNT_DEPTH`] yields an empty list.
+fn mount_prefixes(file: &Path, mounted_by: &MountIndex, chain: &mut Vec<PathBuf>) -> Vec<String> {
+    let Some(parents) = mounted_by.get(file) else {
+        return vec![String::new()];
+    };
+    if chain.len() >= MAX_MOUNT_DEPTH {
+        return Vec::new();
+    }
+    chain.push(file.to_path_buf());
+    let mut prefixes = BTreeSet::new();
+    for (parent, mount) in parents {
+        if chain.contains(parent) {
+            continue;
+        }
+        for outer in mount_prefixes(parent, mounted_by, chain) {
+            prefixes.insert(join_paths(&outer, mount));
+        }
+    }
+    chain.pop();
+    prefixes.into_iter().collect()
+}
+
+/// Joins a mount prefix and a route path with exactly one slash between segments.
+fn join_paths(prefix: &str, path: &str) -> String {
+    let segments: Vec<&str> = prefix
+        .split('/')
+        .chain(path.split('/'))
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    format!("/{}", segments.join("/"))
+}
+
+/// Resolves a relative module specifier against the importing file's directory.
+///
+/// Tries the path as written, then with `.js`, `.mjs`, `.cjs`, `.ts`, then
+/// `index.js` / `index.ts` inside it. A `.js` specifier also falls back to the
+/// `.ts` source, as TypeScript ESM projects write it.
+fn resolve_module(from: &Path, spec: &str, known: &HashSet<PathBuf>) -> Option<PathBuf> {
+    if !(spec.starts_with("./") || spec.starts_with("../")) {
+        return None;
+    }
+    let dir = from.parent().unwrap_or_else(|| Path::new(""));
+    let base = normalize_lexical(&dir.join(spec));
+
+    let mut candidates = vec![base.clone()];
+    candidates.extend(
+        MODULE_EXTENSIONS
+            .iter()
+            .map(|ext| append_extension(&base, ext)),
+    );
+    if matches!(base.extension().and_then(|e| e.to_str()), Some("js" | "mjs" | "cjs")) {
+        candidates.push(base.with_extension("ts"));
+    }
+    candidates.push(base.join("index.js"));
+    candidates.push(base.join("index.ts"));
+    candidates.into_iter().find(|candidate| known.contains(candidate))
+}
+
+fn append_extension(path: &Path, ext: &str) -> PathBuf {
+    let mut raw = path.as_os_str().to_os_string();
+    raw.push(ext);
+    PathBuf::from(raw)
+}
+
+/// Removes `.` and resolves `..` lexically, without touching the file system.
+fn normalize_lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if matches!(out.components().next_back(), Some(Component::Normal(_))) {
+                    out.pop();
+                } else {
+                    out.push("..");
+                }
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// Maps each `const|let|var|import` binding of a module to its resolved target.
+fn module_bindings(text: &str, file: &Path, known: &HashSet<PathBuf>) -> HashMap<String, PathBuf> {
+    let mut bindings = HashMap::new();
+    for caps in REQUIRE_BINDING.captures_iter(text) {
+        let (Some(name), Some(spec)) = (caps.get(1), literal(&caps, 2)) else {
+            continue;
+        };
+        if let Some(target) = resolve_module(file, spec, known) {
+            bindings.entry(name.as_str().to_string()).or_insert(target);
+        }
+    }
+    for caps in IMPORT_BINDING.captures_iter(text) {
+        let (Some(name), Some(spec)) = (caps.get(1), literal(&caps, 2)) else {
+            continue;
+        };
+        if let Some(target) = resolve_module(file, spec, known) {
+            bindings.entry(name.as_str().to_string()).or_insert(target);
+        }
+    }
+    bindings
+}
+
+fn scan_mounts(text: &str, file: &Path, known: &HashSet<PathBuf>, out: &mut Vec<Mount>) {
+    let bindings = module_bindings(text, file, known);
+    for caps in MOUNT.captures_iter(text) {
+        let Some(prefix) = literal(&caps, 1).and_then(endpoint_path) else {
+            continue;
+        };
+        let target = match caps.get(4) {
+            Some(ident) => bindings.get(ident.as_str()).cloned(),
+            None => literal(&caps, 5).and_then(|spec| resolve_module(file, spec, known)),
+        };
+        if let Some(target) = target {
+            out.push(Mount { prefix, target });
+        }
     }
 }
 
@@ -107,7 +315,12 @@ fn has_source_extension(path: &Path) -> bool {
         .is_some_and(|ext| SOURCE_EXTENSIONS.contains(&ext.as_str()))
 }
 
-fn scan_source(text: &str, file: &Path, clients: &mut Vec<Endpoint>, routes: &mut Vec<Endpoint>) {
+fn scan_source(text: &str, file: &Path, known: &HashSet<PathBuf>, out: &mut Scanned) {
+    out.file = file.to_path_buf();
+    scan_mounts(text, file, known, &mut out.mounts);
+    let Scanned {
+        clients, routes, ..
+    } = out;
     let lines = LineIndex::new(text);
 
     for caps in FETCH_CALL.captures_iter(text) {
