@@ -204,9 +204,10 @@ impl AgentHarness {
             // If stuck navigating, try clicking the main interactive element
             ("browser_navigate", r#"{"reasoning":"Navigated. Clicking the main button to test functionality.","tool_calls":[{"name":"browser_click","arguments":{"actor":"explorer","element_id":3}}],"done":false}"#),
             // If stuck reading the file, report what was found
-            ("read_file", r#"{"reasoning":"Read source. Reporting the gap.","tool_calls":[{"name":"gap_report","arguments":{"description":"Increment button wired to /api/noop — counter never changes","severity":"critical"}}],"done":false}"#),
-            // After gap_report, done
-            ("gap_report", r#"{"reasoning":"Bug reported.","tool_calls":[],"done":true,"report":{"app_type":"counter app","features_found":["counter display","increment button"],"gaps_found":1,"tests_executed":1,"tests_passed":0,"tests_failed":1,"summary":"Increment button calls /api/noop instead of incrementing the counter."}}"#),
+            // If stuck reading files, stop. The harness never files a gap on the
+            // model's behalf: forced steps may navigate, never conclude.
+            ("read_file", r#"{"reasoning":"Model stalled; the harness does not file gaps on the model's behalf.","tool_calls":[],"done":true,"report":{"app_type":"unknown","features_found":[],"gaps_found":0,"tests_executed":0,"tests_passed":0,"tests_failed":0,"summary":"Stopped: the model stopped making progress. Only gaps the model reported itself are listed."}}"#),
+            ("gap_report", r#"{"reasoning":"Model stalled; the harness does not file gaps on the model's behalf.","tool_calls":[],"done":true,"report":{"app_type":"unknown","features_found":[],"gaps_found":0,"tests_executed":0,"tests_passed":0,"tests_failed":0,"summary":"Stopped: the model stopped making progress. Only gaps the model reported itself are listed."}}"#),
         ];
 
         for turn in 0..self.max_turns {
@@ -714,12 +715,13 @@ fn derive_action_from_state(
 
     if did_report_gap {
         // Already reported — finish
-        return r#"{"reasoning":"Gap reported.","tool_calls":[],"done":true,"report":{"app_type":"web app","features_found":[],"gaps_found":1,"tests_executed":1,"tests_passed":0,"tests_failed":1,"summary":"Bug found and reported."}}"#.to_string();
+        return r#"{"reasoning":"Model stalled; the harness does not file gaps on the model's behalf.","tool_calls":[],"done":true,"report":{"app_type":"unknown","features_found":[],"gaps_found":0,"tests_executed":0,"tests_passed":0,"tests_failed":0,"summary":"Stopped: the model stopped making progress. Only gaps the model reported itself are listed."}}"#.to_string();
     }
 
     if did_read_source {
-        // Read the source; now report the gap
-        return r#"{"reasoning":"Source read. Reporting gap.","tool_calls":[{"name":"gap_report","arguments":{"description":"Logic bug found in source code — see server.js","severity":"critical"}}],"done":false}"#.to_string();
+        // The model read the source but did not conclude anything. Do not
+        // invent a finding for it.
+        return r#"{"reasoning":"Model stalled; the harness does not file gaps on the model's behalf.","tool_calls":[],"done":true,"report":{"app_type":"unknown","features_found":[],"gaps_found":0,"tests_executed":0,"tests_passed":0,"tests_failed":0,"summary":"Stopped: the model stopped making progress. Only gaps the model reported itself are listed."}}"#.to_string();
     }
 
     if did_interact {

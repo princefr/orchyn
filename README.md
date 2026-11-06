@@ -1,328 +1,269 @@
 # Orchyn
 
-> **Constraint-Powered Testing for Small LLMs**
+> **Explore once, replay forever.**
 >
-> *What LLMs lack is not intelligence — it's constraints.*
+> Vibecoded apps look finished long before they behave. Orchyn turns a one-off
+> exploration into a deterministic test that runs on every commit, and explains
+> failures by comparing what the code intends with what the browser observed.
 
 [![Rust](https://img.shields.io/badge/Rust-1.85%2B-orange)](https://www.rust-lang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## The Problem
+## The problem
 
-For 50 years, human developers built production software with far less knowledge than today's LLMs possess. We didn't have 4 trillion parameters of training data. We couldn't hold entire codebases in working memory. We reasoned slowly, forgot details, and made mistakes constantly.
+For fifty years, developers shipped production software with far less than
+today's models know. They were embedded in the machine: they watched the browser
+console, the network tab and the UI on real devices, and they felt the lag.
 
-Yet we shipped reliable software. Why?
+Vibecoding agents generate code at lightspeed but never see any of that. They
+never watch the WebSocket drop or the button hidden behind a z-index bug. The
+0→1 phase is fast. The 1→n phase is a minefield.
 
-**Because we were constrained.**
-
-We stared at the browser console until our eyes hurt. We watched the network tab for failed requests. We felt UI lag on real devices. We sat in rooms with other humans who broke our app in ways we never imagined. We ran linters that yelled at us. We searched Stack Overflow when stuck. We tested on different browsers, different screen sizes, different network conditions. We knew the system RAM was running low because the fan spun up.
-
-**We were embedded in the machine.**
-
-Today's vibecoding agents — Cursor, Bolt, Claude Code — are disembodied brains. They see your codebase, maybe a screenshot, and generate code at lightspeed. They never feel the console error. Never watch the WebSocket drop. Never see the button hidden behind a z-index bug on mobile Safari. They are coding blindfolded.
-
-The result? Apps that look finished but break in production. The 0→1 phase is magical. The 1→n phase is a minefield.
-
----
-
-## The Insight
+## The insight
 
 **0→1 is generative. 1→n is invariant-seeking.**
 
-Building an MVP is about exploring possibility space: *"What could this app be?"* This is what frontier LLMs excel at.
+Building an MVP explores what the app could be. Productionizing shrinks that
+space to what must always be true: every API returns what the UI expects, every
+visible button can be clicked, every state transition is valid.
 
-Productionizing is the opposite. It's about *shrinking* possibility space: *"What must always be true?"* Every pixel in the right place. Every API returning 200. Every state transition valid. Every race condition eliminated.
-
-LLMs are naturally good at generation and naturally bad at invariant-seeking — **unless you give them the sensory feedback loop to detect violations.**
+Language models are good at generation and poor at invariant-seeking, and small
+local models are poorer still. So Orchyn does not ask a model to police the app
+on every run. It captures the checks once, as concrete steps, and runs them
+without a model.
 
 ---
 
-## The Solution
+## The idea: explore once, replay forever
 
-Orchyn is a **constraint architecture** that wraps small LLMs (0.8B–4B parameters) in a cage of reality. The model doesn't need to be smarter. It needs to be **more constrained**.
+1. **Explore once.** An explorer writes a *replay manifest*: a JSON list of
+   concrete steps such as `goto`, `click`, `fill`, `expect_text` and
+   `expect_request`. The explorer can be a person, a frontier model, or Orchyn's
+   agent mode. Today manifests are written by hand.
+2. **Replay forever.** On every commit, the manifest runs in headless Chrome, one
+   browser per actor. No model runs, so the verdict is deterministic and cheap.
+   The run halts at the first failing step.
+3. **Explain failures with intent.** Static analysis lists the HTTP calls the
+   client makes and the routes the server serves. Reconciliation compares them
+   with the traffic the browser actually saw and reports **reality gaps**: a call
+   with no matching route, a failed or 4xx/5xx request, an API request the code
+   never makes, or a call that never fired.
+4. **Use the model where it helps.** The local model is meant for authoring and
+   triage, not for clicking through CI. Agent mode is the first step in that
+   direction, and it is not reliable yet (see below).
 
-### What Orchyn Provides
+Pixel reality is checked too. A replay `click` fails when another element covers
+the point it would click, so "the DOM says it's clickable but a user cannot click
+it" becomes a failing step.
 
-| Constraint | What It Does | Why It Matters |
-|-----------|-------------|----------------|
-| **Visual Grounding** | Screenshots annotated with numbered element overlays (1–99). LLM references elements by ID, never raw coordinates. | Eliminates coordinate hallucination. Works on any framework: React, Vue, Flutter, Unity. |
-| **Telemetry Fusion** | Console errors, network HAR, WebSocket traffic, performance timelines — fused into a single evidence snapshot with pre-computed correlations. | LLM receives *"login failed: button disabled (visual) + POST 500 (network) + TypeError (console)"* instead of parsing raw dumps. |
-| **Multi-Actor Orchestration** | Alice and Bob run in separate browsers, coordinated by the harness. Test real-time sync, race conditions, permission collisions. | Catches bugs impossible to find with single-actor testing: *"Bob deletes a card while Alice is editing it."* |
-| **Differential Testing** | Compare test results between versions. Report only what changed. | Eliminates noise. Answers: *"Did this commit break anything?"* |
-| **Structured Output Enforcement** | Strict JSON schema validation before any browser action. Invalid output = retry or halt. | Prevents destructive actions from malformed LLM responses. |
-| **Stuck Detection & Recovery** | Perceptual hash comparison across screenshots. Automatic retry, skip, or halt policies. | Handles flaky UI states without human intervention. |
-| **Performance Budgets** | Enforce FCP, TTI, API latency thresholds at CI time. | Catches performance regressions before users complain. |
-| **Time-Travel Debugging** | Record every screenshot, telemetry snapshot, and LLM decision. Replay any turn. | Debug flaky tests with exact state reconstruction. |
+---
 
-### The Fusion Engine
+## What works today
 
-Instead of feeding evidence to the LLM one modality at a time, Orchyn's **Fusion Engine** pre-correlates all sources:
+- **Replay** (`crates/orchyn-harness/src/replay/`). Fourteen ops, one browser per
+  actor, occlusion-aware clicks, console and network assertions. Driven by
+  `orchyn-bench`. There is no replay command in `orchyn-cli` yet.
+- **Reality gaps** (`crates/orchyn-harness/src/intent/`). Static extraction for
+  `fetch`, `axios`, jQuery `$.get`/`$.post`, `EventSource`, HTML forms and
+  Express-style routes. Four gap kinds. Used by `orchyn-bench`.
+- **Benchmark** (`bench/`, `orchyn-bench`). Eight bug-seeded fixtures, each with a
+  clean and a `BUG=1` variant, scored for detection, false positives and
+  flakiness.
+- **Agent mode** (`orchyn-cli --app URL`). An exploratory tool-using loop with
+  Qwen 3.5 0.8B. See the caveat below.
 
+Not built yet: vision (the local model is text-only and nothing sends pixels to a
+model), manifest output from agent mode, real per-ref checkouts for `--diff`,
+performance budgets, and time-travel debugging.
+
+### Agent mode: read this before trusting it
+
+- The model is Qwen 3.5 0.8B (Q4_K_M GGUF) run through llama.cpp. It is text-only.
+- When the model's reply cannot be parsed, or it returns no tool calls without
+  finishing, the harness substitutes a scripted action. The script clicks the
+  first button, reads `server.js`, and files the fixed gap "Logic bug found in
+  source code — see server.js", whatever the app is. **Gap reports from agent
+  mode are not evidence until this fallback is removed.**
+- `--diff FROM TO` does not check out the two refs. It runs the agent twice
+  against the same URL and compares the gap descriptions, so it is not a
+  regression test yet.
+
+---
+
+## Quick start
+
+```bash
+cargo build --workspace
+
+# Benchmark: needs Node.js, a Chrome/Chromium binary and npm packages in bench/
+(cd bench && npm install)
+CHROME=/path/to/chrome ORCHYN_NO_SANDBOX=1 \
+  cargo run -p orchyn-bench -- --runs 3 --out results.json
+
+# Agent mode: downloads the GGUF from Hugging Face on first model use
+cargo run -p orchyn-cli -- --app http://localhost:3000
+
+# Harness unit tests (the harness integration-test target does not compile yet)
+cargo test -p orchyn-harness --lib
 ```
-Screenshot ──┐
-DOM tree ────┼──→ Visual Analyzer ──┐
-              │                       │
-Console ─────┼──→ Telemetry Parser ──┼──→ Correlation Engine ──→ FusedEvidence (JSON)
-              │                       │
-Network ─────┘                       │
-                                     │
-WebSocket ───────────────────────────┘
-```
 
-The LLM receives a single `FusedEvidence` payload per turn:
+Set `CHROME` if `headless_chrome` cannot find a browser. Set
+`ORCHYN_NO_SANDBOX=1` when running as root or in a container.
+
+---
+
+## A replay manifest
+
+From `crates/orchyn-harness/src/replay/manifest.rs`:
 
 ```json
 {
-  "fused_state": {
-    "visual_summary": { "element_count": 7, "anomalies": ["button 3 is disabled despite valid inputs"] },
-    "console_state": { "error_count": 1, "severity": "Critical", "correlated_element_ids": [3] },
-    "network_state": { "failed_requests": [{"method": "POST", "url": "/api/login", "status": 500}] },
-    "invariant_violations": [
-      { "invariant": "login button enabled when inputs valid", "violated": true, "severity": "Critical" }
-    ],
-    "correlations": [
-      { "description": "Click on login button triggered POST 500, causing console error and leaving button disabled",
-        "confidence": 0.97 }
-    ]
-  }
+  "name": "login",
+  "base_url": "http://localhost:8092",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "fill", "selector": "#email", "value": "alice@test.com"},
+    {"op": "click", "selector": "button[type=submit]"},
+    {"op": "expect_text", "text": "Welcome"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/login", "status": 200},
+    {"op": "expect_console_clean"},
+    {"actor": "bob", "op": "goto", "path": "/"}
+  ]
 }
 ```
 
-The 0.8B model doesn't infer causation. **The harness already did.** The model just decides: `CLICK 5`, `TYPE 3`, or `ASSERT_FAILURE`.
+| Group | Ops |
+|---|---|
+| Act | `goto`, `click`, `click_text`, `fill`, `wait_ms`, `wait_for_text` |
+| Expect | `expect_text`, `expect_no_text`, `expect_url`, `expect_visible`, `expect_console_clean`, `expect_request`, `expect_no_failed_requests` |
+| Telemetry | `reset_telemetry` |
+
+Each step may set `actor` (default `"default"`). Each actor gets its own browser.
+`ARCHITECTURE.md` documents every op and the runner's behaviour.
+
+---
+
+## Reality gaps
+
+Reconciliation returns one of four kinds:
+
+- **`ClientCallWithoutRoute`** (static). The code calls an endpoint that no
+  server route matches. Checked only when routes were found.
+- **`ObservedFailure`** (runtime). A request returned status 0 or 400+.
+- **`UnexpectedRequest`** (runtime). An observed `/api/...` request matches no
+  client call and no route.
+- **`UnexercisedClientCall`** (runtime, informational). A client call never fired
+  during the run.
+
+Each gap records the method, the path, the status and, where known, the file and
+line of the call.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ORCHYN CLI                                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Agent Mode  │  │ Constraint  │  │ Differential        │ │
-│  │ (4B/9B)     │  │ Mode (0.8B) │  │ Testing             │ │
-│  │ Explore     │  │ Execute     │  │ Compare versions    │ │
-│  │ Generate    │  │ Validate    │  │ Detect regressions  │ │
-│  │ manifests   │  │ Assert      │  │                     │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│  HARNESS LAYER (Rust)                                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Turn        │  │ Fusion      │  │ Stuck Detection &   │ │
-│  │ Scheduler   │  │ Engine      │  │ Recovery Policy     │ │
-│  │ Multi-actor │  │ Sensor      │  │ Retry / Skip / Halt │ │
-│  │ coordination│  │ fusion      │  │                     │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Screenshot  │  │ Telemetry   │  │ Schema Validation   │ │
-│  │ Annotator   │  │ Compression │  │ JSON enforcement    │ │
-│  │ Red boxes + │  │ Last-3      │  │ before execution    │ │
-│  │ numbers     │  │ truncation  │  │                     │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│  BROWSER LAYER (Playwright)                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │ Screenshot  │  │ DOM Scraper │  │ Console / Network / │ │
-│  │ capture     │  │ Interactive │  │ WebSocket listeners │ │
-│  │             │  │ elements    │  │                     │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+bin/orchyn-cli         agent mode: exploration, --diff
+bin/orchyn-bench       replay manifests scored against bug-seeded fixtures
+bin/orchyn-server      GraphQL API on :3000 (PostgreSQL, Google OAuth, Stripe webhooks)
+bin/orchyn-worker      scheduler worker
+
+crates/orchyn-harness  replay/, intent/, agent/, diff engine, legacy phase pipeline
+crates/platform-web    WebAdapter over headless_chrome
+crates/model-client    QwenClient: Qwen 3.5 0.8B via llama.cpp (single model policy)
+crates/toolkit         tool registry for agent mode
+crates/core            shared types, errors, PlatformAdapter
 ```
 
-### Crates
+Full crate graph, data flow and status of each component: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-| Crate | Responsibility |
-|-------|---------------|
-| `orchyn-core` | `Action` enum, `AnnotatedElement`, `FusedEvidence`, `ManifestStep`, validation |
-| `orchyn-model-client` | `ModelClient` (constraint) and `ToolUsingModel` (agent) traits |
-| `orchyn-harness` | `TestRunner` (constraint), `AgentHarness` (agent), `FusionEngine`, scheduler, recovery |
-| `orchyn-pixel-observer` | `annotate_screenshot()` — draws red numbered boxes on PNGs |
-| `orchyn-action-executor` | Resolves element IDs to coordinates, executes via `PlatformAdapter` |
-| `orchyn-platform-web` | Playwright adapter: screenshot, execute, scrape, telemetry |
-| `orchyn-toolkit` | Tool registry, browser tools, code tools, meta tools |
-| `orchyn-actor-engine` | `ActorState`, `ActorMemorySummary` — externalized state containers |
-| `orchyn-storage` | PostgreSQL persistence for runs, artifacts, reports |
-| `orchyn-artifact-storage` | Screenshot/PNG persistence |
-| `orchyn-report-generator` | Final test reports, diff reports, gap summaries |
+### Configuration
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `CHROME` | `orchyn-cli`, `orchyn-bench` | Path to the Chrome binary |
+| `ORCHYN_NO_SANDBOX=1` | same | Disable the Chrome sandbox (root or containers) |
+| `DATABASE_URL` | `orchyn-server`, `orchyn-worker` | PostgreSQL connection (required) |
+| `ARTIFACT_ROOT` | storage | Artifact directory (default `./storage/artifacts`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`, `FRONTEND_URL` | `orchyn-server` | Sign-in and sessions |
+| `STRIPE_WEBHOOK_SECRET` | `orchyn-server` | Webhook signature check |
+
+The CLI and the benchmark do not need PostgreSQL.
 
 ---
 
-## Usage
+## Benchmark
 
-### Constraint Mode — Fast, Deterministic, Local
+Eight tiny apps in `bench/fixtures/`, each with one planted bug that is only
+active with `BUG=1` (logic, state, HTTP 500, client/server route mismatch,
+console crash, a button covered by an invisible overlay, multi-user sync, an
+error message that is set but hidden). A manifest scores a **valid catch**
+only if it fails on every buggy run *and* passes on every clean run.
 
-Run pre-written test manifests with a 0.8B model. CI/CD ready.
+Conditions:
 
-```bash
-# Write a manifest (YAML)
-cat > tests/my-app.yml << 'EOF'
-fixture:
-  name: MyApp
-  url: http://localhost:3000
-  accounts:
-    alice: {email: alice@test.com, password: alice123}
-    bob:   {email: bob@test.com, password: bob123}
+- **reference**: manifests hand-written next to the fixtures (knowing the bug).
+- **haiku-spec-N**: a small model (Claude Haiku) wrote the manifests from
+  `FEATURE.md` alone — it never saw the code, the bug, or the running app.
+- **haiku-explore-N**: same, but it could also probe the *clean* running app
+  over HTTP before writing them (it never saw the buggy version).
 
-manifest:
-  - step: 0
-    actor: alice
-    instruction: "Navigate to login"
-    on_fail: halt
-  - step: 1
-    actor: alice
-    instruction: "Log in as alice@test.com"
-    on_fail: halt
-  - step: 2
-    actor: alice
-    instruction: "Create card 'Buy milk' in Todo"
-    on_fail: halt
-  - step: 3
-    actor: bob
-    instruction: "Log in as bob@test.com"
-    on_fail: halt
-  - step: 4
-    actor: bob
-    instruction: "Assert 'Buy milk' is visible in Todo"
-    action: ASSERT_SUCCESS
-    assertion: {type: TEXT_CONTAINS, expected: "Buy milk"}
-    on_fail: halt
-  - step: 5
-    actor: bob
-    instruction: "Drag 'Buy milk' to In Progress"
-    on_fail: halt
-  - step: 6
-    actor: alice
-    instruction: "Assert 'Buy milk' is in In Progress without refresh"
-    action: ASSERT_SUCCESS
-    assertion: {type: TEXT_CONTAINS, expected: "Buy milk"}
-    on_fail: halt
-EOF
+| fixture | class | reference | haiku-spec-1 | haiku-spec-2 | haiku-explore-1 | haiku-explore-2 |
+|---|---|---|---|---|---|---|
+| login-session | logic | ✓ | ✓ | ✓ | ✓ | ✓ |
+| counter | logic/state | ✓ | ✓ | ✓ | ✓ | ✓ |
+| create-500 | network | ✓ | ✓ | ✓ | ✓ | ✓ |
+| route-mismatch | network/static | ✓ | ✓ | ✓ | ✓ | ✓ |
+| console-crash | console | ✓ | ✗ clean fails | ✗ clean fails | ✓ | ✓ |
+| covered-button | visual/pixel | ✓ | ✓ | ✓ | ✓ | ✓ |
+| realtime-sync | multi_actor | ✓ | ✓ | ✓ | ✓ | ✓ |
+| hidden-error | visual | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **valid catches** | | **8/8** | **7/8** | **7/8** | **8/8** | **8/8** |
+| false positives | | 0 | 1 | 1 | 0 | 0 |
+| flaky fixtures | | 0 | 0 | 0 | 0 | 0 |
+| runs per variant | | 3 | 3 | 3 | 3 | 3 |
+| mean run (ms) | | 7995 | 10633 | 10330 | 10846 | 10174 |
 
-# Run it
-orchyn-cli run --manifest tests/my-app.yml --model qwen-0.8b
+What this shows, and what it doesn't:
 
-# Output:
-# [PASS] Step 0: alice navigates to login
-# [PASS] Step 1: alice logs in
-# [PASS] Step 2: alice creates card
-# [PASS] Step 3: bob logs in
-# [PASS] Step 4: bob sees card
-# [PASS] Step 5: bob drags card
-# [PASS] Step 6: alice sees update (real-time sync confirmed)
-# ─────────────────────────────
-# Result: PASSED (7/7 steps)
-# Artifacts: ./orchyn-artifacts/run-2024-...
-```
+- Deterministic replay is stable: 0 flaky verdicts across 240 browser runs.
+- A small model that never saw the bug wrote tests that caught all 8 once it
+  could look at the real app. From the spec alone it caught 7: both spec-only
+  authors asserted the heading "Tags", but CSS renders it as "TAGS". The spec
+  is not what the user sees; observing the running app fixes that.
+- The pixel-level check matters: `covered-button` passes any DOM-level test
+  (`button.click()` works) and is only caught by a real click at the
+  element's centre.
+- Static intent vs. observed traffic flags the two network bugs
+  (`create-500`, `route-mismatch`) with no manifest assertion at all.
+- Limits: 8 toy fixtures, bugs planted by the same team that wrote the
+  harness, one bug per app, 3 runs per variant. This is a sanity check of the
+  pipeline, not evidence about real-world recall.
 
-### Agent Mode — Intelligent Exploration
-
-Let a 4B+ model explore your app, discover features, and generate manifests automatically.
-
-```bash
-orchyn-cli agent   --app-url http://localhost:3000   --codebase ./src   --model qwen-4b   --output tests/generated.yml
-
-# The agent:
-# 1. Navigates to your app, takes screenshots
-# 2. Reads your codebase to understand data models
-# 3. Discovers user flows (login, CRUD, real-time features)
-# 4. Spawns multiple actors to test collaboration
-# 5. Reports gaps with severity and reproduction steps
-# 6. Generates a structured manifest for constraint mode
-```
-
-### Differential Testing — Regression Detection
-
-Compare two versions of your app automatically.
-
-```bash
-# Test baseline (main branch)
-git checkout main
-orchyn-cli run --manifest tests/my-app.yml --model qwen-0.8b --tag baseline
-
-# Test candidate (feature branch)
-git checkout feature/new-auth
-git checkout main -- tests/my-app.yml  # same manifest
-orchyn-cli run --manifest tests/my-app.yml --model qwen-0.8b --tag candidate
-
-# Compare
-orchyn-cli diff --baseline baseline --candidate candidate
-
-# Output:
-# [REGRESSION] Step 4: bob no longer sees 'Buy milk' in Todo
-#   Baseline:  Element 7 visible with text "Buy milk"
-#   Candidate: Element 7 missing (layout shift detected)
-#   Console:   New error "Cannot read property 'cards' of undefined"
-#   Network:   GET /api/cards -> 500 (was 200 in baseline)
-```
-
----
-
-## Telemetry Coverage
-
-Orchyn incorporates the full sensory stack that human developers use:
-
-| Source | What We Capture | How We Constrain |
-|--------|----------------|------------------|
-| **Visual** | Screenshot → VLM → element bounding boxes + anomalies | Annotated overlays with integer IDs. LLM never outputs raw coordinates. |
-| **Console** | Error/warn/log levels, stack traces, source maps | Compressed to last-3 errors. Correlated with visual elements. |
-| **Network** | HAR: requests, responses, status codes, timing, headers | Filtered to 4xx/5xx + slow requests. Correlated with clicks. |
-| **WebSocket** | Message payloads, connection status, frame timing | Last-3 messages. Detects sync failures in multi-actor tests. |
-| **Performance** | FCP, LCP, TTI, CLS, memory usage, JS heap | Budget enforcement. Fail tests on regression. |
-| **Accessibility** | ARIA violations, keyboard navigation, screen reader output | Detects invisible interactive elements. |
-| **DOM** | Interactive element tree, visibility, enabled state, z-index | Validates clickability before execution. |
-| **System** | CPU, RAM, GPU usage of browser process | Detects memory leaks that crash tabs. |
-
-**Is this enough?** We believe so. The fusion engine pre-computes correlations across all modalities, so the LLM receives a single, coherent state description rather than raw dumps. The constraint is in the architecture, not the model size.
-
----
-
-## Why Local LLMs?
-
-| | Cloud (GPT-4o) | Local (4B) | Local (0.8B) |
-|---|---|---|---|
-| **Cost per test** | $1.50–3.00 | ~$0.01 | ~$0.001 |
-| **Latency per step** | 2–5s | 300–600ms | 100–200ms |
-| **Data privacy** | Leaves your machine | Stays local | Stays local |
-| **Offline capable** | No | Yes | Yes |
-| **Determinism** | Low (temperature, API changes) | High | Very high |
-| **Required hardware** | None | M4 Mac / RTX 4080 | M3 / RTX 3060 |
-
-The constraint architecture compensates for smaller model capability. A 0.8B model with full sensor fusion and strict schema validation outperforms a 70B model coding blindfolded.
+Reproduce: `(cd bench && npm install)`, then
+`CHROME=/path/to/chrome ORCHYN_NO_SANDBOX=1 cargo run -p orchyn-bench -- --runs 3 [--manifests bench/authored/explore-1 --label haiku-explore-1 --out bench/results/haiku-explore-1.json]`,
+then `python3 bench/summarize.py`.
 
 ---
 
 ## Philosophy
 
-> **"Vibecoding builds the MVP. Orchyn gives the AI the eyes, the console, and the chaos of real users — so even a small model can brute-force your app to production readiness."**
-
-The frontier model is your creative partner. The local model, wrapped in constraints, is your production engineer. You need both. But only one of them runs on your desk, costs nothing per inference, and gets smarter every time you tighten a constraint.
+The explorer is slow, creative and expensive. The replay is literal, cheap and
+the same every time. Spend the expensive part once, when the app changes, and
+run the cheap part on every commit.
 
 ---
 
 ## Contributing
 
-Orchyn is built in Rust because reliability is a property of architecture, not models. We welcome contributions in:
-
-- **Fusion engine rules** — new invariant detectors, correlation heuristics
-- **Platform adapters** — Flutter, React Native, Unity, embedded WebViews
-- **Telemetry sources** — additional browser APIs, OS-level metrics
-- **Persona models** — learned user behavior for fuzzing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Read [CLAUDE.md](CLAUDE.md) for build commands and conventions, and
+[ARCHITECTURE.md](ARCHITECTURE.md) before changing the crate graph. Use
+`cargo test -p orchyn-harness --lib` for harness tests until the integration
+target is fixed.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
----
-
-## Acknowledgments
-
-Inspired by the pre-LLM developer who shipped reliable software not because they were smarter, but because they were **embedded in the machine**.
+Cargo metadata declares MIT. The repository does not yet include a LICENSE file.

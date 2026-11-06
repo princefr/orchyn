@@ -1,0 +1,49 @@
+[login-session] clean run 0: PASS 19935ms 
+[login-session] bug   run 0: FAIL 18944ms #12 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 1: PASS 21157ms 
+[login-session] bug   run 1: FAIL 18262ms #12 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 2: PASS 20199ms 
+[login-session] bug   run 2: FAIL 18942ms #12 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[counter] clean run 0: PASS 12894ms 
+[counter] bug   run 0: FAIL 7835ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 1: PASS 12956ms 
+[counter] bug   run 1: FAIL 7650ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 2: PASS 12845ms 
+[counter] bug   run 2: FAIL 7615ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[create-500] clean run 0: PASS 10779ms 
+[create-500] bug   run 0: FAIL 12218ms #5 expect_text [default]: text "Buy milk" not found in document.body.innerText after 5000 ms
+[create-500] clean run 1: PASS 11502ms 
+[create-500] bug   run 1: FAIL 12162ms #5 expect_text [default]: text "Buy milk" not found in document.body.innerText after 5000 ms
+[create-500] clean run 2: PASS 11290ms 
+[create-500] bug   run 2: FAIL 12358ms #5 expect_text [default]: text "Buy milk" not found in document.body.innerText after 5000 ms
+[route-mismatch] clean run 0: PASS 4443ms 
+[route-mismatch] bug   run 0: FAIL 9139ms #3 expect_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[route-mismatch] clean run 1: PASS 4270ms 
+[route-mismatch] bug   run 1: FAIL 9165ms #3 expect_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[route-mismatch] clean run 2: PASS 4508ms 
+[route-mismatch] bug   run 2: FAIL 9028ms #3 expect_text [default]: text "Apples" not found in document.body.innerText after 5000 ms
+[console-crash] clean run 0: FAIL 7093ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[console-crash] bug   run 0: FAIL 6985ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 1: FAIL 7088ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[console-crash] bug   run 1: FAIL 7149ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 2: FAIL 7303ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[console-crash] bug   run 2: FAIL 7084ms #3 expect_text [default]: text "Tags" not found in document.body.innerText after 3000 ms
+[covered-button] clean run 0: PASS 4817ms 
+[covered-button] bug   run 0: FAIL 4053ms #1 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 1: PASS 4603ms 
+[covered-button] bug   run 1: FAIL 3887ms #1 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 2: PASS 4718ms 
+[covered-button] bug   run 2: FAIL 4070ms #1 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[realtime-sync] clean run 0: PASS 19522ms 
+[realtime-sync] bug   run 0: FAIL 16418ms #5 expect_text [bob]: text "Lunch at noon" not found in document.body.innerText after 5000 ms
+[realtime-sync] clean run 1: PASS 18807ms 
+[realtime-sync] bug   run 1: FAIL 16879ms #5 expect_text [bob]: text "Lunch at noon" not found in document.body.innerText after 5000 ms
+[realtime-sync] clean run 2: PASS 19589ms 
+[realtime-sync] bug   run 2: FAIL 18111ms #5 expect_text [bob]: text "Lunch at noon" not found in document.body.innerText after 5000 ms
+[hidden-error] clean run 0: PASS 9447ms 
+[hidden-error] bug   run 0: FAIL 4634ms #3 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+[hidden-error] clean run 1: PASS 9361ms 
+[hidden-error] bug   run 1: FAIL 4747ms #3 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+[hidden-error] clean run 2: PASS 9479ms 
+[hidden-error] bug   run 2: FAIL 4484ms #3 expect_visible [default]: element #email-error is not visible (zero size, display:none or visibility:hidden)
+wrote bench/results/haiku-spec-1.json

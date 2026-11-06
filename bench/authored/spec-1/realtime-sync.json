@@ -1,0 +1,21 @@
+{
+  "name": "realtime-sync",
+  "base_url": "",
+  "steps": [
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "alice", "op": "goto", "path": "/"},
+    {"actor": "alice", "op": "fill", "selector": "#note", "value": "Lunch at noon"},
+    {"actor": "alice", "op": "click", "selector": "#post-btn"},
+    {"actor": "alice", "op": "expect_text", "text": "Lunch at noon", "timeout_ms": 5000},
+    {"actor": "bob", "op": "expect_text", "text": "Lunch at noon", "timeout_ms": 5000},
+    {"actor": "bob", "op": "fill", "selector": "#note", "value": "Bring the projector"},
+    {"actor": "bob", "op": "click", "selector": "#post-btn"},
+    {"actor": "bob", "op": "expect_text", "text": "Bring the projector", "timeout_ms": 5000},
+    {"actor": "alice", "op": "expect_text", "text": "Bring the projector", "timeout_ms": 5000},
+    {"actor": "alice", "op": "expect_visible", "selector": "#board"},
+    {"actor": "alice", "op": "expect_no_failed_requests"},
+    {"actor": "bob", "op": "expect_no_failed_requests"},
+    {"actor": "alice", "op": "expect_console_clean"},
+    {"actor": "bob", "op": "expect_console_clean"}
+  ]
+}

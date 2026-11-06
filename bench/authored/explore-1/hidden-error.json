@@ -1,0 +1,20 @@
+{
+  "name": "hidden-error",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#submit-btn"},
+    {"op": "expect_no_text", "text": "Email is required"},
+    {"op": "click", "selector": "#submit-btn"},
+    {"op": "expect_text", "text": "Email is required"},
+    {"op": "expect_visible", "selector": "#email-error"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "fill", "selector": "#email", "value": "bob@example.com"},
+    {"op": "click", "selector": "#submit-btn"},
+    {"op": "expect_text", "text": "Check your inbox to confirm."},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/signup", "status": 201},
+    {"op": "expect_no_text", "text": "Email is required"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"}
+  ]
+}

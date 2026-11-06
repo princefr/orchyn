@@ -1,0 +1,25 @@
+{
+  "name": "realtime-sync",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#note"},
+    {"op": "fill", "selector": "#note", "value": "First note"},
+    {"op": "click", "selector": "#post-btn"},
+    {"op": "expect_text", "text": "First note"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/notes", "status": 201},
+    {"op": "expect_visible", "selector": "#board .note"},
+    {"op": "fill", "selector": "#note", "value": "   "},
+    {"op": "click", "selector": "#post-btn"},
+    {"op": "expect_no_failed_requests"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "First note"},
+    {"actor": "bob", "op": "fill", "selector": "#note", "value": "Second note"},
+    {"actor": "bob", "op": "click", "selector": "#post-btn"},
+    {"actor": "bob", "op": "expect_text", "text": "First note\nSecond note"},
+    {"op": "expect_text", "text": "First note\nSecond note"},
+    {"op": "expect_console_clean"},
+    {"actor": "bob", "op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"}
+  ]
+}

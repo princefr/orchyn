@@ -1,0 +1,25 @@
+{
+  "name": "create-500",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#title"},
+    {"op": "fill", "selector": "#title", "value": "   "},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "fill", "selector": "#title", "value": "Buy milk"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "Buy milk"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/todos", "status": 201},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "fill", "selector": "#title", "value": "Walk dog"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "fill", "selector": "#title", "value": "Call mum"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "Buy milk\nWalk dog\nCall mum"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "Buy milk\nWalk dog\nCall mum"}
+  ]
+}

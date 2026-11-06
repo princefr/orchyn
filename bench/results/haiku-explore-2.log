@@ -1,0 +1,49 @@
+[login-session] clean run 0: PASS 19962ms 
+[login-session] bug   run 0: FAIL 18759ms #11 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 1: PASS 20130ms 
+[login-session] bug   run 1: FAIL 18852ms #11 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[login-session] clean run 2: PASS 19751ms 
+[login-session] bug   run 2: FAIL 19683ms #11 expect_text [default]: text "Welcome, alice@test.com" not found in document.body.innerText after 3000 ms
+[counter] clean run 0: PASS 11602ms 
+[counter] bug   run 0: FAIL 7733ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 1: PASS 11447ms 
+[counter] bug   run 1: FAIL 7646ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[counter] clean run 2: PASS 11614ms 
+[counter] bug   run 2: FAIL 7770ms #4 expect_text [default]: text "Count: 1" not found in document.body.innerText after 3000 ms
+[create-500] clean run 0: PASS 14622ms 
+[create-500] bug   run 0: FAIL 7127ms #3 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:42143/ 200; GET http://127.0.0.1:42143/app.js 200; GET http://127.0.0.1:42143/api/todos 200; POST http://127.0.0.1:42143/api/todos 500; GET http://127.0.0.1:42143/api/todos 200
+[create-500] clean run 1: PASS 14517ms 
+[create-500] bug   run 1: FAIL 6907ms #3 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:41799/ 200; GET http://127.0.0.1:41799/app.js 200; GET http://127.0.0.1:41799/api/todos 200; POST http://127.0.0.1:41799/api/todos 500; GET http://127.0.0.1:41799/api/todos 200
+[create-500] clean run 2: PASS 15370ms 
+[create-500] bug   run 2: FAIL 6609ms #3 expect_request [default]: no POST request to a URL containing "/api/todos" with status 201 for actor 'default'; observed: GET http://127.0.0.1:37723/ 200; GET http://127.0.0.1:37723/app.js 200; GET http://127.0.0.1:37723/api/todos 200; POST http://127.0.0.1:37723/api/todos 500; GET http://127.0.0.1:37723/api/todos 200
+[route-mismatch] clean run 0: PASS 4175ms 
+[route-mismatch] bug   run 0: FAIL 3962ms #2 expect_request [default]: no GET request to a URL containing "/api/items" with status 200 for actor 'default'; observed: GET http://127.0.0.1:42711/ 200; GET http://127.0.0.1:42711/app.js 200; GET http://127.0.0.1:42711/api/items 404
+[route-mismatch] clean run 1: PASS 4361ms 
+[route-mismatch] bug   run 1: FAIL 3940ms #2 expect_request [default]: no GET request to a URL containing "/api/items" with status 200 for actor 'default'; observed: GET http://127.0.0.1:43699/ 200; GET http://127.0.0.1:43699/app.js 200; GET http://127.0.0.1:43699/api/items 404
+[route-mismatch] clean run 2: PASS 4103ms 
+[route-mismatch] bug   run 2: FAIL 3750ms #2 expect_request [default]: no GET request to a URL containing "/api/items" with status 200 for actor 'default'; observed: GET http://127.0.0.1:33409/ 200; GET http://127.0.0.1:33409/app.js 200; GET http://127.0.0.1:33409/api/items 404
+[console-crash] clean run 0: PASS 4441ms 
+[console-crash] bug   run 0: FAIL 6934ms #4 expect_text [default]: text "admin\nbeta" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 1: PASS 4172ms 
+[console-crash] bug   run 1: FAIL 7072ms #4 expect_text [default]: text "admin\nbeta" not found in document.body.innerText after 3000 ms
+[console-crash] clean run 2: PASS 3966ms 
+[console-crash] bug   run 2: FAIL 6787ms #4 expect_text [default]: text "admin\nbeta" not found in document.body.innerText after 3000 ms
+[covered-button] clean run 0: PASS 5907ms 
+[covered-button] bug   run 0: FAIL 4006ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 1: PASS 5835ms 
+[covered-button] bug   run 1: FAIL 3988ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[covered-button] clean run 2: PASS 5946ms 
+[covered-button] bug   run 2: FAIL 4203ms #2 expect_visible [default]: element #subscribe is covered by DIV.scrim at its centre — a real user cannot click it
+[realtime-sync] clean run 0: PASS 22011ms 
+[realtime-sync] bug   run 0: FAIL 14145ms #6 expect_text [bob]: text "First note" not found in document.body.innerText after 3000 ms
+[realtime-sync] clean run 1: PASS 23234ms 
+[realtime-sync] bug   run 1: FAIL 13943ms #6 expect_text [bob]: text "First note" not found in document.body.innerText after 3000 ms
+[realtime-sync] clean run 2: PASS 22656ms 
+[realtime-sync] bug   run 2: FAIL 14570ms #6 expect_text [bob]: text "First note" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 0: PASS 9171ms 
+[hidden-error] bug   run 0: FAIL 7184ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 1: PASS 9362ms 
+[hidden-error] bug   run 1: FAIL 7690ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+[hidden-error] clean run 2: PASS 9157ms 
+[hidden-error] bug   run 2: FAIL 7599ms #2 expect_text [default]: text "Email is required" not found in document.body.innerText after 3000 ms
+wrote bench/results/haiku-explore-2.json

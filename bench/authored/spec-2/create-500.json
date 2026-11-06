@@ -1,0 +1,22 @@
+{
+  "name": "create-500",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#title"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "fill", "selector": "#title", "value": "Buy milk"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/todos"},
+    {"op": "expect_text", "text": "Buy milk"},
+    {"op": "fill", "selector": "#title", "value": "Walk dog"},
+    {"op": "click", "selector": "#add-btn"},
+    {"op": "expect_text", "text": "Buy milk\nWalk dog"},
+    {"op": "goto", "path": "/"},
+    {"op": "expect_request", "method": "GET", "path_contains": "/api/todos", "status": 200},
+    {"op": "expect_visible", "selector": "#list"},
+    {"op": "expect_text", "text": "Buy milk\nWalk dog"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"}
+  ]
+}

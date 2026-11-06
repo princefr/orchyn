@@ -1,0 +1,23 @@
+{
+  "name": "counter",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_visible", "selector": "#count"},
+    {"op": "expect_text", "text": "Count: 0"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 1"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 2"},
+    {"op": "wait_ms", "ms": 1500},
+    {"op": "expect_text", "text": "Count: 2"},
+    {"op": "expect_no_failed_requests"},
+    {"op": "expect_console_clean"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "Count: 2"},
+    {"actor": "bob", "op": "click", "selector": "#inc"},
+    {"actor": "bob", "op": "expect_text", "text": "Count: 3"},
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "Count: 3"}
+  ]
+}

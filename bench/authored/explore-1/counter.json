@@ -1,0 +1,22 @@
+{
+  "name": "counter",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "Count: 0"},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 1"},
+    {"op": "expect_request", "method": "POST", "path_contains": "/api/counter/inc", "status": 200},
+    {"op": "click", "selector": "#inc"},
+    {"op": "expect_text", "text": "Count: 2"},
+    {"op": "expect_console_clean"},
+    {"op": "expect_no_failed_requests"},
+    {"actor": "bob", "op": "goto", "path": "/"},
+    {"actor": "bob", "op": "expect_text", "text": "Count: 2"},
+    {"actor": "bob", "op": "click", "selector": "#inc"},
+    {"actor": "bob", "op": "expect_text", "text": "Count: 3"},
+    {"op": "goto", "path": "/"},
+    {"op": "expect_text", "text": "Count: 3"},
+    {"actor": "bob", "op": "expect_console_clean"}
+  ]
+}
