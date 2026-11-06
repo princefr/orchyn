@@ -14,12 +14,15 @@
 #
 # Env: DRIVERS (task numbers used to drive the baseline, default "5 10 14 15"),
 #      ORCHYN_CHECK (binary), WB (web-bench checkout), WBENV (node_modules dir),
-#      SCORE (bench/webbench/score.sh), CHROME, ORCHYN_NO_SANDBOX.
+#      SCORE (bench/webbench/score.sh), CHROME, ORCHYN_NO_SANDBOX, WORKROOT (scratch dir).
 set -u
 P=$1; MUT=$(cd "$2" && pwd); CHECKS=$(cd "$3" && pwd); OUT=$4; MAX=${5:-999}
 : "${ORCHYN_CHECK:?}" "${WB:?}" "${WBENV:?}" "${SCORE:?}"
 PORT=${PORT:-3800}
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/mutscore-$P-XXXX")
+# Keep our scratch files out of TMPDIR: Chrome puts its profile (and a unix
+# socket with a ~108-char path limit) under TMPDIR, and a long TMPDIR makes it
+# hang. Use WORKROOT for our own files instead.
+WORK=$(mktemp -d "${WORKROOT:-/tmp}/mutscore-$P-XXXX")
 log() { echo "[$P] $*" >&2; }
 
 start_app() { # $1 = app dir; starts on $PORT, writes $WORK/pid
