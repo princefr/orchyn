@@ -704,12 +704,42 @@ async fn click_resolved(
 ) -> StepOutcome {
     let p = probe(adapter, selector).await?;
     check_actionable(label, &p)?;
+    // Mark the current document so a navigation caused by the click can be
+    // told apart from an in-page update.
+    let _ = adapter.eval_js("window.__orchynDoc = 'pre-click'; true").await;
     adapter
         .execute_harness(&HarnessAction::Click { target: 0 }, &[annotate(&p)])
         .await
         .map_err(|e| format!("mouse click on {label} failed: {e}"))?;
     sleep_ms(ACTION_SETTLE_MS).await;
+    wait_for_navigation(adapter).await;
     Ok(format!("clicked {label}"))
+}
+
+/// If the last action started a navigation, wait (bounded) until the new
+/// document has finished loading, so the next step does not race it.
+async fn wait_for_navigation(adapter: &mut dyn PlatformAdapter) {
+    let started = Instant::now();
+    loop {
+        let state = adapter
+            .eval_js(
+                "window.__orchynDoc === 'pre-click' ? 'same' : document.readyState",
+            )
+            .await
+            .map(|raw| js_text(&raw));
+        match state.as_deref() {
+            // Mid-navigation: the old document is gone or the new one is
+            // still loading.
+            Err(_) | Ok("loading") | Ok("interactive") => {}
+            // Same document, a fully loaded new one, or an adapter that does
+            // not answer (tests): nothing to wait for.
+            _ => return,
+        }
+        if started.elapsed() >= Duration::from_millis(RELOAD_TIMEOUT_MS) {
+            return;
+        }
+        sleep_ms(POLL_MS).await;
+    }
 }
 
 async fn click(adapter: &mut dyn PlatformAdapter, selector: &str) -> StepOutcome {
