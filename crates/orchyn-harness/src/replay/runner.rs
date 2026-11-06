@@ -51,6 +51,10 @@ pub struct ReplayReport {
     pub observed_requests: Vec<NetworkRequest>,
     /// All actors, formatted as `"actor: message"`.
     pub console_errors: Vec<String>,
+    /// API (fetch/XHR) exchanges with bodies, all actors, in order. Used to
+    /// mine invariants from known-good runs.
+    #[serde(default)]
+    pub observed_exchanges: Vec<orchyn_core::Exchange>,
 }
 
 pub struct ReplayRunner {
@@ -83,6 +87,7 @@ impl ReplayRunner {
             actors: Vec::new(),
             observed_requests: Vec::new(),
             console_errors: Vec::new(),
+            observed_exchanges: Vec::new(),
         };
 
         let mut steps = Vec::with_capacity(manifest.steps.len());
@@ -132,6 +137,7 @@ impl ReplayRunner {
             duration_ms: elapsed_ms(started),
             observed_requests: session.observed_requests,
             console_errors: session.console_errors,
+            observed_exchanges: session.observed_exchanges,
         })
     }
 }
@@ -158,6 +164,7 @@ struct Session {
     actors: Vec<Actor>,
     observed_requests: Vec<NetworkRequest>,
     console_errors: Vec<String>,
+    observed_exchanges: Vec<orchyn_core::Exchange>,
 }
 
 impl Session {
@@ -348,6 +355,10 @@ impl Session {
         for req in raw.network_requests {
             self.observed_requests.push(req.clone());
             actor.requests.push(req);
+        }
+        // Exchanges are best-effort: adapters without body capture return none.
+        if let Ok(ex) = actor.adapter.take_exchanges().await {
+            self.observed_exchanges.extend(ex);
         }
         Ok(())
     }

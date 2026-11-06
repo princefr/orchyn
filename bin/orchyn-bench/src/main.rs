@@ -28,9 +28,11 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 
+mod modes;
+
 #[derive(Parser, Debug)]
 #[command(name = "orchyn-bench", about = "Score replay manifests against bug-seeded fixtures")]
-struct Args {
+pub(crate) struct Args {
     /// Suite file (JSON array of fixtures).
     #[arg(long, default_value = "bench/suite.json")]
     suite: PathBuf,
@@ -50,10 +52,16 @@ struct Args {
     /// Write the full JSON results here.
     #[arg(long)]
     out: Option<PathBuf>,
+    /// manifest: replay manifests (default). universal: spec-free universal
+    /// invariants generated from the code. mined: mine invariants from clean
+    /// runs of `--manifests` (the driver) and check buggy runs against them.
+    /// invariants: write every invariant candidate per fixture to `--out` dir.
+    #[arg(long, default_value = "manifest")]
+    mode: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct Fixture {
+pub(crate) struct Fixture {
     name: String,
     dir: String,
     bug_class: String,
@@ -104,7 +112,7 @@ fn free_port() -> Result<u16> {
     Ok(l.local_addr()?.port())
 }
 
-async fn start_fixture(dir: &Path, bug: bool) -> Result<(Child, String)> {
+pub(crate) async fn start_fixture(dir: &Path, bug: bool) -> Result<(Child, String)> {
     let port = free_port()?;
     let mut child = Command::new("node")
         .arg("server.js")
@@ -136,7 +144,7 @@ async fn start_fixture(dir: &Path, bug: bool) -> Result<(Child, String)> {
     Ok((child, format!("http://127.0.0.1:{port}")))
 }
 
-fn web_factory() -> AdapterFactoryFn {
+pub(crate) fn web_factory() -> AdapterFactoryFn {
     Arc::new(|_actor: String| {
         async move {
             let a = tokio::task::spawn_blocking(|| {
@@ -218,6 +226,14 @@ async fn main() -> Result<()> {
     let fixtures: Vec<Fixture> = serde_json::from_str(
         &std::fs::read_to_string(&args.suite).with_context(|| format!("read {}", args.suite.display()))?,
     )?;
+
+    match args.mode.as_str() {
+        "manifest" => {}
+        "universal" => return modes::universal(&args, &suite_dir, &fixtures).await,
+        "mined" => return modes::mined(&args, &suite_dir, &fixtures).await,
+        "invariants" => return modes::invariants(&args, &suite_dir, &fixtures).await,
+        other => bail!("unknown --mode {other}"),
+    }
 
     let mut results = Vec::new();
     for fx in fixtures {
