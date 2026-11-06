@@ -7,7 +7,7 @@ pub use types::{
     DiagnosticEvent, NetworkEvent, RealityContext,
     Evidence, EvidenceBundle,
     // Hybrid harness types
-    UiElement, ConsoleLog, NetworkRequest, RawTelemetry, TelemetrySnapshot,
+    UiElement, ConsoleLog, NetworkRequest, Exchange, RawTelemetry, TelemetrySnapshot,
     ActorState, StepRecord, ManifestStep, FailPolicy, RunStatus, TestRunRecord,
 };
 pub use mock_adapter::MockAdapter;

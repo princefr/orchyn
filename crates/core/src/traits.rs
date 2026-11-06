@@ -79,6 +79,11 @@ pub trait PlatformAdapter: Send + Sync + Debug {
         .boxed()
     }
 
+    /// Drain the XHR/fetch exchanges (with bodies) captured since the last call.
+    fn take_exchanges(&mut self) -> BoxFuture<'_, Result<Vec<Exchange>>> {
+        async move { Ok(vec![]) }.boxed()
+    }
+
     /// Resize the browser viewport (for responsive testing).
     fn set_viewport(&mut self, width: u32, height: u32) -> BoxFuture<'_, Result<()>> {
         let _ = (width, height);

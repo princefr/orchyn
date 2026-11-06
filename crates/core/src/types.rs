@@ -125,6 +125,20 @@ pub struct NetworkRequest {
     pub status: u16,
 }
 
+/// A completed XHR/fetch exchange with its bodies, as observed by the platform
+/// adapter. Bodies are best-effort: `None` when not captured (binary, too large,
+/// or not available).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Exchange {
+    pub method: String,
+    pub url: String,
+    pub status: u16,
+    #[serde(default)]
+    pub request_body: Option<String>,
+    #[serde(default)]
+    pub response_body: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RawTelemetry {
     pub console_logs: Vec<ConsoleLog>,

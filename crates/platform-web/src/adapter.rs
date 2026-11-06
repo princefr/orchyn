@@ -6,8 +6,8 @@ use headless_chrome::{Browser, LaunchOptions};
 use orchyn_action_executor::{Action, DeviceInfo, PlatformAdapter};
 use orchyn_core::action::{Action as HarnessAction, AnnotatedElement, BoundingBox};
 use orchyn_core::{
-    ConsoleLog, DiagnosticEvent, LogLevel, NetworkEvent, NetworkRequest, OrchynError, Platform,
-    RawTelemetry, Result, UiElement,
+    ConsoleLog, DiagnosticEvent, Exchange, LogLevel, NetworkEvent, NetworkRequest, OrchynError,
+    Platform, RawTelemetry, Result, UiElement,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -20,6 +20,9 @@ pub struct WebAdapter {
     diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>>,
     network_events: Arc<Mutex<Vec<NetworkEvent>>>,
     ws_messages: Arc<Mutex<Vec<String>>>,
+    /// XHR/fetch exchanges with bodies, filled by the response handler and
+    /// drained by `take_exchanges`. Separate from `network_events`.
+    exchanges: Arc<Mutex<Vec<Exchange>>>,
 }
 
 impl std::fmt::Debug for WebAdapter {
@@ -56,6 +59,7 @@ impl WebAdapter {
 
         let diagnostics: Arc<Mutex<Vec<DiagnosticEvent>>> = Arc::new(Mutex::new(Vec::new()));
         let network_events: Arc<Mutex<Vec<NetworkEvent>>> = Arc::new(Mutex::new(Vec::new()));
+        let exchanges: Arc<Mutex<Vec<Exchange>>> = Arc::new(Mutex::new(Vec::new()));
         let ws_messages: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
 
         // Enable Log + Runtime domains before registering the listener.
@@ -275,6 +279,7 @@ impl WebAdapter {
             let net_l = Arc::clone(&network_events);
             let pending_l = Arc::clone(&pending);
             let rec_h = Arc::clone(&recorded);
+            let exch_h = Arc::clone(&exchanges);
 
             tab.register_response_handling(
                 "orchyn",
@@ -296,6 +301,19 @@ impl WebAdapter {
                             .filter(|b| !b.is_empty() && b.len() <= 16_384),
                         _ => None,
                     };
+
+                    if matches!(
+                        params.Type,
+                        Network::ResourceType::Xhr | Network::ResourceType::Fetch
+                    ) {
+                        exch_h.lock().unwrap().push(Exchange {
+                            method: method.clone(),
+                            url: params.response.url.clone(),
+                            status: params.response.status as u16,
+                            request_body: req_body.clone(),
+                            response_body: resp_body.clone(),
+                        });
+                    }
 
                     let idx = rec_h.lock().unwrap().get(&params.request_id).copied();
                     let mut net = net_l.lock().unwrap();
@@ -338,6 +356,7 @@ impl WebAdapter {
             diagnostics,
             network_events,
             ws_messages,
+            exchanges,
         })
     }
 
@@ -447,6 +466,11 @@ impl PlatformAdapter for WebAdapter {
             Ok(current)
         }
         .boxed()
+    }
+
+    fn take_exchanges(&mut self) -> BoxFuture<'_, Result<Vec<Exchange>>> {
+        let exch = self.exchanges.clone();
+        async move { Ok(std::mem::take(&mut *exch.lock().unwrap())) }.boxed()
     }
 
     fn get_elements(&mut self) -> BoxFuture<'_, Result<Vec<serde_json::Value>>> {
