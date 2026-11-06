@@ -1,0 +1,24 @@
+{
+  "name": "task-12",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-likert"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_visible", "selector": "form fieldset.q table"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_visible", "selector": "form fieldset.q table"},
+    {"op": "expect_count", "selector": "form fieldset.q table input[type=radio]", "count": 15},
+    {"op": "expect_count", "selector": "form fieldset.q table input[type=radio][name*=\"_\"]", "count": 15},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "The radio count of 15 is 5 options times 3 statements, from the task's default counts (5 random options, 3 statements).",
+    "The control name pattern {param-name}_{statement-index} is checked only as 'name contains an underscore'. The exact suffix and whether the index starts at 0 or 1 are not pinned.",
+    "Single selection per statement row (radio group per row) is not asserted directly.",
+    "Statement and option header text is random and not asserted.",
+    "Whether the design page shows statements or options (beyond the table) is not stated and not asserted."
+  ]
+}

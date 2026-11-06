@@ -1,0 +1,32 @@
+{
+  "name": "task-1",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/common/Question.js"},
+    {"op": "expect_text", "text": "class Question"},
+    {"op": "expect_text", "text": "export"},
+    {"op": "goto", "path": "/design.html"},
+    {"op": "expect_url", "contains": "design"},
+    {"op": "expect_text", "text": "Add Question"},
+    {"op": "expect_visible", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 0},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_visible", "selector": "form fieldset.q legend.q-title"},
+    {"op": "expect_count", "selector": "form fieldset.q legend.q-title", "count": 1},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body", "count": 1},
+    {"op": "expect_attribute", "selector": "form fieldset.q", "name": "id"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 2},
+    {"op": "expect_count", "selector": "form fieldset.q[id]", "count": 2},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body", "count": 2},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "Prepend order is not asserted: titles and names are random and no op compares the order of two rendered questions. Only counts and structure are checked.",
+    "Unique name is checked only as the presence of an id attribute on each question root (count of fieldset.q[id]). Uniqueness and the name's format are not asserted.",
+    "Random title content is not asserted; only that the legend is visible (non-zero size, so non-empty).",
+    "Constructor semantics (preview default false, member root) are not callable from the UI; only the rendered root is checked.",
+    "The Question.js check matches the text 'class Question' and 'export' in the served raw source; the exact export form (named or default) is not pinned."
+  ]
+}

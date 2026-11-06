@@ -1,0 +1,21 @@
+{
+  "name": "task-11",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-nps"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q .option", "count": 11},
+    {"op": "click", "selector": "form fieldset.q .option:nth-child(9)"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "The count of 11 option elements is inferred from 'score (0-10)': one option per score value. The task does not state the element count directly.",
+    "The highlight of the clicked option is not asserted: no class or attribute is given for it.",
+    "The stored score in the param-named control is not asserted: the control name is the random question name, and no value is pinned for the stored form.",
+    "Only the preview page is checked for NPS options; the design page is not asserted to show any NPS-specific elements beyond the question root."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "task-3",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/common/SurveyDesign.js"},
+    {"op": "expect_text", "text": "class SurveyDesign"},
+    {"op": "expect_text", "text": "formSelector"},
+    {"op": "expect_text", "text": "prependQuestion"},
+    {"op": "expect_text", "text": "appendQuestion"},
+    {"op": "expect_text", "text": "Question.js"},
+    {"op": "expect_text", "text": "add-question"},
+    {"op": "goto", "path": "/design.js"},
+    {"op": "expect_text", "text": "SurveyDesign"},
+    {"op": "expect_no_text", "text": "add-question"},
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "appendQuestion has no UI entry point in the task list, so only its method name in the source is checked, not its behaviour.",
+    "formSelector is checked only as text in SurveyDesign.js; how it is used to find the form is not pinned.",
+    "The Question.js import is checked only by the filename text; the exact import path form is not pinned.",
+    "The design.js check (no 'add-question' text) assumes the button code was moved, not copied. A design.js that still mentions the class in another way would not be caught.",
+    "The source-text checks depend on the served raw JS being readable as page text."
+  ]
+}

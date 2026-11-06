@@ -1,0 +1,26 @@
+{
+  "name": "task-5",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 2},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 2},
+    {"op": "expect_visible", "selector": "form fieldset.q legend.q-title"},
+    {"op": "expect_count", "selector": "[contenteditable=\"true\"]", "count": 0},
+    {"op": "expect_attribute", "selector": "form", "name": "action", "value": "submit"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "Config panel hidden in preview is NOT asserted. 'Hidden' could mean display:none or removal, and the replay ops cannot assert a negative visibility without pinning one of those.",
+    "'Not editable' is asserted as no element with contenteditable=\"true\" in the preview page. A contenteditable=\"false\" or no attribute both pass.",
+    "The order of preview questions relative to design is not asserted (titles are random).",
+    "The preview page's survey title is not asserted; the task does not give its text or position.",
+    "Preview is checked only through the Preview button flow, as the task requires; loading preview.html directly with stored data is not tested.",
+    "The form action check uses the initial-state value 'submit' from the context section."
+  ]
+}

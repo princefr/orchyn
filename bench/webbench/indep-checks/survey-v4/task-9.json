@@ -1,0 +1,24 @@
+{
+  "name": "task-9",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-rating"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-config .q-starCount"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-config .q-starCount", "name": "type", "value": "checkbox"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q .option", "count": 5},
+    {"op": "click", "selector": "form fieldset.q .option:nth-child(3)"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "The meaning of the q-starCount checkbox (what checking it does, and to which value) is not stated, so it is not clicked and its effect is not asserted.",
+    "The star count of 5 is taken from the constructor default ('starCount (number, default 5)') when the checkbox is untouched.",
+    "The highlight style is not asserted: the task gives no class or attribute for highlighted stars, so only that the third star is clickable is checked.",
+    "The rating value stored in the param-named control ('from 0 to 1') is not asserted: the range meaning is ambiguous and the control name is the random question name.",
+    "Star option rows are assumed to be .option elements inside the question root with consecutive child positions (nth-child)."
+  ]
+}

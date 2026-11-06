@@ -1,0 +1,30 @@
+{
+  "name": "task-10",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-ranking"},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body .option", "count": 3},
+    {"op": "click", "selector": "form fieldset.q .q-body .option-text"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-body .option-text", "name": "contenteditable", "value": "true"},
+    {"op": "click", "selector": "form fieldset.q .q-config .add-option"},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body .option", "count": 4},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q .option", "count": 4},
+    {"op": "drag", "selector": "form fieldset.q .option:nth-child(1)", "target": "form fieldset.q .option:nth-child(3)", "position": "after"},
+    {"op": "expect_count", "selector": "form fieldset.q .option", "count": 4},
+    {"op": "expect_console_clean"},
+    {"op": "switch_tab", "index": 0},
+    {"op": "click", "selector": "form fieldset.q .q-body .remove-option"},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-body .option:last-child"}
+  ],
+  "_ambiguities": [
+    "The resulting order after the drag is not asserted: option texts are random and no op compares order. The comma-separated index value in the param-named control is not asserted because that control's name is the random question name.",
+    "Only that the drag completes (elements exist and have size) and that the option count is unchanged is checked.",
+    "Whether a removed option is hidden or removed from the DOM is not pinned; only the last remaining row's visibility is checked.",
+    "Preview option rows are assumed to be .option elements inside the question root.",
+    "Drag uses the replay drag op (synthetic HTML5 DnD events). A real-mouse-only implementation would not be seen as a drag by this op."
+  ]
+}

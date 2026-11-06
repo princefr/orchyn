@@ -1,0 +1,24 @@
+{
+  "name": "task-2",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "click", "selector": "form fieldset.q .q-title"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-title", "name": "contenteditable", "value": "true"},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-config"},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-config .q-remove"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 2},
+    {"op": "click", "selector": "form fieldset.q:first-of-type .q-remove"},
+    {"op": "expect_visible", "selector": "form fieldset.q:last-of-type .q-title"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "Removal is checked only by the survivor staying visible. Whether the removed question is hidden or removed from the DOM is not pinned, so no count of fieldset.q after removal is asserted.",
+    "Preview-page behaviour from this task (title not editable, config panel hidden) cannot be reached by a user flow until the Preview button (task 4) and preview rendering (task 5) exist. It is checked in the task-4 and task-5 manifests instead.",
+    "The title is asserted editable after a click (contenteditable=true). Whether it is contenteditable before any click is not pinned.",
+    "The config panel is asserted visible in design without hover. The task does not say whether it is revealed on hover, so none is used.",
+    "Title text is random, so the edited text itself is not asserted (no fill on contenteditable)."
+  ]
+}

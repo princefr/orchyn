@@ -1,0 +1,32 @@
+{
+  "name": "task-4",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "expect_visible", "selector": ".save"},
+    {"op": "expect_visible", "selector": ".preview"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "click", "selector": ".save"},
+    {"op": "expect_storage", "key": "data", "contains": "\"questions\":["},
+    {"op": "expect_storage", "key": "data", "contains": "\"className\":\"Question\""},
+    {"op": "expect_storage", "key": "data", "contains": "\"title\":"},
+    {"op": "expect_storage", "key": "data", "contains": "\"name\":"},
+    {"op": "expect_storage", "key": "data", "contains": "\"preview\":"},
+    {"op": "expect_console_clean"},
+    {"actor": "pv", "op": "goto", "path": "/design.html"},
+    {"actor": "pv", "op": "click", "selector": ".add-question"},
+    {"actor": "pv", "op": "click", "selector": ".preview"},
+    {"actor": "pv", "op": "switch_to_popup"},
+    {"actor": "pv", "op": "expect_url", "contains": "preview"},
+    {"actor": "pv", "op": "expect_storage", "key": "data", "contains": "\"className\":\"Question\""},
+    {"actor": "pv", "op": "switch_tab", "index": 0},
+    {"actor": "pv", "op": "expect_url", "contains": "design"}
+  ],
+  "_ambiguities": [
+    "Storage is checked as substrings of localStorage 'data' (JSON with double quotes, as JSON.stringify writes). Key order, spacing and the survey-level title value are not pinned; the survey title is checked only as the presence of a 'title' key.",
+    "Only the Question properties from task 4 (className, title, name, preview) are checked. Config properties such as 'required' are checked in task 15 and the type-specific properties in their own tasks.",
+    "The value of 'preview' in saved design data is not pinned, only that the key exists.",
+    "The 'pv' actor checks that Preview saves before any Save click (a fresh browser, no prior Save). It does not check that the saved data reflects later edits.",
+    "Whether Preview opens the same tab reference or a new one is covered only by the switch_to_popup and a return to the design tab."
+  ]
+}

@@ -1,0 +1,16 @@
+survey-v4 task-1 FAIL:   ERR #5 [default] expect_text: text "Add Question" not found in document.body.innerText after 3000 ms
+survey-v4 task-2 PASS
+survey-v4 task-3 PASS
+survey-v4 task-4 FAIL:   ERR #9 [default] expect_storage: localStorage["data"] is {"title":"Sample Survey","questions":[{"className":"Question","name":"question1","required":false,"isShuffleMode":fal..., expected it to cont
+survey-v4 task-5 PASS
+survey-v4 task-6 FAIL:   ERR #13 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey-v4 task-7 FAIL:   ERR #13 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey-v4 task-8 PASS
+survey-v4 task-9 FAIL:   ERR #4 [default] expect_attribute: form fieldset.q .q-config .q-starCount has type="number", expected "checkbox"
+survey-v4 task-10 FAIL:   ERR #15 [default] click: element form fieldset.q .q-body .remove-option is not visible (zero size, display:none or visibility:hidden)
+survey-v4 task-11 PASS
+survey-v4 task-12 PASS
+survey-v4 task-13 FAIL:   ERR #7 [default] click: element form fieldset.q .add-option is not visible (zero size, display:none or visibility:hidden)
+survey-v4 task-14 PASS
+survey-v4 task-15 PASS
+== survey v4: 8/15 pass on reference

@@ -1,0 +1,39 @@
+{
+  "name": "task-14",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-question"},
+    {"op": "click", "selector": ".add-single"},
+    {"op": "click", "selector": ".add-multi"},
+    {"op": "click", "selector": ".add-open"},
+    {"op": "click", "selector": ".add-rating"},
+    {"op": "click", "selector": ".add-ranking"},
+    {"op": "click", "selector": ".add-nps"},
+    {"op": "click", "selector": ".add-likert"},
+    {"op": "expect_visible", "selector": ".contents"},
+    {"op": "expect_count", "selector": ".contents .contents-item", "count": 8},
+    {"op": "expect_all_clickable"},
+    {"op": "click", "selector": ".contents .contents-item:nth-child(8)"},
+    {"op": "click", "selector": ".contents .contents-item:nth-child(1)"},
+    {"op": "drag", "selector": ".contents .contents-item:nth-child(1)", "target": ".contents .contents-item:nth-child(3)", "position": "after"},
+    {"op": "expect_count", "selector": ".contents .contents-item", "count": 8},
+    {"op": "expect_all_clickable"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_visible", "selector": ".contents"},
+    {"op": "expect_count", "selector": ".contents .contents-item", "count": 8},
+    {"op": "expect_all_clickable"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "Scrolling to the associated question after a contents click is not asserted: no op checks the scroll position. Only the click is performed and the console is checked.",
+    "The reorder by drag is not verified: no op compares question order, and titles are random. Only the drag completing, the item count staying at 8, and clickability are checked.",
+    "Each contents item's text equal to its question title is not asserted (titles are random).",
+    "'Fixed at the right side' is not verifiable with the ops available; only the .contents panel's visibility is checked.",
+    "The count of 8 assumes one contents item per question, with 8 questions added by the flow (Question, Single, Multi, Open, Rating, Ranking, Nps, Likert).",
+    "expect_all_clickable is used as the check that the contents panel does not cover question controls. It does not check overlap of non-interactive question content.",
+    "The contents item selector assumes .contents-item rows are direct children of .contents in order (nth-child)."
+  ]
+}

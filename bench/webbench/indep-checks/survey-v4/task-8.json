@@ -1,0 +1,24 @@
+{
+  "name": "task-8",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-open"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-config .q-multilines"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-config .q-multilines", "name": "type", "value": "checkbox"},
+    {"op": "click", "selector": "form fieldset.q .q-config .q-multilines"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q", "count": 1},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "The default checked state of the q-multilines checkbox is not stated, so its value is not asserted before or after the click.",
+    "Whether 'checked' means isMultilines=true is not stated and is not asserted.",
+    "The 'value contains no line break when isMultilines is false' rule cannot be checked: replay ops cannot type newline characters, and the answer control and its name are not specified.",
+    "The open answer control (textarea, input, or other) is not identified, so no assertion is made on its element type or visibility.",
+    "Preview config-panel hiding is not asserted (same reason as task 5)."
+  ]
+}

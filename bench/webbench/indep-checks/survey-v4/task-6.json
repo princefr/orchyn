@@ -1,0 +1,30 @@
+{
+  "name": "task-6",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-single"},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body .option", "count": 3},
+    {"op": "click", "selector": "form fieldset.q .q-body .option-text"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-body .option-text", "name": "contenteditable", "value": "true"},
+    {"op": "click", "selector": "form fieldset.q .q-config .add-option"},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body .option", "count": 4},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body input[type=radio]", "count": 4},
+    {"op": "expect_count", "selector": "form fieldset.q .q-body input[type=radio][value=\"3\"]", "count": 1},
+    {"op": "switch_tab", "index": 0},
+    {"op": "click", "selector": "form fieldset.q .q-body .remove-option"},
+    {"op": "expect_visible", "selector": "form fieldset.q .q-body .option:last-child"},
+    {"op": "expect_console_clean"}
+  ],
+  "_ambiguities": [
+    "Removing an option is checked only by the last remaining row staying visible. Whether a removed row is hidden or removed from the DOM is not pinned.",
+    "The radio value is checked as the value attribute (value='3' for the fourth option). How the value is produced is not pinned.",
+    "The design page is not asserted to show radios; the task does not say whether design rows show a control.",
+    "Preview is asserted to render options inside .q-body, following the Question root's body container from task 1.",
+    "Option text is random and not asserted; the contenteditable click is asserted only by its attribute.",
+    "The 'add-option' config button is scoped to the question's .q-config. The task does not say which question-level element holds it, only that it is a config panel button."
+  ]
+}

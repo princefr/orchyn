@@ -1,0 +1,40 @@
+{
+  "name": "task-15",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-single"},
+    {"op": "click", "selector": "form fieldset.q .q-config .q-required"},
+    {"op": "expect_value", "selector": "form fieldset.q .q-config .q-required", "value": "true"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .q-body input[type=radio]", "name": "required"},
+    {"op": "click", "selector": "form button"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "click", "selector": "form fieldset.q .q-body input[type=radio][value=\"0\"]"},
+    {"op": "click", "selector": "form button"},
+    {"op": "expect_url", "contains": "submit"},
+    {"actor": "nr", "op": "goto", "path": "/design.html"},
+    {"actor": "nr", "op": "click", "selector": ".add-nps"},
+    {"actor": "nr", "op": "click", "selector": ".add-rating"},
+    {"actor": "nr", "op": "click", "selector": ".add-likert"},
+    {"actor": "nr", "op": "click", "selector": "form fieldset.q:nth-of-type(1) .q-required"},
+    {"actor": "nr", "op": "click", "selector": "form fieldset.q:nth-of-type(2) .q-required"},
+    {"actor": "nr", "op": "click", "selector": "form fieldset.q:nth-of-type(3) .q-required"},
+    {"actor": "nr", "op": "click", "selector": ".preview"},
+    {"actor": "nr", "op": "switch_to_popup"},
+    {"actor": "nr", "op": "expect_url", "contains": "preview"},
+    {"actor": "nr", "op": "click", "selector": "form button"},
+    {"actor": "nr", "op": "expect_url", "contains": "preview"}
+  ],
+  "_ambiguities": [
+    "The required attribute on radios (checked for the single question) is the priority mechanism named in the task, but the task does not make it mandatory. A correct custom-validation implementation would fail the attribute check.",
+    "Which control carries 'required' for NPS, Rating and Likert is not pinned. Those types are checked only by the blocked submit (URL stays on preview) with all three required and empty.",
+    "The positive path (submit reaching the 'submit' action) is checked only for the single question, answered with value 0. The answer flows for NPS, Rating and Likert are not checked.",
+    "The URL after a successful submit is taken to contain 'submit' from the form action in the initial state; the response from the static server is not checked.",
+    "Blocked-submit detection uses 'URL still contains preview'. A developer who blocks by some other means that also keeps the URL would pass; whether a validation message is shown is not pinned.",
+    "Partial answers (some required questions answered, others not) are not checked.",
+    "The click on the .q-required checkbox of each Likert/Rating/Nps question uses fieldset:nth-of-type in DOM order, which assumes each question root is a sibling fieldset under the form."
+  ]
+}

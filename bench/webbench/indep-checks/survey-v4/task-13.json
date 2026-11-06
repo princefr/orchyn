@@ -1,0 +1,30 @@
+{
+  "name": "task-13",
+  "base_url": "",
+  "steps": [
+    {"op": "goto", "path": "/design.html"},
+    {"op": "click", "selector": ".add-likert"},
+    {"op": "expect_count", "selector": "form fieldset.q .statement", "count": 3},
+    {"op": "click", "selector": "form fieldset.q .q-config .add-statement"},
+    {"op": "expect_count", "selector": "form fieldset.q .statement", "count": 4},
+    {"op": "click", "selector": "form fieldset.q .statement-text"},
+    {"op": "expect_attribute", "selector": "form fieldset.q .statement-text", "name": "contenteditable", "value": "true"},
+    {"op": "click", "selector": "form fieldset.q .add-option"},
+    {"op": "click", "selector": ".preview"},
+    {"op": "switch_to_popup"},
+    {"op": "expect_url", "contains": "preview"},
+    {"op": "expect_count", "selector": "form fieldset.q table input[type=radio]", "count": 24},
+    {"op": "expect_console_clean"},
+    {"op": "switch_tab", "index": 0},
+    {"op": "click", "selector": "form fieldset.q .remove-statement"},
+    {"op": "expect_visible", "selector": "form fieldset.q .statement:last-child"}
+  ],
+  "_ambiguities": [
+    "The radio count of 24 assumes 4 statements (3 default plus 1 added) times 6 options (5 default plus 1 added). It assumes one add-option click adds exactly one column.",
+    "The add-option click targets the first .add-option inside the Likert question. Whether that is the header cell button or a config-panel button is not pinned.",
+    "Whether a removed statement row is hidden or removed from the DOM is not pinned; only the last remaining row's visibility is checked.",
+    "Option-column removal is not asserted: no unambiguous survivor selector exists for option cells.",
+    "The option cell's add/remove buttons are not asserted in design (no count), because whether each cell or each header holds them is not stated.",
+    "Statement-row removal is not asserted in preview; preview output for removed rows is not pinned."
+  ]
+}
