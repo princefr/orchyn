@@ -206,7 +206,70 @@ impl StepOp {
     }
 }
 
+impl StepOp {
+    /// True for steps that only assert (or only record a snapshot to assert
+    /// against later) and never change the app. Exhaustive on purpose: a new
+    /// op must be classified here.
+    pub fn is_assertion(&self) -> bool {
+        match self {
+            StepOp::ExpectText { .. }
+            | StepOp::ExpectNoText { .. }
+            | StepOp::ExpectUrl { .. }
+            | StepOp::ExpectVisible { .. }
+            | StepOp::ExpectConsoleClean
+            | StepOp::ExpectRequest { .. }
+            | StepOp::ExpectNoFailedRequests
+            | StepOp::ExpectDialog { .. }
+            | StepOp::ExpectAllClickable
+            | StepOp::SnapshotText { .. }
+            | StepOp::ExpectTextUnchanged { .. }
+            | StepOp::ExpectValue { .. }
+            | StepOp::ExpectCount { .. }
+            | StepOp::ExpectStorage { .. }
+            | StepOp::ExpectSameText { .. }
+            | StepOp::ExpectAttribute { .. } => true,
+            StepOp::Goto { .. }
+            | StepOp::Click { .. }
+            | StepOp::ClickText { .. }
+            | StepOp::Fill { .. }
+            | StepOp::WaitMs { .. }
+            | StepOp::WaitForText { .. }
+            | StepOp::ResetTelemetry
+            | StepOp::Reload
+            | StepOp::ClickEach { .. }
+            | StepOp::Hover { .. }
+            | StepOp::Drag { .. }
+            | StepOp::SetStorage { .. } => false,
+        }
+    }
+}
+
 impl ReplayManifest {
+    /// The same flow with every assertion removed and text waits turned into
+    /// plain waits, so a build is driven through the whole flow (to observe
+    /// its traffic and pages) instead of halting at the first failed check.
+    pub fn actions_only(&self) -> ReplayManifest {
+        let steps = self
+            .steps
+            .iter()
+            .filter(|s| !s.op.is_assertion())
+            .map(|s| ReplayStep {
+                actor: s.actor.clone(),
+                op: match &s.op {
+                    StepOp::WaitForText { timeout_ms, .. } => StepOp::WaitMs {
+                        ms: (*timeout_ms).min(1500),
+                    },
+                    other => other.clone(),
+                },
+            })
+            .collect();
+        ReplayManifest {
+            name: format!("{} (actions only)", self.name),
+            base_url: self.base_url.clone(),
+            steps,
+        }
+    }
+
     pub fn from_json(s: &str) -> serde_json::Result<Self> {
         serde_json::from_str(s)
     }

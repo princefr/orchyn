@@ -3924,6 +3924,7 @@ dependencies = [
  "orchyn-core",
  "orchyn-harness",
  "orchyn-platform-web",
+ "serde",
  "serde_json",
  "tokio",
 ]

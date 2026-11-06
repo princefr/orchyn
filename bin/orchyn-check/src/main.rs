@@ -54,6 +54,18 @@ struct Args {
     /// Print the invariants the code declares.
     #[arg(long)]
     contracts: bool,
+    /// Record a regression baseline: replay each --manifest's actions --runs
+    /// times on a known-good build and save the API and page invariants that
+    /// held in every run to DIR/<manifest-stem>.baseline.json.
+    #[arg(long, value_name = "DIR", conflicts_with = "baseline")]
+    record: Option<PathBuf>,
+    /// Verify against a recorded baseline: replay each --manifest's actions
+    /// once and report every recorded invariant that no longer holds.
+    #[arg(long, value_name = "DIR")]
+    baseline: Option<PathBuf>,
+    /// Runs per manifest when recording (at least 2).
+    #[arg(long, default_value_t = 3)]
+    runs: usize,
 }
 
 fn factory() -> AdapterFactoryFn {
@@ -130,7 +142,14 @@ async fn main() -> Result<()> {
     let mut all_ok = true;
     let mut observed = Vec::new();
 
-    for path in &args.manifest {
+    if let Some(dir) = &args.record {
+        return record(&args, dir, &runner).await;
+    }
+    if let Some(dir) = &args.baseline {
+        all_ok &= verify(&args, dir, &runner, &mut observed).await?;
+    }
+
+    for path in args.manifest.iter().filter(|_| args.baseline.is_none()) {
         let text = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
         let m = ReplayManifest::from_json(&text)
             .with_context(|| format!("{} is not a valid replay manifest", path.display()))?;
@@ -185,4 +204,114 @@ async fn main() -> Result<()> {
     }
 
     std::process::exit(if all_ok { 0 } else { 1 });
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Baseline {
+    manifest: String,
+    runs: usize,
+    api: Vec<invariants::mined::Mined>,
+    pages: Vec<invariants::pages::PageInvariant>,
+}
+
+fn load_manifest(path: &std::path::Path) -> Result<ReplayManifest> {
+    let text = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    ReplayManifest::from_json(&text)
+        .with_context(|| format!("{} is not a valid replay manifest", path.display()))
+}
+
+fn baseline_path(dir: &std::path::Path, manifest: &std::path::Path) -> PathBuf {
+    let stem = manifest
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "manifest".into());
+    dir.join(format!("{stem}.baseline.json"))
+}
+
+/// Replay each manifest's actions `--runs` times and save what always held.
+async fn record(
+    args: &Args,
+    dir: &std::path::Path,
+    runner: &dyn Fn() -> ReplayRunner,
+) -> Result<()> {
+    anyhow::ensure!(!args.manifest.is_empty(), "--record needs at least one --manifest");
+    let runs = args.runs.max(2);
+    std::fs::create_dir_all(dir)?;
+    println!("== recording baseline ({runs} runs per manifest)");
+    for path in &args.manifest {
+        let m = load_manifest(path)?.actions_only();
+        let (mut api, mut page) = (Vec::new(), Vec::new());
+        for _ in 0..runs {
+            let r = runner().run(&m).await?;
+            api.push(r.observed_exchanges);
+            page.push(r.page_snapshots);
+        }
+        let b = Baseline {
+            manifest: path.display().to_string(),
+            runs,
+            api: invariants::mined::mine(&api),
+            pages: invariants::pages::mine(&page),
+        };
+        let out = baseline_path(dir, path);
+        std::fs::write(&out, serde_json::to_string_pretty(&b)?)?;
+        println!(
+            "{}: {} API invariants, {} page invariants -> {}",
+            path.display(),
+            b.api.len(),
+            b.pages.len(),
+            out.display()
+        );
+    }
+    Ok(())
+}
+
+/// Replay each manifest's actions once and check the recorded invariants.
+/// Returns false when any invariant broke.
+async fn verify(
+    args: &Args,
+    dir: &std::path::Path,
+    runner: &dyn Fn() -> ReplayRunner,
+    observed: &mut Vec<orchyn_core::NetworkRequest>,
+) -> Result<bool> {
+    anyhow::ensure!(!args.manifest.is_empty(), "--baseline needs at least one --manifest");
+    println!("== regression check against baseline {}", dir.display());
+    let mut ok = true;
+    for path in &args.manifest {
+        let bpath = baseline_path(dir, path);
+        let b: Baseline = serde_json::from_str(
+            &std::fs::read_to_string(&bpath).with_context(|| format!("read {}", bpath.display()))?,
+        )?;
+        let m = load_manifest(path)?.actions_only();
+        let r = runner().run(&m).await?;
+        observed.extend(r.observed_requests.iter().cloned());
+        let api = invariants::mined::check(&b.api, &r.observed_exchanges);
+        let page = invariants::pages::check(&b.pages, &r.page_snapshots);
+        if api.is_empty() && page.is_empty() {
+            println!(
+                "PASS {} ({} API + {} page invariants hold)",
+                path.display(),
+                b.api.len(),
+                b.pages.len()
+            );
+            continue;
+        }
+        ok = false;
+        println!("FAIL {}", path.display());
+        for v in &api {
+            let c = invariants::mined::to_candidates(std::slice::from_ref(&v.invariant));
+            let what = c.first().map(|c| c.statement.clone()).unwrap_or_default();
+            println!("  api:  {what} — observed: {}", v.observed);
+        }
+        for v in &page {
+            let c = invariants::pages::to_candidates(std::slice::from_ref(&v.invariant));
+            let what = c.first().map(|c| c.statement.clone()).unwrap_or_default();
+            println!("  page: {what} — observed: {}", v.observed);
+        }
+        if r.first_failure.is_some() {
+            if let Some(s) = r.first_failure.and_then(|i| r.steps.iter().find(|s| s.index == i)) {
+                println!("  (an action failed: #{} {}: {})", s.index, s.op, s.detail);
+            }
+        }
+    }
+    Ok(ok)
 }

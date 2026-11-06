@@ -13,9 +13,10 @@
 use super::{Args, Fixture, start_fixture, web_factory};
 use anyhow::{Context, Result};
 use orchyn_core::Exchange;
+use orchyn_harness::replay::PageSnapshot;
 use orchyn_harness::intent;
-use orchyn_harness::invariants::{self, InvariantCandidate, mined};
-use orchyn_harness::replay::{ReplayManifest, ReplayReport, ReplayRunner, ReplayStep, StepOp};
+use orchyn_harness::invariants::{self, InvariantCandidate, mined, pages};
+use orchyn_harness::replay::{ReplayManifest, ReplayReport, ReplayRunner};
 use serde::Serialize;
 use std::path::Path;
 
@@ -169,41 +170,6 @@ pub(crate) async fn universal(args: &Args, suite_dir: &Path, fixtures: &[Fixture
 
 // ── mined ────────────────────────────────────────────────────────────────────
 
-/// Mining needs the app's *traffic*, not the driver's verdicts: keep the
-/// actions, drop assertions, and turn waits-for-text into plain waits so a
-/// buggy build is driven through the same flow instead of halting early.
-fn actions_only(m: &ReplayManifest) -> ReplayManifest {
-    let steps = m
-        .steps
-        .iter()
-        .filter_map(|s| {
-            let op = match &s.op {
-                StepOp::WaitForText { timeout_ms, .. } => StepOp::WaitMs {
-                    ms: (*timeout_ms).min(1500),
-                },
-                StepOp::ExpectText { .. }
-                | StepOp::ExpectNoText { .. }
-                | StepOp::ExpectUrl { .. }
-                | StepOp::ExpectVisible { .. }
-                | StepOp::ExpectAllClickable
-                | StepOp::ExpectConsoleClean
-                | StepOp::ExpectRequest { .. }
-                | StepOp::ExpectNoFailedRequests
-                | StepOp::ExpectTextUnchanged { .. }
-                | StepOp::ExpectDialog { .. }
-                | StepOp::ExpectValue { .. }
-                | StepOp::ExpectCount { .. }
-                | StepOp::ExpectStorage { .. }
-                | StepOp::ExpectSameText { .. }
-                | StepOp::ExpectAttribute { .. }
-                | StepOp::SnapshotText { .. } => return None,
-                other => other.clone(),
-            };
-            Some(ReplayStep { actor: s.actor.clone(), op })
-        })
-        .collect();
-    ReplayManifest { name: format!("{} (actions only)", m.name), base_url: m.base_url.clone(), steps }
-}
 
 #[derive(Serialize)]
 struct MinedFixture {
@@ -214,6 +180,14 @@ struct MinedFixture {
     bug_violations: Vec<Vec<mined::Violation>>,
     caught: bool,
     false_positive: bool,
+    page_invariants: Vec<pages::PageInvariant>,
+    page_clean_violations: Vec<pages::PageViolation>,
+    page_bug_violations: Vec<Vec<pages::PageViolation>>,
+    page_caught: bool,
+    page_false_positive: bool,
+    /// Union of API and page invariants.
+    any_caught: bool,
+    any_false_positive: bool,
 }
 
 pub(crate) async fn mined(args: &Args, suite_dir: &Path, fixtures: &[Fixture]) -> Result<()> {
@@ -233,27 +207,45 @@ pub(crate) async fn mined(args: &Args, suite_dir: &Path, fixtures: &[Fixture]) -
             eprintln!("[{}] no driver manifest at {}", fx.name, path.display());
             continue;
         };
-        let manifest = actions_only(&manifest);
+        let manifest = manifest.actions_only();
         // train + 1 held-out clean trace
         let mut clean: Vec<Vec<Exchange>> = Vec::new();
+        let mut clean_pages: Vec<Vec<PageSnapshot>> = Vec::new();
         for _ in 0..=train {
-            clean.push(replay(&dir, &manifest, false).await?.observed_exchanges);
+            let r = replay(&dir, &manifest, false).await?;
+            clean.push(r.observed_exchanges);
+            clean_pages.push(r.page_snapshots);
         }
         let held_out = clean.pop().unwrap_or_default();
+        let held_out_pages = clean_pages.pop().unwrap_or_default();
         let invs = mined::mine(&clean);
+        let page_invs = pages::mine(&clean_pages);
         let clean_violations = mined::check(&invs, &held_out);
+        let page_clean_violations = pages::check(&page_invs, &held_out_pages);
         let mut bug_violations = Vec::new();
+        let mut page_bug_violations = Vec::new();
         for _ in 0..args.runs {
-            let trace = replay(&dir, &manifest, true).await?.observed_exchanges;
-            bug_violations.push(mined::check(&invs, &trace));
+            let r = replay(&dir, &manifest, true).await?;
+            bug_violations.push(mined::check(&invs, &r.observed_exchanges));
+            page_bug_violations.push(pages::check(&page_invs, &r.page_snapshots));
         }
         let caught = !invs.is_empty() && bug_violations.iter().all(|v| !v.is_empty());
+        let page_caught =
+            !page_invs.is_empty() && page_bug_violations.iter().all(|v| !v.is_empty());
+        let any_caught = bug_violations
+            .iter()
+            .zip(&page_bug_violations)
+            .all(|(a, p)| !a.is_empty() || !p.is_empty());
+        let any_false_positive = !clean_violations.is_empty() || !page_clean_violations.is_empty();
         eprintln!(
-            "[{}] mined {} invariants; clean violations {}; bug violations {:?}",
+            "[{}] api: {} invariants, clean violations {}, bug {:?} | pages: {} invariants, clean violations {}, bug {:?}",
             fx.name,
             invs.len(),
             clean_violations.len(),
-            bug_violations.iter().map(Vec::len).collect::<Vec<_>>()
+            bug_violations.iter().map(Vec::len).collect::<Vec<_>>(),
+            page_invs.len(),
+            page_clean_violations.len(),
+            page_bug_violations.iter().map(Vec::len).collect::<Vec<_>>()
         );
         out.push(MinedFixture {
             name: fx.name.clone(),
@@ -263,6 +255,13 @@ pub(crate) async fn mined(args: &Args, suite_dir: &Path, fixtures: &[Fixture]) -
             invariants: invs,
             clean_violations,
             bug_violations,
+            page_false_positive: !page_clean_violations.is_empty(),
+            page_caught,
+            page_invariants: page_invs,
+            page_clean_violations,
+            page_bug_violations,
+            any_caught,
+            any_false_positive,
         });
     }
 
@@ -270,44 +269,69 @@ pub(crate) async fn mined(args: &Args, suite_dir: &Path, fixtures: &[Fixture]) -
         "\n## invariants mined from {} clean runs, checked on buggy runs ({} runs)\n",
         train, args.runs
     );
-    println!("| fixture | class | mined | caught | false positive | first violation on bug |");
-    println!("|---|---|---|---|---|---|");
+    println!("| fixture | class | API mined | API | page mined | page | combined | first page violation on bug |");
+    println!("|---|---|---|---|---|---|---|---|");
+    let verdict = |caught: bool, fp: bool, n: usize| {
+        if n == 0 {
+            "n/a"
+        } else if fp {
+            "✗ clean violates"
+        } else if caught {
+            "✓"
+        } else {
+            "missed"
+        }
+    };
     for f in &out {
         let first = f
-            .bug_violations
+            .page_bug_violations
             .first()
             .and_then(|v| v.first())
             .map(|v| {
                 let inv = serde_json::to_value(&v.invariant).unwrap_or_default();
+                let what = inv
+                    .get("line")
+                    .or_else(|| inv.get("element"))
+                    .or_else(|| inv.get("url_path"))
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("?")
+                    .to_string();
+                let what: String = what.chars().take(40).collect();
                 format!(
-                    "{} {} → {}",
+                    "{} [{}@{}] {} → {}",
                     inv["kind"].as_str().unwrap_or("?"),
-                    inv["endpoint"].as_str().unwrap_or("?"),
+                    inv["actor"].as_str().unwrap_or("?"),
+                    inv["step"],
+                    what,
                     v.observed
                 )
             })
             .unwrap_or_else(|| "-".into())
             .replace('|', "\\|");
         println!(
-            "| {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} |",
             f.name,
             f.bug_class,
             f.invariants.len(),
-            if f.invariants.is_empty() {
-                "n/a (no API traffic)"
-            } else if f.caught && !f.false_positive {
-                "✓"
-            } else if f.caught {
-                "✗ clean violates too"
-            } else {
-                "missed"
-            },
-            if f.false_positive { "yes" } else { "no" },
+            verdict(f.caught, f.false_positive, f.invariants.len()),
+            f.page_invariants.len(),
+            verdict(f.page_caught, f.page_false_positive, f.page_invariants.len()),
+            verdict(f.any_caught, f.any_false_positive, f.invariants.len() + f.page_invariants.len()),
             first
         );
     }
-    let valid = out.iter().filter(|f| f.caught && !f.false_positive).count();
-    println!("\n**Valid catches {}/{}** from mined invariants alone.", valid, out.len());
+    let count = |pred: &dyn Fn(&MinedFixture) -> bool| out.iter().filter(|f| pred(f)).count();
+    println!(
+        "\n**Valid catches** — API {}/{} · pages {}/{} · combined {}/{} (false positives: API {}, pages {}).",
+        count(&|f| f.caught && !f.false_positive),
+        out.len(),
+        count(&|f| f.page_caught && !f.page_false_positive),
+        out.len(),
+        count(&|f| f.any_caught && !f.any_false_positive),
+        out.len(),
+        count(&|f| f.false_positive),
+        count(&|f| f.page_false_positive)
+    );
     write_out(args, &out)
 }
 
