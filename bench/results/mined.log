@@ -1,0 +1,6 @@
+[login-session] mined 3 invariants; clean violations 0; bug violations [0, 0, 0]
+[counter] mined 7 invariants; clean violations 0; bug violations [0, 0, 0]
+[create-500] mined 8 invariants; clean violations 0; bug violations [7, 7, 7]
+[route-mismatch] mined 4 invariants; clean violations 0; bug violations [1, 1, 1]
+[console-crash] mined 6 invariants; clean violations 0; bug violations [5, 5, 5]
+[covered-button] mined 0 invariants; clean violations 0; bug violations [0, 0, 0]
