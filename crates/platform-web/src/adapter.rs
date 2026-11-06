@@ -37,6 +37,11 @@ impl WebAdapter {
         let browser = Browser::new(
             LaunchOptions::default_builder()
                 .headless(true)
+                // `CHROME` overrides the browser binary (e.g. a Playwright-managed
+                // Chromium); `ORCHYN_NO_SANDBOX=1` is needed when running as root
+                // inside containers / CI.
+                .path(std::env::var_os("CHROME").map(std::path::PathBuf::from))
+                .sandbox(std::env::var("ORCHYN_NO_SANDBOX").map(|v| v != "1").unwrap_or(true))
                 // Default idle_browser_timeout is 30s — too short when LLM inference
                 // takes 15-40s per turn. Set to 10 minutes to outlast any turn.
                 .idle_browser_timeout(std::time::Duration::from_secs(600))

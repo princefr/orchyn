@@ -132,18 +132,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn test_qwen_client_vision() {
+    #[ignore] // downloads the model
+    async fn test_qwen_client_vision_is_honestly_unavailable() {
+        // The text-only GGUF cannot see pixels; observe() must say so rather
+        // than fabricate a description.
         let client = QwenClient::new(None);
-        let image_path = std::path::PathBuf::from("../../tests/fixtures/dog.jpg");
-        let image_bytes = std::fs::read(image_path).expect("Failed to read dog.jpg fixture");
-        
-        let prompt = "Describe this image in one word.";
-        
-        let result = client.observe(&image_bytes, prompt).await.unwrap();
-        println!("Vision response: {}", serde_json::to_string_pretty(&result).unwrap());
-        
-        let description = result.get("description").and_then(|v| v.as_str()).unwrap_or("");
-        assert!(description.to_lowercase().contains("dog"));
+        let image_bytes = std::fs::read("../../tests/fixtures/dog.jpg").expect("fixture");
+        let err = client.observe(&image_bytes, "Describe this image.").await;
+        assert!(err.is_err());
     }
 }
