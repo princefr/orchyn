@@ -68,6 +68,8 @@ n=0
 for m in "$MUT"/m[0-9][0-9][0-9]; do
   id=$(basename "$m")
   n=$((n+1)); [ $n -gt "$MAX" ] && break
+  # Resume: skip mutants already scored in OUT.
+  [ -f "$OUT" ] && grep -q "\"mutant\":\"$id\"" "$OUT" && continue
   official=$("$SCORE" "$P" "$m" 15 $((PORT+50)) "mut-$id" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).passed)}catch(e){console.log(-1)}})')
   if [ ${#VALID[@]} -gt 0 ]; then
     start_app "$m"; check "$m" "${MARGS[@]}" >/dev/null 2>&1; spec=$?; stop_app
