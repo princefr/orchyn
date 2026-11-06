@@ -21,3 +21,5 @@
 {"project":"survey","label":"indep-2-k15","tasks":15,"passed":6,"sequential":5,"dir":"/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-score/survey-indep-2-k15-MHXb"}
 {"project":"survey","label":"indep-1-k15","tasks":15,"passed":8,"sequential":5,"dir":"/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-score/survey-indep-1-k15-jtrd"}
 {"project":"expressjs","label":"indep-2-k15","tasks":15,"passed":14,"sequential":5,"dir":"/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-score/expressjs-indep-2-k15-SCQP"}
+{"project":"survey","label":"indep4-1-k15","tasks":15,"passed":9,"sequential":5,"dir":"/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-score/survey-indep4-1-k15-Ug4w"}
+{"project":"expressjs","label":"indep-1-k15","tasks":15,"passed":14,"sequential":5,"dir":"/tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/wb-score/expressjs-indep-1-k15-zSOF"}
