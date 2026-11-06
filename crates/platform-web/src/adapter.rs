@@ -78,10 +78,16 @@ impl WebAdapter {
         // response. Shared between the event listener and the response handler.
         let pending: Arc<Mutex<HashMap<String, (String, Option<String>)>>> =
             Arc::new(Mutex::new(HashMap::new()));
+        // request_id → index into `network_events` once response headers arrived.
+        // Recording at ResponseReceived (not LoadingFinished) means requests whose
+        // body never finishes loading — e.g. the page navigates away right after
+        // `await fetch()` resolves — are still observed with their real status.
+        let recorded: Arc<Mutex<HashMap<String, usize>>> = Arc::new(Mutex::new(HashMap::new()));
 
         // ── event listener: console, WS frames, request capture, network failures ──────────────
         {
             let diag_l = Arc::clone(&diagnostics);
+            let rec_l = Arc::clone(&recorded);
             let net_l = Arc::clone(&network_events);
             let ws_l = Arc::clone(&ws_messages);
             let pending_l = Arc::clone(&pending);
@@ -193,7 +199,33 @@ impl WebAdapter {
                         );
                     }
 
+                    Event::NetworkResponseReceived(ev) => {
+                        let (method, req_body) = pending_l
+                            .lock()
+                            .unwrap()
+                            .get(&ev.params.request_id)
+                            .cloned()
+                            .unwrap_or_default();
+                        let mut net = net_l.lock().unwrap();
+                        net.push(NetworkEvent {
+                            method,
+                            url: ev.params.response.url.clone(),
+                            status: ev.params.response.status as u16,
+                            request_body: req_body,
+                            response_body: None,
+                            timestamp: Utc::now(),
+                        });
+                        rec_l
+                            .lock()
+                            .unwrap()
+                            .insert(ev.params.request_id.clone(), net.len() - 1);
+                    }
+
                     // Network-level failures (DNS, CORS, connection refused) — no HTTP status.
+                    // A request that already got a response and was then cancelled
+                    // (navigation) is not a failure.
+                    Event::NetworkLoadingFailed(ev)
+                        if rec_l.lock().unwrap().contains_key(&ev.params.request_id) => {}
                     Event::NetworkLoadingFailed(ev) => {
                         let (method, req_body) = pending_l
                             .lock()
@@ -242,6 +274,7 @@ impl WebAdapter {
         {
             let net_l = Arc::clone(&network_events);
             let pending_l = Arc::clone(&pending);
+            let rec_h = Arc::clone(&recorded);
 
             tab.register_response_handling(
                 "orchyn",
@@ -264,14 +297,26 @@ impl WebAdapter {
                         _ => None,
                     };
 
-                    net_l.lock().unwrap().push(NetworkEvent {
-                        method,
-                        url: params.response.url.clone(),
-                        status: params.response.status as u16,
-                        request_body: req_body,
-                        response_body: resp_body,
-                        timestamp: Utc::now(),
-                    });
+                    let idx = rec_h.lock().unwrap().get(&params.request_id).copied();
+                    let mut net = net_l.lock().unwrap();
+                    // The buffer is drained by collect_telemetry, so the stored
+                    // index may be stale: only attach when it still points at
+                    // the same request.
+                    match idx.and_then(|i| net.get_mut(i)) {
+                        Some(ev) if ev.url == params.response.url => {
+                            ev.response_body = resp_body;
+                        }
+                        Some(_) => {}
+                        None if idx.is_none() => net.push(NetworkEvent {
+                            method,
+                            url: params.response.url.clone(),
+                            status: params.response.status as u16,
+                            request_body: req_body,
+                            response_body: resp_body,
+                            timestamp: Utc::now(),
+                        }),
+                        None => {}
+                    }
                 }),
             )
             .map_err(|e| OrchynError::Internal(format!("response_handler: {e}")))?;
