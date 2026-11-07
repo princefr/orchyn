@@ -132,8 +132,14 @@ Tool gaps found and fixed during this round (each found by an agent hitting
 it): CSS-only `:hover` menus (now a real pointer move), `window.open` popups
 (`switch_to_popup`), clicks racing the navigation they trigger, `alert()`
 freezing checks, router mounts reported as false reality gaps, and Chrome
-hanging when TMPDIR is long. Known remaining gap: an `alert()` fired during
-a popup's first load can still block before the popup is instrumented.
+hanging when TMPDIR is long. Known remaining gap, root-caused but not fixed: an `alert()` fired while a
+same-origin popup is loading freezes the opener too (they share an event
+loop), and headless_chrome's own setup of the new window deadlocks on the
+frozen page — so neither the popup listener nor a background watcher can
+step in. Fixing it needs Chrome's pause-on-start auto-attach
+(`Target.setAutoAttach` with `waitForDebuggerOnStart`), which headless_chrome
+does not expose. Two attempts (accept-before-instrument, a watcher thread)
+were tried and reverted.
 
 **Bottom line:** checks only help as much as their source is independent
 *and* right. An independent author helped where the hidden intent was
