@@ -13,6 +13,7 @@
 # did not have.
 #
 # Env: DRIVERS (task numbers used to drive the baseline, default "5 10 14 15"),
+#      MUTANTS (only score these ids, plus the control),
 #      ORCHYN_CHECK (binary), WB (web-bench checkout), WBENV (node_modules dir),
 #      SCORE (bench/webbench/score.sh), CHROME, ORCHYN_NO_SANDBOX, WORKROOT (scratch dir).
 set -u
@@ -68,6 +69,8 @@ n=0
 for m in "$MUT"/m[0-9][0-9][0-9]; do
   id=$(basename "$m")
   n=$((n+1)); [ $n -gt "$MAX" ] && break
+  # MUTANTS (space-separated ids) restricts scoring to those mutants.
+  if [ -n "${MUTANTS:-}" ] && [ "$id" != m000 ] && ! [[ " $MUTANTS " == *" $id "* ]]; then continue; fi
   # Resume: skip mutants already scored in OUT.
   [ -f "$OUT" ] && grep -q "\"mutant\":\"$id\"" "$OUT" && continue
   official=$("$SCORE" "$P" "$m" 15 $((PORT+50)) "mut-$id" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).passed)}catch(e){console.log(-1)}})')
