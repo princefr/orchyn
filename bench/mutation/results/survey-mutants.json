@@ -1,0 +1,322 @@
+[
+  {
+    "id": "m001",
+    "operator": "cond_negate",
+    "file": "common/SurveyForm.js",
+    "line": 60,
+    "before": "if (!(form instanceof HTMLFormElement)) {",
+    "after": "if (!(!(form instanceof HTMLFormElement))) {"
+  },
+  {
+    "id": "m002",
+    "operator": "cmp_flip",
+    "file": "common/Question.js",
+    "line": 114,
+    "before": "if (e.key === 'Escape') el.setAttribute('contenteditable', 'false')",
+    "after": "if (e.key !== 'Escape') el.setAttribute('contenteditable', 'false')"
+  },
+  {
+    "id": "m003",
+    "operator": "num_shift",
+    "file": "common/RatingQuestion.js",
+    "line": 27,
+    "before": "if (starCount <= 0) starCount = 1",
+    "after": "if (starCount <= 0) starCount = 2"
+  },
+  {
+    "id": "m004",
+    "operator": "string_drop",
+    "file": "common/LikertQuestion.js",
+    "line": 101,
+    "before": "options.splice(j, 0, 'New Option')",
+    "after": "options.splice(j, 0, 'New')"
+  },
+  {
+    "id": "m005",
+    "operator": "class_rename",
+    "file": "common/SurveyPreview.js",
+    "line": 28,
+    "before": "button.className = 'submit'",
+    "after": "button.className = 'submit-x'"
+  },
+  {
+    "id": "m006",
+    "operator": "remove_call",
+    "file": "common/NpsQuestion.js",
+    "line": 44,
+    "before": "container.appendChild(option)",
+    "after": ""
+  },
+  {
+    "id": "m007",
+    "operator": "css_hide",
+    "file": "common.css",
+    "line": 341,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m008",
+    "operator": "return_drop",
+    "file": "common/SingleSelectionQuestion.js",
+    "line": 55,
+    "before": "return optionEls.map((el) => el.querySelector('label')?.innerText ?? '')",
+    "after": "optionEls.map((el) => el.querySelector('label')?.innerText ?? '')"
+  },
+  {
+    "id": "m009",
+    "operator": "cond_negate",
+    "file": "common/SurveyPreview.js",
+    "line": 41,
+    "before": "if (cls) {",
+    "after": "if (!(cls)) {"
+  },
+  {
+    "id": "m010",
+    "operator": "cmp_flip",
+    "file": "common/NpsQuestion.js",
+    "line": 42,
+    "before": "for (let i = 0; i <= 10; i++) {",
+    "after": "for (let i = 0; i > 10; i++) {"
+  },
+  {
+    "id": "m011",
+    "operator": "num_shift",
+    "file": "common/util/util.js",
+    "line": 32,
+    "before": "centerY: top + height / 2,",
+    "after": "centerY: top + height / 3,"
+  },
+  {
+    "id": "m012",
+    "operator": "string_drop",
+    "file": "common/SingleSelectionQuestion.js",
+    "line": 37,
+    "before": "this.setOptions([...this.options, 'New Option'])",
+    "after": "this.setOptions([...this.options, 'New'])"
+  },
+  {
+    "id": "m013",
+    "operator": "class_rename",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 80,
+    "before": "optionElement.className = 'option'",
+    "after": "optionElement.className = 'option-x'"
+  },
+  {
+    "id": "m014",
+    "operator": "remove_call",
+    "file": "common/SurveyPreview.js",
+    "line": 26,
+    "before": "this.toolbarEl.appendChild(button)",
+    "after": ""
+  },
+  {
+    "id": "m015",
+    "operator": "css_hide",
+    "file": "common.css",
+    "line": 93,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m016",
+    "operator": "return_drop",
+    "file": "common/Question.js",
+    "line": 326,
+    "before": "return new Question(json.title, json.name, preview)",
+    "after": "new Question(json.title, json.name, preview)"
+  },
+  {
+    "id": "m017",
+    "operator": "cond_negate",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 55,
+    "before": "if (this.isShuffleMode) {",
+    "after": "if (!(this.isShuffleMode)) {"
+  },
+  {
+    "id": "m018",
+    "operator": "cmp_flip",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 32,
+    "before": "if (count < this.checkedCount) {",
+    "after": "if (count >= this.checkedCount) {"
+  },
+  {
+    "id": "m019",
+    "operator": "num_shift",
+    "file": "common/LikertQuestion.js",
+    "line": 92,
+    "before": "options.splice(j - 1, 1)",
+    "after": "options.splice(j - 2, 1)"
+  },
+  {
+    "id": "m020",
+    "operator": "string_drop",
+    "file": "common/OpenQuestion.js",
+    "line": 33,
+    "before": "inputControl.placeholder = 'Enter your answer here...'",
+    "after": "inputControl.placeholder = 'Enter your answer'"
+  },
+  {
+    "id": "m021",
+    "operator": "class_rename",
+    "file": "common/Contents.js",
+    "line": 42,
+    "before": "item.className = 'contents-item'",
+    "after": "item.className = 'contents-item-x'"
+  },
+  {
+    "id": "m022",
+    "operator": "remove_call",
+    "file": "common/util/Draggable.js",
+    "line": 66,
+    "before": "item.addEventListener('dragover', this.over.bind(this))",
+    "after": ""
+  },
+  {
+    "id": "m023",
+    "operator": "css_hide",
+    "file": "common.css",
+    "line": 77,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m024",
+    "operator": "return_drop",
+    "file": "common/SurveyDesign.js",
+    "line": 206,
+    "before": "return this._questionId",
+    "after": "this._questionId"
+  },
+  {
+    "id": "m025",
+    "operator": "cond_negate",
+    "file": "common/DataQuestion.js",
+    "line": 52,
+    "before": "if (!this.typeConfigSelect) {",
+    "after": "if (!(!this.typeConfigSelect)) {"
+  },
+  {
+    "id": "m026",
+    "operator": "cmp_flip",
+    "file": "common/LikertQuestion.js",
+    "line": 78,
+    "before": "if (j > 0) {",
+    "after": "if (j <= 0) {"
+  },
+  {
+    "id": "m027",
+    "operator": "num_shift",
+    "file": "common/RankingQuestion.js",
+    "line": 102,
+    "before": "opts.splice(i, 1)",
+    "after": "opts.splice(i, 2)"
+  },
+  {
+    "id": "m028",
+    "operator": "string_drop",
+    "file": "common/Question.js",
+    "line": 307,
+    "before": "throw new Error('Not Implemented!')",
+    "after": "throw new Error('Not')"
+  },
+  {
+    "id": "m029",
+    "operator": "class_rename",
+    "file": "common/RatingQuestion.js",
+    "line": 48,
+    "before": "optionEl.className = 'option'",
+    "after": "optionEl.className = 'option-x'"
+  },
+  {
+    "id": "m030",
+    "operator": "remove_call",
+    "file": "common/Contents.js",
+    "line": 35,
+    "before": "document.body.appendChild(contents)",
+    "after": ""
+  },
+  {
+    "id": "m031",
+    "operator": "css_hide",
+    "file": "common.css",
+    "line": 52,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m032",
+    "operator": "return_drop",
+    "file": "common/util/util.js",
+    "line": 56,
+    "before": "return array",
+    "after": "array"
+  },
+  {
+    "id": "m033",
+    "operator": "cond_negate",
+    "file": "common/RankingQuestion.js",
+    "line": 88,
+    "before": "if (preview) {",
+    "after": "if (!(preview)) {"
+  },
+  {
+    "id": "m034",
+    "operator": "cmp_flip",
+    "file": "common/OpenQuestion.js",
+    "line": 132,
+    "before": "if (e.key === 'Enter') {",
+    "after": "if (e.key !== 'Enter') {"
+  },
+  {
+    "id": "m035",
+    "operator": "num_shift",
+    "file": "common/SingleSelectionQuestion.js",
+    "line": 90,
+    "before": "opts.splice(index, 1)",
+    "after": "opts.splice(index, 2)"
+  },
+  {
+    "id": "m036",
+    "operator": "string_drop",
+    "file": "common/SurveyDesign.js",
+    "line": 165,
+    "before": "['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option 5'],",
+    "after": "['Option 1', 'Option 2', 'Option 3', 'Option 4', 'Option'],"
+  },
+  {
+    "id": "m037",
+    "operator": "class_rename",
+    "file": "common/SurveyDesign.js",
+    "line": 63,
+    "before": "<button type=\"button\" class=\"add-question\">Question</button>",
+    "after": "<button type=\"button\" class=\"add-question-x\">Question</button>"
+  },
+  {
+    "id": "m038",
+    "operator": "remove_call",
+    "file": "common/RankingQuestion.js",
+    "line": 84,
+    "before": "optionEl.appendChild(label)",
+    "after": ""
+  },
+  {
+    "id": "m039",
+    "operator": "return_drop",
+    "file": "common/DataQuestion.js",
+    "line": 45,
+    "before": "return this.typeConfigSelect.value",
+    "after": "this.typeConfigSelect.value"
+  },
+  {
+    "id": "m040",
+    "operator": "cond_negate",
+    "file": "common/util/Draggable.js",
+    "line": 101,
+    "before": "if (e.dataTransfer) {",
+    "after": "if (!(e.dataTransfer)) {"
+  }
+]

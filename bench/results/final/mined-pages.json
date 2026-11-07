@@ -1,0 +1,2883 @@
+[
+  {
+    "name": "login",
+    "bug_class": "logic",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/login",
+        "status": 401
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/login",
+        "shape": {
+          "": "object",
+          "/error": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/login",
+        "pointer": "/error"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Email"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Log in"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Password"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Sign in"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#login-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div#error"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "input#email"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "input#password"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 2,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 3,
+        "line": "Invalid credentials"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 3,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 5,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 6,
+        "line": "Back to login"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 6,
+        "line": "Dashboard"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 6,
+        "line": "Welcome, alice@test.com"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 6,
+        "url_path": "/dashboard"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 6,
+        "element": "p#greeting"
+      },
+      {
+        "kind": "text_always",
+        "actor": "visitor",
+        "step": 7,
+        "line": "Back to login"
+      },
+      {
+        "kind": "text_always",
+        "actor": "visitor",
+        "step": 7,
+        "line": "Dashboard"
+      },
+      {
+        "kind": "text_always",
+        "actor": "visitor",
+        "step": 7,
+        "line": "Please sign in"
+      },
+      {
+        "kind": "url_always",
+        "actor": "visitor",
+        "step": 7,
+        "url_path": "/dashboard"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "visitor",
+        "step": 7,
+        "element": "p#greeting"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 6,
+            "line": "Welcome, alice@test.com"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 6,
+            "line": "Welcome, alice@test.com"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 6,
+            "line": "Welcome, alice@test.com"
+          },
+          "observed": "text not shown"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "counter",
+    "bug_class": "logic/state",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/counter",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/counter/inc",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/counter",
+        "shape": {
+          "": "object",
+          "/value": "number"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/counter/inc",
+        "shape": {
+          "": "object",
+          "/value": "number"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/counter",
+        "pointer": "/value"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/counter/inc",
+        "pointer": "/value"
+      },
+      {
+        "kind": "numeric_step",
+        "endpoint": "POST /api/counter/inc",
+        "pointer": "/value",
+        "delta": 1.0
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        },
+        {
+          "invariant": {
+            "kind": "numeric_step",
+            "endpoint": "POST /api/counter/inc",
+            "pointer": "/value",
+            "delta": 1.0
+          },
+          "observed": "delta 2 (expected 1)"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 3,
+        "line": "Count: 2"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 3,
+        "line": "Increment"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 3,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 3,
+        "element": "button#inc"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 3,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 3,
+        "element": "span#count"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 4,
+        "line": "Count: 3"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 4,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Count: 0"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Increment"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#inc"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "span#count"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 1,
+        "line": "Count: 1"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 2,
+        "line": "Count: 2"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 2,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 5,
+        "line": "Count: 3"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 5,
+        "line": "Increment"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 5,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 5,
+        "element": "button#inc"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 5,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 5,
+        "element": "span#count"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 3,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 4,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Count: 1"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 2,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 5,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 3,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 4,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Count: 1"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 2,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 5,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 3,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 4,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Count: 1"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 2,
+            "line": "Count: 2"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 5,
+            "line": "Count: 3"
+          },
+          "observed": "text not shown"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "todos",
+    "bug_class": "network",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/todos",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/todos",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/todos",
+        "shape": {
+          "": "array"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/todos",
+        "shape": {
+          "": "object",
+          "/done": "bool",
+          "/id": "number",
+          "/title": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/done"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/id"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/todos",
+        "pointer": "/title"
+      },
+      {
+        "kind": "numeric_step",
+        "endpoint": "POST /api/todos",
+        "pointer": "/id",
+        "delta": 1.0
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "POST /api/todos",
+            "status": 201
+          },
+          "observed": "status 500"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/done missing (expected bool)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/id missing (expected number)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "POST /api/todos",
+            "shape": {
+              "": "object",
+              "/done": "bool",
+              "/id": "number",
+              "/title": "string"
+            }
+          },
+          "observed": "/title missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/done"
+          },
+          "observed": "/done missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/id"
+          },
+          "observed": "/id missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "POST /api/todos",
+            "pointer": "/title"
+          },
+          "observed": "/title missing"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 10,
+        "line": "Add"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 10,
+        "line": "Buy milk"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 10,
+        "line": "Call mum"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 10,
+        "line": "My todos"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 10,
+        "line": "Walk dog"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 10,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 10,
+        "element": "button#add-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 10,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 10,
+        "element": "div.row"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 10,
+        "element": "input#title"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 10,
+        "element": "ul#list"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Add"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "My todos"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#add-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.row"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "input#title"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 2,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 3,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 4,
+        "line": "Buy milk"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 4,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 4,
+        "element": "ul#list"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 5,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 6,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 7,
+        "line": "Walk dog"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 7,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 8,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 9,
+        "line": "Call mum"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 9,
+        "url_path": "/"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 10,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 4,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 4,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 7,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 9,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 10,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 4,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 4,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 7,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 9,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 10,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 10,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 4,
+            "line": "Buy milk"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 4,
+            "element": "ul#list"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 7,
+            "line": "Walk dog"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 9,
+            "line": "Call mum"
+          },
+          "observed": "text not shown"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "shop",
+    "bug_class": "network/static",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/items",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/items",
+        "shape": {
+          "": "array",
+          "/0": "string"
+        }
+      },
+      {
+        "kind": "non_empty_array",
+        "endpoint": "GET /api/items",
+        "pointer": ""
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/items",
+        "pointer": "/0"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "status_always",
+            "endpoint": "GET /api/items",
+            "status": 200
+          },
+          "observed": "status 404"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Apples"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Bread"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Shop items"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "ul#items"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Apples"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Bread"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Apples"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Bread"
+          },
+          "observed": "text not shown"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Apples"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "Bread"
+          },
+          "observed": "text not shown"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "profile",
+    "bug_class": "console",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/profile",
+        "status": 200
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/profile",
+        "shape": {
+          "": "object",
+          "/name": "string",
+          "/tags": "array",
+          "/tags/0": "string"
+        }
+      },
+      {
+        "kind": "non_empty_array",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/name"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "GET /api/profile",
+        "pointer": "/tags/0"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "shape_always",
+            "endpoint": "GET /api/profile",
+            "shape": {
+              "": "object",
+              "/name": "string",
+              "/tags": "array",
+              "/tags/0": "string"
+            }
+          },
+          "observed": "/tags/0 missing (expected string)"
+        },
+        {
+          "invariant": {
+            "kind": "non_empty_array",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null (expected array)"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags"
+          },
+          "observed": "/tags is null"
+        },
+        {
+          "invariant": {
+            "kind": "non_null",
+            "endpoint": "GET /api/profile",
+            "pointer": "/tags/0"
+          },
+          "observed": "/tags/0 missing"
+        }
+      ]
+    ],
+    "caught": true,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Alice Chen"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "TAGS"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "admin"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "beta"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div#name"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "ul#tags"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "admin"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "beta"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 0,
+            "element": "ul#tags"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "admin"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "beta"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 0,
+            "element": "ul#tags"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "admin"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 0,
+            "line": "beta"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 0,
+            "element": "ul#tags"
+          },
+          "observed": "not visible"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "newsletter",
+    "bug_class": "visual/pixel",
+    "invariants": [],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Get one email a week with the best links."
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Subscribe"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Weekly newsletter"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#subscribe"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div#status"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.card"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 1,
+        "line": "Subscribed!"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Subscribed!"
+          },
+          "observed": "step not reached"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Subscribed!"
+          },
+          "observed": "step not reached"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Subscribed!"
+          },
+          "observed": "step not reached"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "notes",
+    "bug_class": "multi_actor",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "GET /api/notes",
+        "status": 200
+      },
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/notes",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "GET /api/notes",
+        "shape": {
+          "": "array"
+        }
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/notes",
+        "shape": {
+          "": "object",
+          "/at": "number",
+          "/id": "string",
+          "/text": "string"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/at"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/id"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/notes",
+        "pointer": "/text"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 5,
+        "line": "First note"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 5,
+        "line": "Post"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 5,
+        "line": "Team notes"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 5,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "button#post-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "div#board"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "div.note"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "div.row"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "bob",
+        "step": 5,
+        "element": "input#note"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 6,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "bob",
+        "step": 7,
+        "line": "Second note"
+      },
+      {
+        "kind": "url_always",
+        "actor": "bob",
+        "step": 7,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Post"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Team notes"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#post-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.panel"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div.row"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "input#note"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 2,
+        "line": "First note"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 2,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 2,
+        "element": "div#board"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 2,
+        "element": "div.note"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 3,
+        "url_path": "/"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 4,
+        "url_path": "/"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 5,
+            "line": "First note"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div#board"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div.note"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 5,
+            "line": "First note"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div#board"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div.note"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "bob",
+            "step": 5,
+            "line": "First note"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div#board"
+          },
+          "observed": "not visible"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "bob",
+            "step": 5,
+            "element": "div.note"
+          },
+          "observed": "not visible"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  },
+  {
+    "name": "signup",
+    "bug_class": "visual",
+    "invariants": [
+      {
+        "kind": "status_always",
+        "endpoint": "POST /api/signup",
+        "status": 201
+      },
+      {
+        "kind": "shape_always",
+        "endpoint": "POST /api/signup",
+        "shape": {
+          "": "object",
+          "/email": "string",
+          "/ok": "bool"
+        }
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/signup",
+        "pointer": "/email"
+      },
+      {
+        "kind": "non_null",
+        "endpoint": "POST /api/signup",
+        "pointer": "/ok"
+      }
+    ],
+    "clean_violations": [],
+    "bug_violations": [
+      [],
+      [],
+      []
+    ],
+    "caught": false,
+    "false_positive": false,
+    "page_invariants": [
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Create account"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Email"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 0,
+        "line": "Sign up"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 0,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "button#submit-btn"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "div#result"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "form#signup-form"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 0,
+        "element": "input#email"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 1,
+        "line": "Email is required"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 1,
+        "url_path": "/"
+      },
+      {
+        "kind": "visible_always",
+        "actor": "default",
+        "step": 1,
+        "element": "div#email-error"
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 2,
+        "url_path": "/"
+      },
+      {
+        "kind": "text_always",
+        "actor": "default",
+        "step": 3,
+        "line": "Check your inbox to confirm."
+      },
+      {
+        "kind": "url_always",
+        "actor": "default",
+        "step": 3,
+        "url_path": "/"
+      }
+    ],
+    "page_clean_violations": [],
+    "page_bug_violations": [
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Email is required"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 1,
+            "element": "div#email-error"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Email is required"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 1,
+            "element": "div#email-error"
+          },
+          "observed": "not visible"
+        }
+      ],
+      [
+        {
+          "invariant": {
+            "kind": "text_always",
+            "actor": "default",
+            "step": 1,
+            "line": "Email is required"
+          },
+          "observed": "text not shown"
+        },
+        {
+          "invariant": {
+            "kind": "visible_always",
+            "actor": "default",
+            "step": 1,
+            "element": "div#email-error"
+          },
+          "observed": "not visible"
+        }
+      ]
+    ],
+    "page_caught": true,
+    "page_false_positive": false,
+    "any_caught": true,
+    "any_false_positive": false
+  }
+]

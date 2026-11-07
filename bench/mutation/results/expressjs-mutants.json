@@ -1,0 +1,322 @@
+[
+  {
+    "id": "m001",
+    "operator": "cond_negate",
+    "file": "routes/products/api.js",
+    "line": 79,
+    "before": "if (err) reject(err)",
+    "after": "if (!(err)) reject(err)"
+  },
+  {
+    "id": "m002",
+    "operator": "cmp_flip",
+    "file": "routes/auth/api.js",
+    "line": 149,
+    "before": "if (!isCurrent && role !== 'admin') {",
+    "after": "if (!isCurrent && role === 'admin') {"
+  },
+  {
+    "id": "m003",
+    "operator": "num_shift",
+    "file": "public/components/Cart.js",
+    "line": 189,
+    "before": "Total: $${items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}",
+    "after": "Total: $${items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(3)}"
+  },
+  {
+    "id": "m004",
+    "operator": "status_code",
+    "file": "index.js",
+    "line": 39,
+    "before": "res.status(404).render('error')",
+    "after": "res.status(200).render('error')"
+  },
+  {
+    "id": "m005",
+    "operator": "string_drop",
+    "file": "routes/auth/api.js",
+    "line": 101,
+    "before": "res.status(409).json({ success: false, message: 'Invalid referral code' })",
+    "after": "res.status(409).json({ success: false, message: 'Invalid referral' })"
+  },
+  {
+    "id": "m006",
+    "operator": "class_rename",
+    "file": "public/components/HeaderUserMenu.js",
+    "line": 134,
+    "before": "<button class=\"header-go-login\">Login</button>",
+    "after": "<button class=\"header-go-login-x\">Login</button>"
+  },
+  {
+    "id": "m007",
+    "operator": "remove_call",
+    "file": "routes/auth/api.js",
+    "line": 130,
+    "before": "res.cookie('TOKEN', token, { httpOnly: true })",
+    "after": ""
+  },
+  {
+    "id": "m008",
+    "operator": "css_hide",
+    "file": "public/css/wishlist.css",
+    "line": 45,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m009",
+    "operator": "route_path",
+    "file": "routes/order/api.js",
+    "line": 103,
+    "before": "router.get('/order/:id', async (req, res) => {",
+    "after": "router.get('/order/:ids', async (req, res) => {"
+  },
+  {
+    "id": "m010",
+    "operator": "await_drop",
+    "file": "routes/admin/api.js",
+    "line": 27,
+    "before": "const payload = await verifyToken(token)",
+    "after": "const payload = verifyToken(token)"
+  },
+  {
+    "id": "m011",
+    "operator": "return_drop",
+    "file": "libs/auth.js",
+    "line": 23,
+    "before": "return token",
+    "after": "token"
+  },
+  {
+    "id": "m012",
+    "operator": "cond_negate",
+    "file": "routes/refund/api.js",
+    "line": 74,
+    "before": "if (err) {",
+    "after": "if (!(err)) {"
+  },
+  {
+    "id": "m013",
+    "operator": "cmp_flip",
+    "file": "routes/products/api.js",
+    "line": 90,
+    "before": "comments.length > 0",
+    "after": "comments.length <= 0"
+  },
+  {
+    "id": "m014",
+    "operator": "num_shift",
+    "file": "routes/order/api.js",
+    "line": 53,
+    "before": "let orderId = -1",
+    "after": "let orderId = -2"
+  },
+  {
+    "id": "m015",
+    "operator": "status_code",
+    "file": "routes/pay/api.js",
+    "line": 46,
+    "before": "return res.status(404).json({ success: false, error: 'Order not found or already paid' })",
+    "after": "return res.status(200).json({ success: false, error: 'Order not found or already paid' })"
+  },
+  {
+    "id": "m016",
+    "operator": "string_drop",
+    "file": "views/admin/products.pug",
+    "line": 19,
+    "before": "h1.admin-title Product Management Portal",
+    "after": "h1.admin-title Product Management"
+  },
+  {
+    "id": "m017",
+    "operator": "class_rename",
+    "file": "public/components/Cart.js",
+    "line": 212,
+    "before": "this.querySelector('.cart-popover').classList.remove('show')",
+    "after": "this.querySelector('.cart-popover').classList.remove('show-x')"
+  },
+  {
+    "id": "m018",
+    "operator": "remove_call",
+    "file": "routes/auth/api.js",
+    "line": 42,
+    "before": "res.cookie('TOKEN', token, { httpOnly: true })",
+    "after": ""
+  },
+  {
+    "id": "m019",
+    "operator": "css_hide",
+    "file": "public/css/comment.css",
+    "line": 76,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m020",
+    "operator": "route_path",
+    "file": "routes/wishlist/api.js",
+    "line": 45,
+    "before": "router.post('/api/wishlist/add', async (req, res) => {",
+    "after": "router.post('/api/wishlist/adds', async (req, res) => {"
+  },
+  {
+    "id": "m021",
+    "operator": "await_drop",
+    "file": "public/components/Cart.js",
+    "line": 25,
+    "before": "const data = await res.json()",
+    "after": "const data = res.json()"
+  },
+  {
+    "id": "m022",
+    "operator": "return_drop",
+    "file": "routes/pay/api.js",
+    "line": 111,
+    "before": "return res.status(500).json({ success: false, error: error.message })",
+    "after": "res.status(500).json({ success: false, error: error.message })"
+  },
+  {
+    "id": "m023",
+    "operator": "cond_negate",
+    "file": "routes/admin/api.js",
+    "line": 28,
+    "before": "if (!payload || payload.role !== 'admin') {",
+    "after": "if (!(!payload || payload.role !== 'admin')) {"
+  },
+  {
+    "id": "m024",
+    "operator": "cmp_flip",
+    "file": "routes/auth/referer.js",
+    "line": 32,
+    "before": "for (let i = 0; i < 8; i++) {",
+    "after": "for (let i = 0; i >= 8; i++) {"
+  },
+  {
+    "id": "m025",
+    "operator": "num_shift",
+    "file": "routes/auth/referer.js",
+    "line": 51,
+    "before": "async function creditReferrerForFirstPayment(currentUserName, amount = 1888) {",
+    "after": "async function creditReferrerForFirstPayment(currentUserName, amount = 1889) {"
+  },
+  {
+    "id": "m026",
+    "operator": "status_code",
+    "file": "routes/cart/api.js",
+    "line": 60,
+    "before": "return res.status(401).json({ success: false, message: 'Please login first' })",
+    "after": "return res.status(200).json({ success: false, message: 'Please login first' })"
+  },
+  {
+    "id": "m027",
+    "operator": "string_drop",
+    "file": "routes/wishlist/api.js",
+    "line": 36,
+    "before": "res.status(500).render('error', { message: 'Failed to fetch wishlist' })",
+    "after": "res.status(500).render('error', { message: 'Failed to fetch' })"
+  },
+  {
+    "id": "m028",
+    "operator": "class_rename",
+    "file": "public/components/HeaderUserMenu.js",
+    "line": 126,
+    "before": "<button class=\"header-go-to-my-orders\">My Orders</button>",
+    "after": "<button class=\"header-go-to-my-orders-x\">My Orders</button>"
+  },
+  {
+    "id": "m029",
+    "operator": "css_hide",
+    "file": "public/css/register.css",
+    "line": 24,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m030",
+    "operator": "route_path",
+    "file": "routes/products/api.js",
+    "line": 47,
+    "before": "router.get('/products', (req, res) => {",
+    "after": "router.get('/productss', (req, res) => {"
+  },
+  {
+    "id": "m031",
+    "operator": "await_drop",
+    "file": "routes/products/api.js",
+    "line": 73,
+    "before": "const [comments, hasPurchased, hasCommented] = await Promise.all([",
+    "after": "const [comments, hasPurchased, hasCommented] = Promise.all(["
+  },
+  {
+    "id": "m032",
+    "operator": "return_drop",
+    "file": "routes/refund/api.js",
+    "line": 75,
+    "before": "return res.status(500).json({ success: false, error: err.message })",
+    "after": "res.status(500).json({ success: false, error: err.message })"
+  },
+  {
+    "id": "m033",
+    "operator": "cond_negate",
+    "file": "public/components/Cart.js",
+    "line": 231,
+    "before": "if (data.success) {",
+    "after": "if (!(data.success)) {"
+  },
+  {
+    "id": "m034",
+    "operator": "cmp_flip",
+    "file": "libs/db-utils.js",
+    "line": 39,
+    "before": "if (typeof sql === 'function') {",
+    "after": "if (typeof sql !== 'function') {"
+  },
+  {
+    "id": "m035",
+    "operator": "num_shift",
+    "file": "routes/auth/api.js",
+    "line": 120,
+    "before": "await creditReferrer(referralCode, 888)",
+    "after": "await creditReferrer(referralCode, 889)"
+  },
+  {
+    "id": "m036",
+    "operator": "status_code",
+    "file": "routes/comment/api.js",
+    "line": 27,
+    "before": "return res.status(401).json({ success: false, error: 'Unauthorized' })",
+    "after": "return res.status(200).json({ success: false, error: 'Unauthorized' })"
+  },
+  {
+    "id": "m037",
+    "operator": "string_drop",
+    "file": "views/product-detail.pug",
+    "line": 28,
+    "before": "button.add-to-cart-button Add to Cart",
+    "after": "button.add-to-cart-button Add to"
+  },
+  {
+    "id": "m038",
+    "operator": "class_rename",
+    "file": "public/components/Cart.js",
+    "line": 188,
+    "before": "<div class=\"cart-total\">",
+    "after": "<div class=\"cart-total-x\">"
+  },
+  {
+    "id": "m039",
+    "operator": "css_hide",
+    "file": "public/css/login.css",
+    "line": 56,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m040",
+    "operator": "route_path",
+    "file": "routes/cart/api.js",
+    "line": 81,
+    "before": "router.delete('/api/cart/remove', async (req, res) => {",
+    "after": "router.delete('/api/cart/removes', async (req, res) => {"
+  }
+]

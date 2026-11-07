@@ -1,0 +1,9 @@
+[login] api: 3 invariants, clean violations 0, bug [0, 0, 0] | pages: 25 invariants, clean violations 0, bug [1, 1, 1]
+[counter] api: 7 invariants, clean violations 0, bug [2, 2, 2] | pages: 24 invariants, clean violations 0, bug [5, 5, 5]
+[todos] api: 8 invariants, clean violations 0, bug [21, 21, 21] | pages: 31 invariants, clean violations 0, bug [8, 8, 8]
+[shop] api: 4 invariants, clean violations 0, bug [1, 1, 1] | pages: 6 invariants, clean violations 0, bug [2, 2, 2]
+[profile] api: 6 invariants, clean violations 0, bug [5, 5, 5] | pages: 8 invariants, clean violations 0, bug [3, 3, 3]
+[newsletter] api: 0 invariants, clean violations 0, bug [0, 0, 0] | pages: 9 invariants, clean violations 0, bug [1, 1, 1]
+[notes] api: 7 invariants, clean violations 0, bug [0, 0, 0] | pages: 27 invariants, clean violations 0, bug [3, 3, 3]
+[signup] api: 4 invariants, clean violations 0, bug [0, 0, 0] | pages: 14 invariants, clean violations 0, bug [2, 2, 2]
+wrote /tmp/claude-0/-home-user-orchyn/6c49d970-9dc9-52ac-80e5-e7d17dbfbc63/scratchpad/final-results/mined-pages.json

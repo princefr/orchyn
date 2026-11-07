@@ -1,0 +1,322 @@
+[
+  {
+    "id": "m001",
+    "operator": "cond_negate",
+    "file": "common/SingleSelectionQuestion.js",
+    "line": 60,
+    "before": "if (!selectMode) {",
+    "after": "if (!(!selectMode)) {"
+  },
+  {
+    "id": "m002",
+    "operator": "cmp_flip",
+    "file": "common/RankingQuestion.js",
+    "line": 42,
+    "before": "for (let i = 0; i < options.length; i++) {",
+    "after": "for (let i = 0; i >= options.length; i++) {"
+  },
+  {
+    "id": "m003",
+    "operator": "num_shift",
+    "file": "common/LikertQuestion.js",
+    "line": 46,
+    "before": "if (j > 0) cell.innerHTML = options[j - 1]",
+    "after": "if (j > 0) cell.innerHTML = options[j - 2]"
+  },
+  {
+    "id": "m004",
+    "operator": "string_drop",
+    "file": "common/Question.js",
+    "line": 112,
+    "before": "throw new Error('Not Implemented!')",
+    "after": "throw new Error('Not')"
+  },
+  {
+    "id": "m005",
+    "operator": "class_rename",
+    "file": "index.html",
+    "line": 12,
+    "before": "<button type=\"button\" class=\"export\">Export</button>",
+    "after": "<button type=\"button\" class=\"export-x\">Export</button>"
+  },
+  {
+    "id": "m006",
+    "operator": "remove_call",
+    "file": "common/RatingQuestion.js",
+    "line": 36,
+    "before": "container.appendChild(starLabel)",
+    "after": ""
+  },
+  {
+    "id": "m007",
+    "operator": "css_hide",
+    "file": "index.css",
+    "line": 38,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m008",
+    "operator": "return_drop",
+    "file": "common/SingleSelectionQuestion.js",
+    "line": 42,
+    "before": "return !!this.selectConfigCheckbox?.checked",
+    "after": "!!this.selectConfigCheckbox?.checked"
+  },
+  {
+    "id": "m009",
+    "operator": "cond_negate",
+    "file": "common/Survey.js",
+    "line": 105,
+    "before": "if (/^\\d+\\./.test(title)) {",
+    "after": "if (!(/^\\d+\\./.test(title))) {"
+  },
+  {
+    "id": "m010",
+    "operator": "cmp_flip",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 46,
+    "before": "if (count < this.checkedCount) {",
+    "after": "if (count >= this.checkedCount) {"
+  },
+  {
+    "id": "m011",
+    "operator": "num_shift",
+    "file": "common/util/util.js",
+    "line": 32,
+    "before": "centerY: top + height / 2,",
+    "after": "centerY: top + height / 3,"
+  },
+  {
+    "id": "m012",
+    "operator": "string_drop",
+    "file": "common/OpenQuestion.js",
+    "line": 44,
+    "before": "inputControl.placeholder = 'Enter your answer here...'",
+    "after": "inputControl.placeholder = 'Enter your answer'"
+  },
+  {
+    "id": "m013",
+    "operator": "class_rename",
+    "file": "common/NpsQuestion.js",
+    "line": 40,
+    "before": "scoreLabel.classList.add('active')",
+    "after": "scoreLabel.classList.add('active-x')"
+  },
+  {
+    "id": "m014",
+    "operator": "remove_call",
+    "file": "common/NpsQuestion.js",
+    "line": 30,
+    "before": "container.appendChild(scoreLabel)",
+    "after": ""
+  },
+  {
+    "id": "m015",
+    "operator": "css_hide",
+    "file": "index.css",
+    "line": 54,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m016",
+    "operator": "return_drop",
+    "file": "common/Question.js",
+    "line": 122,
+    "before": "return !!this.shuffleConfigCheckbox?.checked",
+    "after": "!!this.shuffleConfigCheckbox?.checked"
+  },
+  {
+    "id": "m017",
+    "operator": "cond_negate",
+    "file": "common/OpenQuestion.js",
+    "line": 32,
+    "before": "if (!isMultilines) {",
+    "after": "if (!(!isMultilines)) {"
+  },
+  {
+    "id": "m018",
+    "operator": "cmp_flip",
+    "file": "common/Contents.js",
+    "line": 62,
+    "before": "} else if (side === 'top') {",
+    "after": "} else if (side !== 'top') {"
+  },
+  {
+    "id": "m019",
+    "operator": "num_shift",
+    "file": "common/Survey.js",
+    "line": 108,
+    "before": "qTitleElement.innerHTML = `${i + 1}. ${title}`",
+    "after": "qTitleElement.innerHTML = `${i + 2}. ${title}`"
+  },
+  {
+    "id": "m020",
+    "operator": "string_drop",
+    "file": "index.js",
+    "line": 31,
+    "before": "'Option 1',",
+    "after": "'Option',"
+  },
+  {
+    "id": "m021",
+    "operator": "class_rename",
+    "file": "common/Survey.js",
+    "line": 42,
+    "before": "form.classList.add('survey')",
+    "after": "form.classList.add('survey-x')"
+  },
+  {
+    "id": "m022",
+    "operator": "remove_call",
+    "file": "common/Survey.js",
+    "line": 52,
+    "before": "form.appendChild(questionsContainer)",
+    "after": ""
+  },
+  {
+    "id": "m023",
+    "operator": "css_hide",
+    "file": "index.css",
+    "line": 35,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m024",
+    "operator": "return_drop",
+    "file": "common/OpenQuestion.js",
+    "line": 52,
+    "before": "return this.inputControl.minLength",
+    "after": "this.inputControl.minLength"
+  },
+  {
+    "id": "m025",
+    "operator": "cond_negate",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 72,
+    "before": "if (shuffleMode) {",
+    "after": "if (!(shuffleMode)) {"
+  },
+  {
+    "id": "m026",
+    "operator": "cmp_flip",
+    "file": "common/util/util.js",
+    "line": 47,
+    "before": "while (currentIndex > 0) {",
+    "after": "while (currentIndex <= 0) {"
+  },
+  {
+    "id": "m027",
+    "operator": "num_shift",
+    "file": "common/RatingQuestion.js",
+    "line": 29,
+    "before": "if (starCount <= 0) starCount = 1",
+    "after": "if (starCount <= 0) starCount = 2"
+  },
+  {
+    "id": "m028",
+    "operator": "string_drop",
+    "file": "index.html",
+    "line": 6,
+    "before": "<title>Web-Bench Form</title>",
+    "after": "<title>Web-Bench</title>"
+  },
+  {
+    "id": "m029",
+    "operator": "class_rename",
+    "file": "common/RankingQuestion.js",
+    "line": 45,
+    "before": "item.className = 'ranking-item'",
+    "after": "item.className = 'ranking-item-x'"
+  },
+  {
+    "id": "m030",
+    "operator": "remove_call",
+    "file": "common/RankingQuestion.js",
+    "line": 48,
+    "before": "container.appendChild(item)",
+    "after": ""
+  },
+  {
+    "id": "m031",
+    "operator": "css_hide",
+    "file": "index.css",
+    "line": 175,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m032",
+    "operator": "return_drop",
+    "file": "common/Survey.js",
+    "line": 59,
+    "before": "return this.titleElement.innerHTML",
+    "after": "this.titleElement.innerHTML"
+  },
+  {
+    "id": "m033",
+    "operator": "cond_negate",
+    "file": "common/LikertQuestion.js",
+    "line": 46,
+    "before": "if (j > 0) cell.innerHTML = options[j - 1]",
+    "after": "if (!(j > 0)) cell.innerHTML = options[j - 1]"
+  },
+  {
+    "id": "m034",
+    "operator": "cmp_flip",
+    "file": "common/LikertQuestion.js",
+    "line": 46,
+    "before": "if (j > 0) cell.innerHTML = options[j - 1]",
+    "after": "if (j <= 0) cell.innerHTML = options[j - 1]"
+  },
+  {
+    "id": "m035",
+    "operator": "num_shift",
+    "file": "common/OpenQuestion.js",
+    "line": 37,
+    "before": "inputControl.rows = 4",
+    "after": "inputControl.rows = 5"
+  },
+  {
+    "id": "m036",
+    "operator": "string_drop",
+    "file": "common/util/Draggable.js",
+    "line": 52,
+    "before": "if (item.classList.length === 0) throw new Error(`draggable item's classList can not be empty!`)",
+    "after": "if (item.classList.length === 0) throw new Error(`draggable item's classList can not be`)"
+  },
+  {
+    "id": "m037",
+    "operator": "class_rename",
+    "file": "common/Contents.js",
+    "line": 32,
+    "before": "contents.className = 'contents'",
+    "after": "contents.className = 'contents-x'"
+  },
+  {
+    "id": "m038",
+    "operator": "remove_call",
+    "file": "common/Question.js",
+    "line": 70,
+    "before": "this.configElement.appendChild(labelElement)",
+    "after": ""
+  },
+  {
+    "id": "m039",
+    "operator": "css_hide",
+    "file": "index.css",
+    "line": 239,
+    "before": "",
+    "after": "display: none;"
+  },
+  {
+    "id": "m040",
+    "operator": "return_drop",
+    "file": "common/MultiSelectionQuestion.js",
+    "line": 41,
+    "before": "return label",
+    "after": "label"
+  }
+]
