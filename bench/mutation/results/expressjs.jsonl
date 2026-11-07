@@ -7,3 +7,12 @@
 {"project":"expressjs","mutant":"m006","operator":"class_rename","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
 {"project":"expressjs","mutant":"m007","operator":"remove_call","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
 {"project":"expressjs","mutant":"m008","operator":"css_hide","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m009","operator":"route_path","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m010","operator":"await_drop","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m011","operator":"return_drop","official_passed":6,"control_passed":15,"relevant":true,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m012","operator":"cond_negate","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m013","operator":"cmp_flip","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m014","operator":"num_shift","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m015","operator":"status_code","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m016","operator":"string_drop","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m017","operator":"class_rename","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}

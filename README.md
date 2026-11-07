@@ -251,11 +251,11 @@ official tests catch them (`bench/mutation/RESULTS.md`):
 
 | detector | relevant mutants caught | alarms on the unmutated app |
 |---|---|---|
-| regression baseline (`--record` on known-good, `--baseline` on the mutant) | **7/9** | 0/3 |
-| universal rules | 0/9 | 0/3 |
+| regression baseline (`--record` on known-good, `--baseline` on the mutant) | **17/22** | 0/3 |
+| universal rules | 0/22 | 0/3 |
 
-The baseline also flagged 5 of 12 mutants the official tests miss (real
-behaviour changes they don't cover). n is small.
+The baseline also flagged 7 of 32 mutants the official tests miss (real
+behaviour changes they don't cover). 54 scorable mutants across 3 apps.
 
 ### 2. Helping a coding agent (Web-Bench)
 
@@ -282,7 +282,7 @@ uncovered (and we fixed): `bench/webbench/RESULTS.md`.
 - Deterministic, browser-grounded replay works and is stable; the real-click
   check catches bugs DOM-level tests miss.
 - **Regression is where Orchyn earns its keep:** invariants mined from a
-  known-good build (API + page) caught every planted bug and 7/9 realistic
+  known-good build (API + page) caught every planted bug and 17/22 realistic
   mutants with zero false alarms, with no spec.
 - **Construction is not:** checks — self-written or independent — only help as
   much as they are both independent of the coder *and* right about intent.
@@ -296,7 +296,7 @@ Toy fixtures with one planted bug each, written by the same team as the
 harness; the fixtures were originally named after their bug class
 (`create-500`, `covered-button`, …) and the authoring models could see those
 names — they are now neutral (`bench/results/NAMES.md`); small n everywhere (2 replicates on
-Web-Bench, 9 relevant mutants). Treat these as a sanity check of the pipeline, not as recall
+Web-Bench, 22 relevant mutants). Treat these as a sanity check of the pipeline, not as recall
 numbers.
 
 Reproduce: `(cd bench && npm install)`, then
