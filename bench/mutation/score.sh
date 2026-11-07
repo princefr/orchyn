@@ -26,8 +26,12 @@ PORT=${PORT:-3800}
 WORK=$(mktemp -d "${WORKROOT:-/tmp}/mutscore-$P-XXXX")
 log() { echo "[$P] $*" >&2; }
 
+free_port() { # never let a stale server (e.g. orphaned by a killed run) answer
+  fuser -k "$PORT/tcp" >/dev/null 2>&1; sleep 0.5
+}
 start_app() { # $1 = app dir; starts on $PORT, writes $WORK/pid
   local app=$1
+  free_port
   if [ "$P" = expressjs ]; then
     local w=$WORK/run; rm -rf "$w"; mkdir -p "$w"; cp -r "$app" "$w/app"
     cp -r "$WB/projects/expressjs/scripts" "$w/scripts"; ln -s "$WBENV" "$w/node_modules"
@@ -40,7 +44,7 @@ start_app() { # $1 = app dir; starts on $PORT, writes $WORK/pid
     sleep 2
   fi
 }
-stop_app() { kill "$(cat "$WORK/pid")" 2>/dev/null; sleep 1; }
+stop_app() { kill "$(cat "$WORK/pid")" 2>/dev/null; free_port; }
 check() { "$ORCHYN_CHECK" --url "http://localhost:$PORT" --project "$1" "${@:2}"; }
 
 # ── control: which checks are valid, baseline, universal failures ──────────────
@@ -69,7 +73,7 @@ make_reset() { # $1 = app dir
   if [ "${RESET_EACH:-0}" != 1 ]; then RESET=(); return; fi
   cat > "$WORK/reset.sh" <<EOS
 #!/usr/bin/env bash
-kill \$(cat "$WORK/pid") 2>/dev/null; sleep 1
+kill \$(cat "$WORK/pid") 2>/dev/null; fuser -k $PORT/tcp >/dev/null 2>&1; sleep 1
 EOS
   if [ "$P" = expressjs ]; then
     cat >> "$WORK/reset.sh" <<EOS
