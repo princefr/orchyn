@@ -251,13 +251,13 @@ official tests catch them (`bench/mutation/RESULTS.md`):
 
 | detector | relevant mutants caught | alarms on the unmutated app |
 |---|---|---|
-| regression baseline (`--record` on known-good, `--baseline` on the mutant) | **33/51 (65%)** | 0/3 |
+| regression baseline, 4 flows (`--record` on known-good, `--baseline` on the mutant) | **34/51 (67%)** | 0/3 |
+| regression baseline, 15 flows + fresh app per flow (`--reset-cmd`), expressjs | **12/13** (vs 7/13 with 4 flows) | 0/1 |
 | universal rules | 2/51 | 0/3 |
 
-The baseline also flagged 14 of 64 mutants the official tests miss (real
-behaviour changes they don't cover). 115 scored mutants across 3 apps; the
-baseline is weakest on expressjs (7/15), where its 4 driver flows reach few
-server paths.
+The baseline also flagged 15 of 64 mutants the official tests miss (real
+behaviour changes they don't cover). 115 scored mutants across 3 apps. More
+driver flows close most of the gap — but only with a fresh app per flow.
 
 ### 2. Helping a coding agent (Web-Bench)
 
@@ -285,7 +285,7 @@ uncovered (and we fixed): `bench/webbench/RESULTS.md`.
   check catches bugs DOM-level tests miss.
 - **Regression is where Orchyn earns its keep:** invariants mined from a
   known-good build (API + page) caught every planted bug and 65% of realistic
-  mutants (33/51) with zero false alarms on unchanged apps, with no spec.
+  mutants (34/51; 12/13 on expressjs with more flows and per-flow resets) with zero false alarms on unchanged apps, with no spec.
 - **Construction is not:** checks — self-written or independent — only help as
   much as they are both independent of the coder *and* right about intent.
   The ambiguity linter finds the phrases that cause wrong guesses, but someone

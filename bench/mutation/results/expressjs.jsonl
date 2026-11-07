@@ -36,6 +36,6 @@
 {"project":"expressjs","mutant":"m035","operator":"num_shift","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
 {"project":"expressjs","mutant":"m036","operator":"status_code","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
 {"project":"expressjs","mutant":"m037","operator":"string_drop","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
-{"project":"expressjs","mutant":"m038","operator":"class_rename","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":false,"universal":false,"valid_checks":10}
-{"project":"expressjs","mutant":"m039","operator":"css_hide","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":false,"universal":false,"valid_checks":10}
-{"project":"expressjs","mutant":"m040","operator":"route_path","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":false,"universal":false,"valid_checks":10}
+{"project":"expressjs","mutant":"m038","operator":"class_rename","official_passed":15,"control_passed":15,"relevant":false,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m039","operator":"css_hide","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":false,"universal":false,"valid_checks":13}
+{"project":"expressjs","mutant":"m040","operator":"route_path","official_passed":14,"control_passed":15,"relevant":true,"spec":true,"baseline":true,"universal":false,"valid_checks":13}
