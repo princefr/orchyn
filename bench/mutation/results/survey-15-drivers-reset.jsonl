@@ -18,3 +18,6 @@
 {"project":"survey","mutant":"m030","operator":"remove_call","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
 {"project":"survey","mutant":"m033","operator":"cond_negate","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
 {"project":"survey","mutant":"m034","operator":"cmp_flip","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"survey","mutant":"m035","operator":"num_shift","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"survey","mutant":"m037","operator":"class_rename","official_passed":9,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"survey","mutant":"m038","operator":"remove_call","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}

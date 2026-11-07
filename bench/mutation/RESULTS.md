@@ -50,15 +50,14 @@ Reading it:
 Re-scoring each project's relevant mutants with **all 15 checks as drivers**
 and **a fresh app (restart; for expressjs also database reset + reseed) before
 every replay** (`orchyn-check --reset-cmd`, 2 recording runs;
-`results/*-15-drivers-reset.jsonl`). Each run stopped at its 2-hour limit
-after the counts below:
+`results/*-15-drivers-reset.jsonl`), on all 51 relevant mutants:
 
-| | relevant scored | 15 flows + reset | 4 flows, no reset | alarm on unmutated control |
+| | relevant | 15 flows + reset | 4 flows, no reset | alarm on unmutated control |
 |---|---|---|---|---|
-| expressjs | 13 | **12** | 7 | no |
-| survey | 19 | **18** | 14 | no |
+| expressjs | 15 | **14** | 8 | no |
+| survey | 22 | **21** | 16 | no |
 | form | 14 | **13** | 10 | no |
-| **total** | 46 | **43 (93%)** | 31 (67%) | **0/3** |
+| **total** | 51 | **48 (94%)** | 34 (67%) | **0/3** |
 
 More flows only help with the reset: without it, state left by one flow
 leaks into the next and makes recorded invariants unstable. (An earlier

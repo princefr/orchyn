@@ -12,3 +12,5 @@
 {"project":"expressjs","mutant":"m030","operator":"route_path","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
 {"project":"expressjs","mutant":"m031","operator":"await_drop","official_passed":12,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
 {"project":"expressjs","mutant":"m033","operator":"cond_negate","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"expressjs","mutant":"m039","operator":"css_hide","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"expressjs","mutant":"m040","operator":"route_path","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
