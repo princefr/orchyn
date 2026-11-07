@@ -45,18 +45,20 @@ Reading it:
 - n = 51 relevant mutants across 3 apps. An earlier partial run (22 relevant)
   suggested 77%; the full set gives 67%.
 
-## More driver flows with a per-flow reset (expressjs)
+## More driver flows with a per-flow reset
 
-The 4-driver baseline is weakest on expressjs. Re-scoring expressjs's relevant
-mutants with **all 15 checks as drivers** and **a fresh app (database reset +
-reseed) before every replay** (`orchyn-check --reset-cmd`, 2 recording runs;
-`results/expressjs-15-drivers-reset.jsonl`; the run reached 13 of the 15
-relevant mutants before its 2-hour limit):
+Re-scoring each project's relevant mutants with **all 15 checks as drivers**
+and **a fresh app (restart; for expressjs also database reset + reseed) before
+every replay** (`orchyn-check --reset-cmd`, 2 recording runs;
+`results/*-15-drivers-reset.jsonl`). Each run stopped at its 2-hour limit
+after the counts below:
 
-| | relevant caught | alarm on unmutated control |
-|---|---|---|
-| baseline, 4 drivers, no reset | 7/13 | no |
-| **baseline, 15 drivers, reset per flow** | **12/13** | **no** |
+| | relevant scored | 15 flows + reset | 4 flows, no reset | alarm on unmutated control |
+|---|---|---|---|---|
+| expressjs | 13 | **12** | 7 | no |
+| survey | 19 | **18** | 14 | no |
+| form | 14 | **13** | 10 | no |
+| **total** | 46 | **43 (93%)** | 31 (67%) | **0/3** |
 
 More flows only help with the reset: without it, state left by one flow
 leaks into the next and makes recorded invariants unstable. (An earlier

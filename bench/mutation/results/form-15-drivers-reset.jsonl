@@ -1,0 +1,15 @@
+{"project":"form","mutant":"m000","operator":"?","official_passed":15,"control_passed":15,"relevant":false,"spec":false,"baseline":false,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m001","operator":"cond_negate","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m006","operator":"remove_call","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m010","operator":"cmp_flip","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m014","operator":"remove_call","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m015","operator":"css_hide","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m017","operator":"cond_negate","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m018","operator":"cmp_flip","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m025","operator":"cond_negate","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":false,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m029","operator":"class_rename","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m030","operator":"remove_call","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m031","operator":"css_hide","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m037","operator":"class_rename","official_passed":12,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m038","operator":"remove_call","official_passed":11,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
+{"project":"form","mutant":"m039","operator":"css_hide","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":0}
