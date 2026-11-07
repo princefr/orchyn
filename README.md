@@ -236,41 +236,59 @@ every buggy run *and* passes on every clean run.
 | source | valid catches | false positives | what it caught |
 |---|---|---|---|
 | universal rules (no spec) | 3/8 | 0 (2 rules marked advisory) | route mismatch, console crash, covered button |
-| mined from 3 clean runs | 4/8 | 0 | counter +2 (expected +1), POST 500 (expected 201), 404 (expected 200), `tags: null` (expected array) |
+| API invariants mined from 3 clean runs | 4/8 | 0 | counter +2 (expected +1), POST 500 (expected 201), 404 (expected 200), `tags: null` (expected array) |
+| **page invariants mined from 3 clean runs** | **8/8** | **0** | the above plus a missing greeting after login, a note another user never sees, a validation message set but hidden |
 
-Universal rules catch what is wrong for *any* app; mined invariants catch
-changes in API behaviour; neither knows that the login page should greet the
-user or that Bob should see Alice's note — that needs intent (spec,
-transcript), which is what the authored manifests add.
+Page mining records, per actor and step, which text, visible elements and
+URL every known-good run shows; any of them disappearing on a new build is a
+regression. That catches intent-level bugs (Bob should see Alice's note)
+without a spec — as long as a known-good run exists.
+
+### 1b. Realistic bugs (mutation testing)
+
+Single-line mutants of Web-Bench's reference apps; *relevant* = Web-Bench's
+official tests catch them (`bench/mutation/RESULTS.md`):
+
+| detector | relevant mutants caught | alarms on the unmutated app |
+|---|---|---|
+| regression baseline (`--record` on known-good, `--baseline` on the mutant) | **7/9** | 0/3 |
+| universal rules | 0/9 | 0/3 |
+
+The baseline also flagged 5 of 12 mutants the official tests miss (real
+behaviour changes they don't cover). n is small.
 
 ### 2. Helping a coding agent (Web-Bench)
 
 [Web-Bench](https://github.com/bytedance/web-bench) (public, official
 Playwright tests). Claude Haiku built 3 projects (`expressjs`, `survey`,
-`form`) through tasks 1–15, two replicates per arm, verifying either with shell
-tools only or with `orchyn-check`. Hidden tests passed:
+`form`) through tasks 1–15, two replicates per arm. Hidden tests passed:
 
-| project | shell | shell | orchyn | orchyn |
+| arm | expressjs | form | survey | total /90 |
 |---|---|---|---|---|
-| expressjs | 13 | 13 | 13 | 13 |
-| form | 14 | 14 | 14 | 13 |
-| survey | 12 | 9 | 8 | 10 |
-| **total /45** | **39** | **36** | **35** | **36** |
+| shell tools only | 13, 13 | 14, 14 | 12, 9 | **75** |
+| orchyn, agent writes its own checks | 13, 13 | 14, 13 | 8, 10 | 71 |
+| orchyn, checks written first by an independent agent | **14, 14** | 14, 14 | 8, 6 | 70 |
+| … with popup-capable checks on survey | 14, 14 | 14, 14 | 9, 8 | 73 |
 
-**No measurable gain**, at 3–5× the agent time. The remaining failures are
-mostly spec misreadings that the agent's *own* checks shared (all its Orchyn
-checks were green), plus two benchmark text/test mismatches that cap
-`expressjs` at 13/15 for everyone. Details: `bench/webbench/RESULTS.md`.
+**No overall gain.** Self-written checks share the agent's misreading of the
+task (all were green while hidden tests failed). Independent checks beat the
+13/15 everyone else hit on expressjs — the checker pinned "admin links only for
+admins", which the hidden test expects but the text never says — and hurt on
+survey, where its guesses were wrong. Details and every tool gap the agents
+uncovered (and we fixed): `bench/webbench/RESULTS.md`.
 
 ### What the numbers say
 
-- Deterministic, browser-grounded replay works and is stable; the pixel-level
-  click check catches a class of bug DOM-level tests miss.
+- Deterministic, browser-grounded replay works and is stable; the real-click
+  check catches bugs DOM-level tests miss.
+- **Regression is where Orchyn earns its keep:** invariants mined from a
+  known-good build (API + page) caught every planted bug and 7/9 realistic
+  mutants with zero false alarms, with no spec.
+- **Construction is not:** checks — self-written or independent — only help as
+  much as they are both independent of the coder *and* right about intent.
+  The ambiguity linter finds the phrases that cause wrong guesses, but someone
+  has to answer them.
 - Observing the running app beats reading the spec when writing checks.
-- Spec-free sources (universal rules, mined invariants) catch about half the
-  planted bugs with zero false positives — useful as a free regression net.
-- Self-verification does not fix misunderstanding: a checker is only as good
-  as the independence of its invariants.
 
 ### Threats to validity
 
@@ -278,14 +296,14 @@ Toy fixtures with one planted bug each, written by the same team as the
 harness; the fixtures were originally named after their bug class
 (`create-500`, `covered-button`, …) and the authoring models could see those
 names — they are now neutral (`bench/results/NAMES.md`); small n everywhere (2 replicates on
-Web-Bench). Treat these as a sanity check of the pipeline, not as recall
+Web-Bench, 9 relevant mutants). Treat these as a sanity check of the pipeline, not as recall
 numbers.
 
 Reproduce: `(cd bench && npm install)`, then
 `CHROME=/path/to/chrome ORCHYN_NO_SANDBOX=1 cargo run -p orchyn-bench -- --runs 3
 [--manifests bench/authored/explore-1 --label haiku-explore-1 --out …]`,
 `--mode universal`, `--mode mined --manifests bench/authored/explore-1`; Web-Bench
-scoring via `bench/webbench/score.sh`.
+scoring via `bench/webbench/score.sh`; mutants via `bench/mutation/` (see its README).
 
 ## Philosophy
 
