@@ -66,6 +66,12 @@ struct Args {
     /// Runs per manifest when recording (at least 2).
     #[arg(long, default_value_t = 3)]
     runs: usize,
+    /// Shell command run before every manifest replay in --record and
+    /// --baseline (e.g. restart the app on a fresh database), so state left
+    /// by one flow does not leak into the next and recorded invariants hold
+    /// on a fresh app.
+    #[arg(long = "reset-cmd", value_name = "CMD")]
+    reset_cmd: Option<String>,
 }
 
 fn factory() -> AdapterFactoryFn {
@@ -242,6 +248,7 @@ async fn record(
         let m = load_manifest(path)?.actions_only();
         let (mut api, mut page) = (Vec::new(), Vec::new());
         for _ in 0..runs {
+            reset(args)?;
             let r = runner().run(&m).await?;
             api.push(r.observed_exchanges);
             page.push(r.page_snapshots);
@@ -282,6 +289,7 @@ async fn verify(
             &std::fs::read_to_string(&bpath).with_context(|| format!("read {}", bpath.display()))?,
         )?;
         let m = load_manifest(path)?.actions_only();
+        reset(args)?;
         let r = runner().run(&m).await?;
         observed.extend(r.observed_requests.iter().cloned());
         let api = invariants::mined::check(&b.api, &r.observed_exchanges);
@@ -314,4 +322,18 @@ async fn verify(
         }
     }
     Ok(ok)
+}
+
+/// Runs `--reset-cmd` (if any) and fails loudly if it does not succeed.
+fn reset(args: &Args) -> Result<()> {
+    let Some(cmd) = &args.reset_cmd else {
+        return Ok(());
+    };
+    let status = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(cmd)
+        .status()
+        .with_context(|| format!("running --reset-cmd {cmd:?}"))?;
+    anyhow::ensure!(status.success(), "--reset-cmd {cmd:?} failed with {status}");
+    Ok(())
 }
