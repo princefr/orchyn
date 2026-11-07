@@ -138,8 +138,14 @@ loop), and headless_chrome's own setup of the new window deadlocks on the
 frozen page — so neither the popup listener nor a background watcher can
 step in. Fixing it needs Chrome's pause-on-start auto-attach
 (`Target.setAutoAttach` with `waitForDebuggerOnStart`), which headless_chrome
-does not expose. Two attempts (accept-before-instrument, a watcher thread)
-were tried and reverted.
+does not expose. Four attempts were tried and reverted: accepting the dialog
+before instrumenting, a watcher thread, page-level `Target.setAutoAttach`
+(Chrome does not auto-attach top-level popups from a page session), and a
+`window.open` shim that opens on about:blank first (the about:blank→URL hop
+itself trips headless_chrome's new-tab handling). Every route ends in
+headless_chrome building new-tab handles on its single event thread; fixing it
+means patching that library or moving to a CDP client with flattened
+auto-attach.
 
 **Bottom line:** checks only help as much as their source is independent
 *and* right. An independent author helped where the hidden intent was
