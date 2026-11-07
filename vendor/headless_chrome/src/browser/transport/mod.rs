@@ -63,7 +63,17 @@ pub struct Transport {
     call_id_counter: Arc<AtomicU32>,
     loop_shutdown_tx: Mutex<mpsc::SyncSender<()>>,
     idle_browser_timeout: Duration,
+    // ORCHYN PATCH: page sessions the browser auto-attached, by target id -> (session, waiting for debugger)
+    auto_attached: AutoAttached,
 }
+
+// ORCHYN PATCH: pending page auto-attaches, and the flattened sessions among them.
+#[derive(Default, Debug)]
+struct AutoAttachState {
+    pending: HashMap<String, (SessionId, bool)>,
+    flat: std::collections::HashSet<String>,
+}
+type AutoAttached = Arc<Mutex<AutoAttachState>>;
 
 #[derive(Debug, Error)]
 #[error("Unable to make method calls because underlying connection is closed")]
@@ -88,6 +98,7 @@ impl Transport {
         let (shutdown_tx, shutdown_rx) = mpsc::sync_channel(100);
 
         let guarded_shutdown_tx = Mutex::new(shutdown_tx);
+        let auto_attached: AutoAttached = Arc::new(Mutex::new(AutoAttachState::default()));
 
         Self::handle_incoming_messages(
             messages_rx,
@@ -98,6 +109,7 @@ impl Transport {
             shutdown_rx,
             process_id,
             idle_browser_timeout,
+            Arc::clone(&auto_attached),
         );
 
         Ok(Self {
@@ -108,7 +120,22 @@ impl Transport {
             call_id_counter: Arc::new(AtomicU32::new(0)),
             loop_shutdown_tx: guarded_shutdown_tx,
             idle_browser_timeout,
+            auto_attached,
         })
+    }
+
+    // ORCHYN PATCH: take the auto-attached session for a page, waiting up to `wait` for it.
+    pub fn take_auto_attached(&self, target_id: &str, wait: Duration) -> Option<(SessionId, bool)> {
+        let start = std::time::Instant::now();
+        loop {
+            if let Some(found) = self.auto_attached.lock().unwrap().pending.remove(target_id) {
+                return Some(found);
+            }
+            if start.elapsed() >= wait {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
     }
 
     /// Returns a number based on thread-safe unique counter, incrementing it so that the
@@ -138,17 +165,11 @@ impl Transport {
 
         match destination {
             MethodDestination::Target(session_id) => {
-                let message = message_text.clone();
-                let target_method = Target::SendMessageToTarget {
-                    target_id: None,
-                    session_id: Some(session_id.0),
-                    message,
-                };
                 trace!(
                     "Msg to tab: {}",
                     message_text.chars().take(300).collect::<String>()
                 );
-                if let Err(e) = self.call_method_on_browser(target_method) {
+                if let Err(e) = self.send_to_session(&session_id, &message_text) {
                     warn!("Failed to call method on browser: {e:?}");
                     self.waiting_call_registry.unregister_call(call.id);
                     trace!("Unregistered callback: {:?}", call.id);
@@ -187,6 +208,63 @@ impl Transport {
     {
         // TODO: remove clone
         self.call_method(method, MethodDestination::Target(session_id))
+    }
+
+    // ORCHYN PATCH: send one call to a session. A flattened session (browser-level
+    // auto-attach) takes the message directly with a sessionId attribute. Other
+    // sessions go through Target.sendMessageToTarget.
+    fn send_to_session(&self, session_id: &SessionId, message_text: &str) -> Result<()> {
+        let is_flat = self.auto_attached.lock().unwrap().flat.contains(&session_id.0);
+        if is_flat {
+            let mut value: serde_json::Value = serde_json::from_str(message_text)?;
+            value["sessionId"] = serde_json::Value::String(session_id.0.clone());
+            self.web_socket_connection.send_message(&value.to_string())
+        } else {
+            self.call_method_on_browser(Target::SendMessageToTarget {
+                target_id: None,
+                session_id: Some(session_id.0.clone()),
+                message: message_text.to_string(),
+            })
+            .map(|_| ())
+        }
+    }
+
+    // ORCHYN PATCH: send a call to a target session and return its reply channel
+    // without waiting for the reply (see Tab::new). Pair with await_detached_call.
+    pub fn call_method_on_target_detached<C>(
+        &self,
+        session_id: SessionId,
+        method: C,
+    ) -> Result<Receiver<Result<crate::types::Response>>>
+    where
+        C: Method + serde::Serialize,
+    {
+        if !self.open.load(Ordering::SeqCst) {
+            return Err(ConnectionClosed {}.into());
+        }
+        let call_id = self.unique_call_id();
+        let call = method.to_method_call(call_id);
+        let message_text = serde_json::to_string(&call)?;
+        let response_rx = self.waiting_call_registry.register_call(call.id);
+        let sent = self.send_to_session(&session_id, &message_text);
+        if let Err(e) = sent {
+            self.waiting_call_registry.unregister_call(call.id);
+            return Err(e);
+        }
+        Ok(response_rx)
+    }
+
+    // ORCHYN PATCH: wait for the reply to a call sent by call_method_on_target_detached.
+    pub fn await_detached_call<C>(
+        &self,
+        response_rx: Receiver<Result<crate::types::Response>>,
+    ) -> Result<C::ReturnObject>
+    where
+        C: Method,
+    {
+        let response_result = util::Wait::new(self.idle_browser_timeout, Duration::from_millis(5))
+            .until(|| response_rx.try_recv().ok());
+        parse_response::<C::ReturnObject>((response_result?)?)
     }
 
     pub fn call_method_on_browser<C>(&self, method: C) -> Result<C::ReturnObject>
@@ -230,6 +308,7 @@ impl Transport {
         shutdown_rx: Receiver<()>,
         process_id: Option<u32>,
         idle_browser_timeout: Duration,
+        auto_attached: AutoAttached,
     ) {
         trace!("Starting handle_incoming_messages");
         std::thread::spawn(move || {
@@ -316,6 +395,18 @@ impl Transport {
                             }
 
                             _ => {
+                                // ORCHYN PATCH: record page sessions the browser auto-attached
+                                if let Event::AttachedToTarget(ev) = &browser_event {
+                                    if ev.params.target_info.Type == "page" {
+                                        let session_id = SessionId::from(ev.params.session_id.clone());
+                                        let mut state = auto_attached.lock().unwrap();
+                                        state.flat.insert(session_id.0.clone());
+                                        state.pending.insert(
+                                            ev.params.target_info.target_id.clone(),
+                                            (session_id, ev.params.waiting_for_debugger),
+                                        );
+                                    }
+                                }
                                 if let Some(tx) =
                                     listeners.lock().unwrap().get(&ListenerId::Browser)
                                 {

@@ -213,15 +213,34 @@ impl NoElementFound {
 
 impl Tab {
     pub fn new(target_info: TargetInfo, transport: Arc<Transport>) -> Result<Self> {
+        Self::build(target_info, transport, Duration::ZERO)
+    }
+
+    // ORCHYN PATCH: for a page the browser just created. Its auto-attach session
+    // (see Browser::new) is usually paused, so wait briefly for it.
+    pub fn new_created(target_info: TargetInfo, transport: Arc<Transport>) -> Result<Self> {
+        Self::build(target_info, transport, Duration::from_secs(2))
+    }
+
+    fn build(target_info: TargetInfo, transport: Arc<Transport>, wait_for_attach: Duration) -> Result<Self> {
         let target_id = target_info.target_id.clone();
 
-        let session_id = transport
-            .call_method_on_browser(AttachToTarget {
-                target_id: target_id.clone(),
-                flatten: None,
-            })?
-            .session_id
-            .into();
+        // ORCHYN PATCH: use the browser's auto-attach session when there is one. If it
+        // is paused, Page.enable below is sent before the resume so the page is
+        // enabled before any of its scripts (e.g. alert()) run.
+        let (session_id, paused) = match transport.take_auto_attached(&target_id, wait_for_attach) {
+            Some((session, waiting)) => (session, waiting),
+            None => (
+                transport
+                    .call_method_on_browser(AttachToTarget {
+                        target_id: target_id.clone(),
+                        flatten: None,
+                    })?
+                    .session_id
+                    .into(),
+                false,
+            ),
+        };
 
         debug!("New tab attached with session ID: {session_id:?}");
 
@@ -272,14 +291,41 @@ impl Tab {
                 }
             });
         }
-        let enabled = tab.call_method(Page::Enable {
-            enable_file_chooser_opened_event: None,
-        });
-        enabling.store(false, Ordering::SeqCst);
-        enabled?;
-        tab.call_method(Page::SetLifecycleEventsEnabled { enabled: true })?;
+        if paused {
+            // ORCHYN PATCH: a paused page answers Page-domain calls only after it is
+            // resumed. Queue Page.enable and the lifecycle call, resume the page, then
+            // wait for the replies. Messages on one session stay in order, so enabling
+            // reaches the page before its scripts run.
+            let session_id = tab.session_id.clone();
+            let enable_rx = tab.transport.call_method_on_target_detached(
+                session_id.clone(),
+                Page::Enable {
+                    enable_file_chooser_opened_event: None,
+                },
+            )?;
+            let lifecycle_rx = tab.transport.call_method_on_target_detached(
+                session_id,
+                Page::SetLifecycleEventsEnabled { enabled: true },
+            )?;
+            tab.start_event_handler_thread();
+            if let Err(e) = tab.call_method(Runtime::RunIfWaitingForDebugger(None)) {
+                warn!("ORCHYN PATCH: Runtime.runIfWaitingForDebugger failed: {e:?}");
+            }
+            let enabled = tab.transport.await_detached_call::<Page::Enable>(enable_rx);
+            enabling.store(false, Ordering::SeqCst);
+            enabled?;
+            tab.transport
+                .await_detached_call::<Page::SetLifecycleEventsEnabled>(lifecycle_rx)?;
+        } else {
+            let enabled = tab.call_method(Page::Enable {
+                enable_file_chooser_opened_event: None,
+            });
+            enabling.store(false, Ordering::SeqCst);
+            enabled?;
+            tab.call_method(Page::SetLifecycleEventsEnabled { enabled: true })?;
 
-        tab.start_event_handler_thread();
+            tab.start_event_handler_thread();
+        }
 
         Ok(tab)
     }
@@ -349,6 +395,22 @@ impl Tab {
                 listeners.iter().for_each(|listener| {
                     listener.on_event(&event);
                 });
+
+                // ORCHYN PATCH: a dialog that opens while no listener is registered (e.g. an
+                // alert() in a popup, raised before the caller attaches to it) would hold the
+                // page forever, so accept it here. Accepting is answered by the browser.
+                if let Event::PageJavascriptDialogOpening(_) = &event {
+                    if listeners.is_empty() {
+                        let dialog_session = session_id.clone();
+                        let dialog_transport = Arc::clone(&transport);
+                        thread::spawn(move || {
+                            let dialog = Dialog::new(dialog_session, dialog_transport);
+                            if let Err(e) = dialog.accept(None) {
+                                warn!("ORCHYN PATCH: auto-accepting dialog failed: {e:?}");
+                            }
+                        });
+                    }
+                }
 
                 match event {
                     Event::PageLifecycleEvent(lifecycle_event) => {

@@ -132,15 +132,15 @@ Tool gaps found and fixed during this round (each found by an agent hitting
 it): CSS-only `:hover` menus (now a real pointer move), `window.open` popups
 (`switch_to_popup`), clicks racing the navigation they trigger, `alert()`
 freezing checks, router mounts reported as false reality gaps, and Chrome
-hanging when TMPDIR is long. Popup-load `alert()` deadlock — fixed for the default browser: an `alert()`
-while a same-origin popup loads freezes the opener too, and headless_chrome
-built new-tab handles on its single event thread, so everything deadlocked.
-Fix: two patches to a vendored headless_chrome (build new-tab handles off the
-event thread; accept pending dialogs while a new tab is being enabled) plus
-preferring Playwright's `chrome-headless-shell` when no `CHROME` is set. Test:
-12/12 runs pass (shared and per-adapter browsers) with headless-shell; without
-the patches it hung about half the time; with full Chrome it still hangs, so
-`CHROME=<full chrome>` keeps that limitation.
+hanging when TMPDIR is long. Popup-load `alert()` deadlock — fixed: an `alert()` while a same-origin
+popup loads freezes the opener too, and headless_chrome built new-tab handles
+on its single event thread, so everything deadlocked. Fixed with patches to a
+vendored headless_chrome (`vendor/headless_chrome/ORCHYN_PATCHES.md`): pause
+new pages at creation (flattened auto-attach) and resume them once their
+handle is ready, build handles off the event thread, accept dialogs no
+listener handles. Verified 12/12 runs across full Chrome and headless-shell,
+shared and per-adapter browsers; reference benchmark unchanged (8/8, 0 FP) on
+both.
 
 **Bottom line:** checks only help as much as their source is independent
 *and* right. An independent author helped where the hidden intent was

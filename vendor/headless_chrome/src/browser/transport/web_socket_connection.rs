@@ -103,7 +103,20 @@ impl WebSocketConnection {
                 },
                 Ok(message) => {
                     if let tungstenite::protocol::Message::Text(message_string) = message {
-                        if let Ok(message) = parse_raw_message(&message_string) {
+                        // ORCHYN PATCH: a flattened-protocol message (browser-level auto-attach)
+                        // has a top-level sessionId. Re-wrap it as Target.receivedMessageFromTarget
+                        // so the transport routes it like a legacy session message.
+                        let parsed = match flat_session_id(&message_string) {
+                            Some(session_id) => parse_raw_message(
+                                &serde_json::json!({
+                                    "method": "Target.receivedMessageFromTarget",
+                                    "params": { "sessionId": session_id, "message": message_string.as_str() },
+                                })
+                                .to_string(),
+                            ),
+                            None => parse_raw_message(&message_string),
+                        };
+                        if let Ok(message) = parsed {
                             if messages_tx.send(message).is_err() {
                                 break;
                             }
@@ -194,4 +207,13 @@ impl Drop for WebSocketConnection {
     fn drop(&mut self) {
         info!("dropping websocket connection");
     }
+}
+
+// ORCHYN PATCH: the sessionId of a flattened-protocol message, if it has one at the top level.
+fn flat_session_id(message: &str) -> Option<String> {
+    if !message.contains("\"sessionId\"") {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_str(message).ok()?;
+    value.get("sessionId")?.as_str().map(str::to_string)
 }

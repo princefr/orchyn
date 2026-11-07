@@ -204,11 +204,12 @@ pub trait ModelClient: Send + Sync + Debug {
   adapter's tabs and makes it active. `switch_to_tab(index)` activates a tab the
   adapter already has (0 is the original tab). A same-origin popup that
   calls `alert()` while loading freezes its opener too (shared event loop).
-  This is handled by two patches to a vendored headless_chrome
-  (`vendor/headless_chrome/ORCHYN_PATCHES.md`: new-tab handles are built off
-  the browser event thread, and pending dialogs on a new tab are accepted while
-  it is being enabled) together with the default browser choice below; with
-  full Chrome (`CHROME=.../chrome`) that case can still hang.
+  This is handled by patches to a vendored headless_chrome
+  (`vendor/headless_chrome/ORCHYN_PATCHES.md`): new pages are auto-attached
+  paused (flattened browser-level `Target.setAutoAttach`) and resumed once
+  their handle is set up, new-tab handles are built off the browser event
+  thread, and a JS dialog that no listener handles is accepted instead of
+  freezing the page. Works with full Chrome and with headless-shell.
 - **Browser binary.** `CHROME` if set; otherwise Playwright's
   `chrome-headless-shell` when installed (under `PLAYWRIGHT_BROWSERS_PATH` or
   `~/.cache/ms-playwright`); otherwise headless_chrome's own lookup.

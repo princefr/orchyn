@@ -173,6 +173,19 @@ impl Browser {
             filter: None,
         })?;
 
+        // ORCHYN PATCH: pause each new page before its scripts run, so Tab::new_created
+        // can enable Page on it first and then resume it. Without this a same-origin
+        // popup's alert() freezes the opener before the dialog can be handled.
+        browser.call_method(Target::SetAutoAttach {
+            auto_attach: true,
+            wait_for_debugger_on_start: true,
+            flatten: Some(true),
+            filter: Some(vec![Target::FilterEntry {
+                exclude: None,
+                Type: Some("page".to_string()),
+            }]),
+        })?;
+
         Ok(browser)
     }
 
@@ -400,7 +413,7 @@ impl Browser {
                                     let tabs = Arc::clone(&tabs);
                                     let transport = Arc::clone(&transport);
                                     std::thread::spawn(move || {
-                                        match Tab::new(target_info, transport) {
+                                        match Tab::new_created(target_info, transport) {
                                             Ok(new_tab) => {
                                                 tabs.lock().unwrap().push(Arc::new(new_tab));
                                             }
