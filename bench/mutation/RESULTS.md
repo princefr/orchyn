@@ -45,19 +45,13 @@ Reading it:
 - n = 51 relevant mutants across 3 apps. An earlier partial run (22 relevant)
   suggested 77%; the full set gives 65%.
 
-## More driver flows (expressjs)
+## More driver flows (expressjs) — earlier result retracted
 
-The baseline above replays 4 of the 15 independent checks as driver flows.
-Re-scoring expressjs's relevant mutants with all 15 as drivers
-(`results/expressjs-15-drivers.jsonl`; stopped by the 2-hour limit after the
-control and 5 mutants):
-
-- it caught one mutant the 4-driver baseline missed (m010), **but**
-- it raised an alarm on the **unmutated control** — some of the extra mined
-  invariants do not hold on a fresh run (state carries over between driver
-  flows within a recording run, and timing varies), so its catches cannot be
-  trusted.
-
-So simply adding flows is not an improvement. It needs per-flow state resets
-(fresh database / fresh actors per driver) and more recording runs to drop
-unstable invariants before it can raise coverage without false alarms.
+An earlier version of this section reported that using all 15 checks as
+baseline drivers "raised an alarm on the unmutated control". That result is
+**invalid**: a server orphaned when a previous run was killed at its time
+limit kept the expressjs port, so the later runs' checks hit that stale server
+instead of the app under test. The same affected the last 3 expressjs mutants
+(m038–m040) of the main table, which were re-scored. `score.sh` now frees the
+port before every start. The 15-driver experiment (with a per-flow app reset,
+`orchyn-check --reset-cmd`) is being re-run; results below once complete.

@@ -1,6 +1,0 @@
-{"project":"expressjs","mutant":"m000","operator":"?","official_passed":15,"control_passed":15,"relevant":false,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
-{"project":"expressjs","mutant":"m001","operator":"cond_negate","official_passed":12,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
-{"project":"expressjs","mutant":"m002","operator":"cmp_flip","official_passed":13,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
-{"project":"expressjs","mutant":"m006","operator":"class_rename","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
-{"project":"expressjs","mutant":"m010","operator":"await_drop","official_passed":14,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
-{"project":"expressjs","mutant":"m011","operator":"return_drop","official_passed":6,"control_passed":15,"relevant":true,"spec":false,"baseline":true,"universal":false,"valid_checks":9}
