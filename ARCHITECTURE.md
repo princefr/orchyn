@@ -202,7 +202,12 @@ pub trait ModelClient: Send + Sync + Debug {
 - **Popups.** Every tab, including popups, gets the same instrumentation.
   `switch_to_new_tab(timeout)` waits for a tab whose opener is one of this
   adapter's tabs and makes it active. `switch_to_tab(index)` activates a tab the
-  adapter already has (0 is the original tab).
+  adapter already has (0 is the original tab). Known limitation: a
+  same-origin popup that calls `alert()` while it is still loading freezes its
+  opener too (shared event loop), and headless_chrome's setup of the new tab
+  deadlocks on it, so the step hangs. Fixing it needs pause-on-start
+  auto-attach (`Target.setAutoAttach` + `waitForDebuggerOnStart`), which
+  headless_chrome does not expose.
 - `take_exchanges` returns XHR and fetch exchanges only. A response body is kept
   when it is non-empty, not base64 and at most 16 KiB.
 
