@@ -44,3 +44,20 @@ Reading it:
   controls (3/8 on the planted-bug suite), not wrong behaviour.
 - n = 51 relevant mutants across 3 apps. An earlier partial run (22 relevant)
   suggested 77%; the full set gives 65%.
+
+## More driver flows (expressjs)
+
+The baseline above replays 4 of the 15 independent checks as driver flows.
+Re-scoring expressjs's relevant mutants with all 15 as drivers
+(`results/expressjs-15-drivers.jsonl`; stopped by the 2-hour limit after the
+control and 5 mutants):
+
+- it caught one mutant the 4-driver baseline missed (m010), **but**
+- it raised an alarm on the **unmutated control** — some of the extra mined
+  invariants do not hold on a fresh run (state carries over between driver
+  flows within a recording run, and timing varies), so its catches cannot be
+  trusted.
+
+So simply adding flows is not an improvement. It needs per-flow state resets
+(fresh database / fresh actors per driver) and more recording runs to drop
+unstable invariants before it can raise coverage without false alarms.
