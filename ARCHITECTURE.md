@@ -202,12 +202,16 @@ pub trait ModelClient: Send + Sync + Debug {
 - **Popups.** Every tab, including popups, gets the same instrumentation.
   `switch_to_new_tab(timeout)` waits for a tab whose opener is one of this
   adapter's tabs and makes it active. `switch_to_tab(index)` activates a tab the
-  adapter already has (0 is the original tab). Known limitation: a
-  same-origin popup that calls `alert()` while it is still loading freezes its
-  opener too (shared event loop), and headless_chrome's setup of the new tab
-  deadlocks on it, so the step hangs. Fixing it needs pause-on-start
-  auto-attach (`Target.setAutoAttach` + `waitForDebuggerOnStart`), which
-  headless_chrome does not expose.
+  adapter already has (0 is the original tab). A same-origin popup that
+  calls `alert()` while loading freezes its opener too (shared event loop).
+  This is handled by two patches to a vendored headless_chrome
+  (`vendor/headless_chrome/ORCHYN_PATCHES.md`: new-tab handles are built off
+  the browser event thread, and pending dialogs on a new tab are accepted while
+  it is being enabled) together with the default browser choice below; with
+  full Chrome (`CHROME=.../chrome`) that case can still hang.
+- **Browser binary.** `CHROME` if set; otherwise Playwright's
+  `chrome-headless-shell` when installed (under `PLAYWRIGHT_BROWSERS_PATH` or
+  `~/.cache/ms-playwright`); otherwise headless_chrome's own lookup.
 - `take_exchanges` returns XHR and fetch exchanges only. A response body is kept
   when it is non-empty, not base64 and at most 16 KiB.
 

@@ -107,6 +107,47 @@ fn short_tmpdir_env() -> Option<std::collections::HashMap<String, String>> {
     Some(env)
 }
 
+/// Browser binary: `CHROME` if set; otherwise Playwright's
+/// `chrome-headless-shell` when one is installed (under
+/// `PLAYWRIGHT_BROWSERS_PATH` or `~/.cache/ms-playwright`); otherwise
+/// headless_chrome's own lookup. headless-shell is preferred because it does
+/// not let a JS dialog in a loading popup freeze the opener — with full
+/// Chrome a same-origin popup that calls `alert()` during load deadlocks
+/// headless_chrome's new-tab handling.
+fn chrome_binary() -> Option<std::path::PathBuf> {
+    if let Some(p) = std::env::var_os("CHROME") {
+        return Some(std::path::PathBuf::from(p));
+    }
+    let mut roots: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(p) = std::env::var_os("PLAYWRIGHT_BROWSERS_PATH") {
+        roots.push(p.into());
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        roots.push(std::path::PathBuf::from(home).join(".cache/ms-playwright"));
+    }
+    for root in roots {
+        let Ok(entries) = std::fs::read_dir(&root) else { continue };
+        let mut dirs: Vec<_> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with("chromium_headless_shell-"))
+            })
+            .collect();
+        dirs.sort();
+        for dir in dirs.into_iter().rev() {
+            for sub in ["chrome-headless-shell-linux64", "chrome-linux", "chrome-mac", "chrome-win"] {
+                let bin = dir.join(sub).join("chrome-headless-shell");
+                if bin.is_file() {
+                    return Some(bin);
+                }
+            }
+        }
+    }
+    None
+}
+
 fn launchbrowser() -> Result<Browser> {
     Browser::new(
         LaunchOptions::default_builder()
@@ -114,7 +155,7 @@ fn launchbrowser() -> Result<Browser> {
             // `CHROME` overrides the browser binary (e.g. a Playwright-managed
             // Chromium); `ORCHYN_NO_SANDBOX=1` is needed when running as root
             // inside containers / CI.
-            .path(std::env::var_os("CHROME").map(std::path::PathBuf::from))
+            .path(chrome_binary())
             .sandbox(std::env::var("ORCHYN_NO_SANDBOX").map(|v| v != "1").unwrap_or(true))
             // Default idle_browser_timeout is 30s — too short when LLM inference
             // takes 15-40s per turn. Set to 10 minutes to outlast any turn.

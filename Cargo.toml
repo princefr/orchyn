@@ -176,3 +176,8 @@ matrixmultiply = { opt-level = 3 }
 lto = "thin"
 codegen-units = 16
 debug = 0
+
+[patch.crates-io]
+# Vendored with two small fixes for popups that open a JS dialog while loading;
+# see vendor/headless_chrome/ORCHYN_PATCHES.md.
+headless_chrome = { path = "vendor/headless_chrome" }

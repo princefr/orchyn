@@ -132,20 +132,15 @@ Tool gaps found and fixed during this round (each found by an agent hitting
 it): CSS-only `:hover` menus (now a real pointer move), `window.open` popups
 (`switch_to_popup`), clicks racing the navigation they trigger, `alert()`
 freezing checks, router mounts reported as false reality gaps, and Chrome
-hanging when TMPDIR is long. Known remaining gap, root-caused but not fixed: an `alert()` fired while a
-same-origin popup is loading freezes the opener too (they share an event
-loop), and headless_chrome's own setup of the new window deadlocks on the
-frozen page — so neither the popup listener nor a background watcher can
-step in. Fixing it needs Chrome's pause-on-start auto-attach
-(`Target.setAutoAttach` with `waitForDebuggerOnStart`), which headless_chrome
-does not expose. Four attempts were tried and reverted: accepting the dialog
-before instrumenting, a watcher thread, page-level `Target.setAutoAttach`
-(Chrome does not auto-attach top-level popups from a page session), and a
-`window.open` shim that opens on about:blank first (the about:blank→URL hop
-itself trips headless_chrome's new-tab handling). Every route ends in
-headless_chrome building new-tab handles on its single event thread; fixing it
-means patching that library or moving to a CDP client with flattened
-auto-attach.
+hanging when TMPDIR is long. Popup-load `alert()` deadlock — fixed for the default browser: an `alert()`
+while a same-origin popup loads freezes the opener too, and headless_chrome
+built new-tab handles on its single event thread, so everything deadlocked.
+Fix: two patches to a vendored headless_chrome (build new-tab handles off the
+event thread; accept pending dialogs while a new tab is being enabled) plus
+preferring Playwright's `chrome-headless-shell` when no `CHROME` is set. Test:
+12/12 runs pass (shared and per-adapter browsers) with headless-shell; without
+the patches it hung about half the time; with full Chrome it still hangs, so
+`CHROME=<full chrome>` keeps that limitation.
 
 **Bottom line:** checks only help as much as their source is independent
 *and* right. An independent author helped where the hidden intent was
